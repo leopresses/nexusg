@@ -14,16 +14,275 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      brand_settings: {
+        Row: {
+          accent_color: string | null
+          created_at: string
+          id: string
+          logo_url: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accent_color?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accent_color?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      clients: {
+        Row: {
+          address: string | null
+          business_type: Database["public"]["Enums"]["business_type"]
+          created_at: string
+          google_business_id: string | null
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          monthly_revenue: number | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          business_type?: Database["public"]["Enums"]["business_type"]
+          created_at?: string
+          google_business_id?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          monthly_revenue?: number | null
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          business_type?: Database["public"]["Enums"]["business_type"]
+          created_at?: string
+          google_business_id?: string | null
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          monthly_revenue?: number | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          clients_limit: number
+          created_at: string
+          full_name: string | null
+          id: string
+          plan: Database["public"]["Enums"]["subscription_plan"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          clients_limit?: number
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          clients_limit?: number
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      task_templates: {
+        Row: {
+          checklist: Json | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          checklist?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          checklist?: Json | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          checklist: Json | null
+          client_id: string
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          status: Database["public"]["Enums"]["task_status"]
+          template_id: string | null
+          title: string
+          updated_at: string
+          week_start: string
+        }
+        Insert: {
+          checklist?: Json | null
+          client_id: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          status?: Database["public"]["Enums"]["task_status"]
+          template_id?: string | null
+          title: string
+          updated_at?: string
+          week_start: string
+        }
+        Update: {
+          checklist?: Json | null
+          client_id?: string
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          status?: Database["public"]["Enums"]["task_status"]
+          template_id?: string | null
+          title?: string
+          updated_at?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "task_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_add_client: { Args: { _user_id: string }; Returns: boolean }
+      get_user_client_count: { Args: { _user_id: string }; Returns: number }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      business_type: "restaurant" | "store" | "service" | "other"
+      subscription_plan: "starter" | "pro" | "elite" | "agency"
+      task_status: "pending" | "in_progress" | "completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +409,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      business_type: ["restaurant", "store", "service", "other"],
+      subscription_plan: ["starter", "pro", "elite", "agency"],
+      task_status: ["pending", "in_progress", "completed"],
+    },
   },
 } as const
