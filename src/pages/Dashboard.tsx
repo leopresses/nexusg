@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
   Users, 
@@ -14,52 +14,20 @@ import {
   Phone,
   MoreVertical,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { Badge } from "@/components/ui/badge";
 import { NotificationBell } from "@/components/NotificationCenter";
-// Mock data
-const stats = [
-  { label: "Clientes Ativos", value: "5", icon: Users, change: "+2 este mês" },
-  { label: "Tarefas Pendentes", value: "12", icon: CheckSquare, change: "4 para hoje" },
-  { label: "Visualizações", value: "2.4k", icon: Eye, change: "+18% vs semana passada" },
-  { label: "Chamadas", value: "89", icon: Phone, change: "+12% vs semana passada" },
-];
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
-const clients = [
-  { 
-    id: 1, 
-    name: "Pizzaria Roma", 
-    type: "Restaurante", 
-    tasks: { completed: 3, total: 5 },
-    views: 456,
-    calls: 23 
-  },
-  { 
-    id: 2, 
-    name: "Barbearia Vintage", 
-    type: "Serviços", 
-    tasks: { completed: 4, total: 5 },
-    views: 234,
-    calls: 15 
-  },
-  { 
-    id: 3, 
-    name: "Café Central", 
-    type: "Café", 
-    tasks: { completed: 2, total: 5 },
-    views: 567,
-    calls: 31 
-  },
-];
-
-const recentTasks = [
-  { id: 1, title: "Postar 3 fotos no Google Business", client: "Pizzaria Roma", status: "pending" },
-  { id: 2, title: "Responder avaliações da semana", client: "Barbearia Vintage", status: "in_progress" },
-  { id: 3, title: "Atualizar horário de funcionamento", client: "Café Central", status: "completed" },
-  { id: 4, title: "Criar post promocional", client: "Pizzaria Roma", status: "pending" },
-];
+type Client = Database["public"]["Tables"]["clients"]["Row"];
+type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
+  clients?: { name: string } | null;
+};
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", active: true },
@@ -83,6 +51,54 @@ const statusLabels = {
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const [clientsRes, tasksRes] = await Promise.all([
+        supabase.from("clients").select("*").eq("is_active", true).order("created_at", { ascending: false }),
+        supabase.from("tasks").select("*, clients(name)").order("created_at", { ascending: false }).limit(5),
+      ]);
+
+      if (clientsRes.data) setClients(clientsRes.data);
+      if (tasksRes.data) setTasks(tasksRes.data as Task[]);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  const pendingTasks = tasks.filter((t) => t.status === "pending").length;
+  const completedTasks = tasks.filter((t) => t.status === "completed").length;
+
+  const stats = [
+    { label: "Clientes Ativos", value: clients.length.toString(), icon: Users, change: `Limite: ${profile?.clients_limit || 1}` },
+    { label: "Tarefas Pendentes", value: pendingTasks.toString(), icon: CheckSquare, change: `${completedTasks} concluídas` },
+    { label: "Seu Plano", value: profile?.plan?.toUpperCase() || "STARTER", icon: Eye, change: "Plano atual" },
+    { label: "Taxa de Conclusão", value: tasks.length > 0 ? `${Math.round((completedTasks / tasks.length) * 100)}%` : "0%", icon: Phone, change: "Esta semana" },
+  ];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -113,7 +129,11 @@ export default function Dashboard() {
         </nav>
 
         <div className="p-4 border-t border-sidebar-border">
-          <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground">
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start gap-3 text-sidebar-foreground"
+            onClick={handleSignOut}
+          >
             <LogOut className="h-5 w-5" />
             {sidebarOpen && <span>Sair</span>}
           </Button>
@@ -126,14 +146,16 @@ export default function Dashboard() {
         <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">Dashboard</h1>
+              <h1 className="text-2xl font-bold">
+                Olá, {profile?.full_name?.split(" ")[0] || "Usuário"}! 👋
+              </h1>
               <p className="text-sm text-muted-foreground">
                 Semana de {new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - Visão geral
               </p>
             </div>
             <div className="flex items-center gap-4">
               <NotificationBell />
-              <Button>
+              <Button onClick={() => navigate("/onboarding")}>
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Cliente
               </Button>
@@ -185,42 +207,50 @@ export default function Dashboard() {
                 </Link>
               </div>
               <div className="divide-y divide-border">
-                {clients.map((client) => (
-                  <div key={client.id} className="p-4 hover:bg-secondary/50 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-xl gradient-gold flex items-center justify-center text-primary-foreground font-bold text-lg">
-                          {client.name.charAt(0)}
-                        </div>
-                        <div>
-                          <h3 className="font-medium">{client.name}</h3>
-                          <p className="text-sm text-muted-foreground">{client.type}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-6">
-                        <div className="text-center">
-                          <div className="text-sm font-medium">{client.tasks.completed}/{client.tasks.total}</div>
-                          <div className="text-xs text-muted-foreground">Tarefas</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-sm font-medium flex items-center gap-1">
-                            <Eye className="h-3 w-3" /> {client.views}
+                {clients.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="font-medium mb-2">Nenhum cliente ainda</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Adicione seu primeiro cliente para começar
+                    </p>
+                    <Button onClick={() => navigate("/onboarding")}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Adicionar Cliente
+                    </Button>
+                  </div>
+                ) : (
+                  clients.slice(0, 5).map((client) => (
+                    <div key={client.id} className="p-4 hover:bg-secondary/50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="h-12 w-12 rounded-xl gradient-gold flex items-center justify-center text-primary-foreground font-bold text-lg">
+                            {client.name.charAt(0)}
                           </div>
-                          <div className="text-xs text-muted-foreground">Views</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-sm font-medium flex items-center gap-1">
-                            <Phone className="h-3 w-3" /> {client.calls}
+                          <div>
+                            <h3 className="font-medium">{client.name}</h3>
+                            <p className="text-sm text-muted-foreground capitalize">{client.business_type}</p>
                           </div>
-                          <div className="text-xs text-muted-foreground">Calls</div>
                         </div>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-6">
+                          <div className="text-center">
+                            <div className="text-sm font-medium">{client.address ? "✓" : "—"}</div>
+                            <div className="text-xs text-muted-foreground">Endereço</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-sm font-medium flex items-center gap-1">
+                              {client.google_business_id ? "✓" : "—"}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Google</div>
+                          </div>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </motion.div>
 
@@ -238,25 +268,36 @@ export default function Dashboard() {
                 </Link>
               </div>
               <div className="p-4 space-y-3">
-                {recentTasks.map((task) => (
-                  <div 
-                    key={task.id} 
-                    className="p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <h4 className="text-sm font-medium leading-tight">{task.title}</h4>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">{task.client}</span>
-                      <Badge 
-                        variant="outline" 
-                        className={`text-xs ${statusColors[task.status as keyof typeof statusColors]}`}
-                      >
-                        {statusLabels[task.status as keyof typeof statusLabels]}
-                      </Badge>
-                    </div>
+                {tasks.length === 0 ? (
+                  <div className="text-center py-8">
+                    <CheckSquare className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma tarefa ainda
+                    </p>
                   </div>
-                ))}
+                ) : (
+                  tasks.map((task) => (
+                    <div 
+                      key={task.id} 
+                      className="p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <h4 className="text-sm font-medium leading-tight">{task.title}</h4>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">
+                          {task.clients?.name || "Cliente"}
+                        </span>
+                        <Badge 
+                          variant="outline" 
+                          className={`text-xs ${statusColors[task.status as keyof typeof statusColors]}`}
+                        >
+                          {statusLabels[task.status as keyof typeof statusLabels]}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </motion.div>
           </div>

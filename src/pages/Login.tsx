@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -14,19 +15,44 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { signIn, user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulação - será substituído pela integração com Supabase
-    setTimeout(() => {
-      setIsLoading(false);
+
+    const { error } = await signIn(email, password);
+
+    if (error) {
+      let errorMessage = "Ocorreu um erro ao fazer login.";
+      
+      if (error.message.includes("Invalid login credentials")) {
+        errorMessage = "Email ou senha incorretos.";
+      } else if (error.message.includes("Email not confirmed")) {
+        errorMessage = "Confirme seu email antes de fazer login.";
+      }
+      
       toast({
-        title: "Backend necessário",
-        description: "Ative o Lovable Cloud para habilitar autenticação.",
+        title: "Erro no login",
+        description: errorMessage,
+        variant: "destructive",
       });
-    }, 1000);
+    } else {
+      toast({
+        title: "Login realizado!",
+        description: "Bem-vindo de volta ao Gestão Águia.",
+      });
+      navigate("/dashboard");
+    }
+
+    setIsLoading(false);
   };
 
   return (

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Bell, 
@@ -15,6 +15,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import type { Database } from "@/integrations/supabase/types";
+
+type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
 
 interface Notification {
   id: string;
@@ -23,54 +28,7 @@ interface Notification {
   message: string;
   time: string;
   read: boolean;
-  client?: string;
 }
-
-const initialNotifications: Notification[] = [
-  {
-    id: "1",
-    type: "warning",
-    title: "Tarefa atrasada",
-    message: "A tarefa 'Postar fotos' do cliente Pizzaria Roma está atrasada há 2 dias",
-    time: "Há 5 min",
-    read: false,
-    client: "Pizzaria Roma"
-  },
-  {
-    id: "2",
-    type: "success",
-    title: "Relatório gerado",
-    message: "O relatório semanal da Barbearia Vintage foi gerado com sucesso",
-    time: "Há 1 hora",
-    read: false,
-    client: "Barbearia Vintage"
-  },
-  {
-    id: "3",
-    type: "info",
-    title: "Nova avaliação",
-    message: "Café Central recebeu uma nova avaliação 5 estrelas no Google",
-    time: "Há 3 horas",
-    read: true,
-    client: "Café Central"
-  },
-  {
-    id: "4",
-    type: "task",
-    title: "Tarefas da semana geradas",
-    message: "15 novas tarefas foram criadas automaticamente para esta semana",
-    time: "Ontem",
-    read: true,
-  },
-  {
-    id: "5",
-    type: "warning",
-    title: "Limite de clientes",
-    message: "Você atingiu 4 de 5 clientes do seu plano Pro",
-    time: "2 dias atrás",
-    read: true,
-  },
-];
 
 const typeConfig = {
   warning: { 
@@ -95,13 +53,26 @@ const typeConfig = {
   },
 };
 
+function formatTimeAgo(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return "Agora";
+  if (diffInSeconds < 3600) return `Há ${Math.floor(diffInSeconds / 60)} min`;
+  if (diffInSeconds < 86400) return `Há ${Math.floor(diffInSeconds / 3600)} hora(s)`;
+  if (diffInSeconds < 604800) return `Há ${Math.floor(diffInSeconds / 86400)} dia(s)`;
+  return date.toLocaleDateString("pt-BR");
+}
+
 interface NotificationCenterProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
 export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps) {
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] = useState({
     emailTarefasAtrasadas: true,
@@ -111,15 +82,56 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
     pushLimites: true,
   });
 
+  useEffect(() => {
+    if (user && isOpen) {
+      fetchNotifications();
+    }
+  }, [user, isOpen]);
+
+  const fetchNotifications = async () => {
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (data && !error) {
+      const mapped: Notification[] = data.map((n: NotificationRow) => ({
+        id: n.id,
+        type: (n.type as Notification["type"]) || "info",
+        title: n.title,
+        message: n.message || "",
+        time: formatTimeAgo(n.created_at),
+        read: n.is_read,
+      }));
+      setNotifications(mapped);
+    }
+  };
+
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const markAsRead = (id: string) => {
+  const markAsRead = async (id: string) => {
+    await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("id", id);
+
     setNotifications(notifications.map(n => 
       n.id === id ? { ...n, read: true } : n
     ));
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
+    if (!user) return;
+    
+    await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("user_id", user.id);
+
     setNotifications(notifications.map(n => ({ ...n, read: true })));
   };
 
@@ -283,9 +295,6 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
                             <div className="flex items-start justify-between gap-2">
                               <div>
                                 <h4 className="font-medium text-sm">{notification.title}</h4>
-                                {notification.client && (
-                                  <span className="text-xs text-primary">{notification.client}</span>
-                                )}
                               </div>
                               <div className="flex items-center gap-1">
                                 {!notification.read && (
@@ -333,7 +342,28 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
 // Notification Bell Button Component
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
-  const unreadCount = 2; // This would come from state/context
+  const [unreadCount, setUnreadCount] = useState(0);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      fetchUnreadCount();
+    }
+  }, [user]);
+
+  const fetchUnreadCount = async () => {
+    if (!user) return;
+
+    const { count, error } = await supabase
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("is_read", false);
+
+    if (!error && count !== null) {
+      setUnreadCount(count);
+    }
+  };
 
   return (
     <>
@@ -350,7 +380,7 @@ export function NotificationBell() {
           </span>
         )}
       </Button>
-      <NotificationCenter isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      <NotificationCenter isOpen={isOpen} onClose={() => { setIsOpen(false); fetchUnreadCount(); }} />
     </>
   );
 }
