@@ -16,7 +16,7 @@ const plans = [
     period: "",
     description: "Perfeito para começar a gerenciar seu primeiro cliente.",
     clientsLimit: "1 cliente",
-    features: ["1 cliente", "Tarefas ilimitadas"],
+    features: ["1 cliente", "Tarefas ilimitadas", "Relatórios básicos", "Suporte por email"],
     highlighted: false,
   },
   {
@@ -27,8 +27,14 @@ const plans = [
     period: "/mês",
     description: "Ideal para profissionais que gerenciam múltiplos clientes.",
     clientsLimit: "Até 3 clientes",
-    features: ["Até 3 clientes", "Relatórios avançados", "White-label (sua marca)", "Suporte Whatsapp"],
-    highlighted: false,
+    features: [
+      "Até 3 clientes",
+      "Tarefas ilimitadas",
+      "Relatórios avançados",
+      "White-label (sua marca)",
+      "Suporte prioritário",
+    ],
+    highlighted: true,
   },
   {
     id: "elite",
@@ -38,8 +44,15 @@ const plans = [
     period: "/mês",
     description: "Para agências que precisam de recursos avançados.",
     clientsLimit: "Até 10 clientes",
-    features: ["Até 10 clientes", "Tudo do Pro", "Suporte prioritário Whatsapp"],
-    highlighted: true,
+    features: [
+      "Até 10 clientes",
+      "Tudo do Pro",
+      "API de integração",
+      "Múltiplos usuários",
+      "Dashboard personalizado",
+      "Suporte 24/7",
+    ],
+    highlighted: false,
   },
   {
     id: "agency",
@@ -49,7 +62,14 @@ const plans = [
     period: "/mês",
     description: "Solução completa para grandes operações.",
     clientsLimit: "Clientes ilimitados",
-    features: ["Clientes ilimitados", "Tudo do Elite"],
+    features: [
+      "Clientes ilimitados",
+      "Tudo do Elite",
+      "Gerente de conta dedicado",
+      "Treinamento personalizado",
+      "SLA garantido",
+      "Integrações customizadas",
+    ],
     highlighted: false,
   },
 ];
@@ -66,7 +86,7 @@ export default function Pricing() {
         `Preço: ${planPrice}/mês\n` +
         `Limite: ${clientsLimit}\n` +
         `Meu e-mail: ${userEmail}\n\n` +
-        `Pode me ajudar com o processo, por favor?`,
+        `Pode me ajudar com o processo?`,
     );
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, "_blank");
   };
@@ -172,7 +192,6 @@ export default function Pricing() {
                     className="w-full gap-2"
                     onClick={() => handleUpgrade(plan.id, plan.name, plan.price, plan.clientsLimit)}
                   >
-                    <MessageCircle className="h-4 w-4" />
                     Fazer Upgrade
                   </Button>
                 )}
