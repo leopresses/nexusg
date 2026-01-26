@@ -36,13 +36,13 @@ export default function Login() {
 
     if (error) {
       let errorMessage = "Ocorreu um erro ao fazer login.";
-      
+
       if (error.message.includes("Invalid login credentials")) {
         errorMessage = "Email ou senha incorretos.";
       } else if (error.message.includes("Email not confirmed")) {
         errorMessage = "Confirme seu email antes de fazer login.";
       }
-      
+
       toast({
         title: "Erro no login",
         description: errorMessage,
@@ -51,7 +51,7 @@ export default function Login() {
     } else {
       toast({
         title: "Login realizado!",
-        description: "Bem-vindo de volta ao Gestão Águia.",
+        description: "Bem-vindo de volta ao Gestão Nexus.",
       });
       navigate("/dashboard");
     }
@@ -63,7 +63,7 @@ export default function Login() {
     <div className="min-h-screen bg-background flex">
       {/* Left side - Form */}
       <div className="flex-1 flex items-center justify-center p-8">
-        <motion.div 
+        <motion.div
           className="w-full max-w-md"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -75,9 +75,7 @@ export default function Login() {
 
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">Bem-vindo de volta</h1>
-            <p className="text-muted-foreground">
-              Entre na sua conta para continuar
-            </p>
+            <p className="text-muted-foreground">Entre na sua conta para continuar</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -100,10 +98,7 @@ export default function Login() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Senha</Label>
-                <Link 
-                  to="/forgot-password" 
-                  className="text-sm text-primary hover:underline"
-                >
+                <Link to="/forgot-password" className="text-sm text-primary hover:underline">
                   Esqueceu a senha?
                 </Link>
               </div>
@@ -128,11 +123,7 @@ export default function Login() {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full h-12" 
-              disabled={isLoading}
-            >
+            <Button type="submit" className="w-full h-12" disabled={isLoading}>
               {isLoading ? "Entrando..." : "Entrar"}
               <ArrowRight className="h-5 w-5" />
             </Button>
@@ -153,25 +144,30 @@ export default function Login() {
         <div className="absolute inset-0 bg-hero-pattern" />
         <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 left-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
-        
-        <motion.div 
+
+        <motion.div
           className="relative text-center max-w-md"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <div className="h-24 w-24 mx-auto mb-8 gradient-gold rounded-3xl flex items-center justify-center shadow-gold glow-gold">
-            <svg className="h-14 w-14 text-primary-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              className="h-14 w-14 text-primary-foreground"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
               <polyline points="22 4 12 14.01 9 11.01" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold mb-4">
-            Gerencie tudo em um só lugar
-          </h2>
+          <h2 className="text-2xl font-bold mb-4">Gerencie tudo em um só lugar</h2>
           <p className="text-muted-foreground">
-            Tarefas, métricas e relatórios para todos os seus clientes 
-            com a precisão que seu negócio merece.
+            Tarefas, métricas e relatórios para todos os seus clientes com a precisão que seu negócio merece.
           </p>
         </motion.div>
       </div>
