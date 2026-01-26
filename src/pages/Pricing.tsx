@@ -16,7 +16,7 @@ const plans = [
     period: "",
     description: "Perfeito para começar a gerenciar seu primeiro cliente.",
     clientsLimit: "1 cliente",
-    features: ["1 cliente", "Tarefas ilimitadas", "Relatórios básicos", "Suporte por email"],
+    features: ["1 cliente", "White-label (sua marca)"],
     highlighted: false,
   },
   {
@@ -27,13 +27,7 @@ const plans = [
     period: "/mês",
     description: "Ideal para profissionais que gerenciam múltiplos clientes.",
     clientsLimit: "Até 3 clientes",
-    features: [
-      "Até 3 clientes",
-      "Tarefas ilimitadas",
-      "Relatórios avançados",
-      "White-label (sua marca)",
-      "Suporte prioritário",
-    ],
+    features: ["Até 3 clientes", "Relatórios avançados", "Tudo do Starter", "Suporte Whatsapp"],
     highlighted: false,
   },
   {
@@ -44,14 +38,7 @@ const plans = [
     period: "/mês",
     description: "Para agências que precisam de recursos avançados.",
     clientsLimit: "Até 10 clientes",
-    features: [
-      "Até 10 clientes",
-      "Tudo do Pro",
-      "API de integração",
-      "Múltiplos usuários",
-      "Dashboard personalizado",
-      "Suporte 24/7",
-    ],
+    features: ["Até 10 clientes", "Tudo do Pro", "API de integração"],
     highlighted: true,
   },
   {
@@ -62,14 +49,7 @@ const plans = [
     period: "/mês",
     description: "Solução completa para grandes operações.",
     clientsLimit: "Clientes ilimitados",
-    features: [
-      "Clientes ilimitados",
-      "Tudo do Elite",
-      "Gerente de conta dedicado",
-      "Treinamento personalizado",
-      "SLA garantido",
-      "Integrações customizadas",
-    ],
+    features: ["Clientes ilimitados", "Tudo do Elite"],
     highlighted: false,
   },
 ];
