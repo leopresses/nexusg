@@ -34,7 +34,7 @@ const plans = [
       "White-label (sua marca)",
       "Suporte prioritário",
     ],
-    highlighted: true,
+    highlighted: false,
   },
   {
     id: "elite",
@@ -52,7 +52,7 @@ const plans = [
       "Dashboard personalizado",
       "Suporte 24/7",
     ],
-    highlighted: false,
+    highlighted: true,
   },
   {
     id: "agency",
@@ -192,6 +192,7 @@ export default function Pricing() {
                     className="w-full gap-2"
                     onClick={() => handleUpgrade(plan.id, plan.name, plan.price, plan.clientsLimit)}
                   >
+                    <MessageCircle className="h-4 w-4" />
                     Fazer Upgrade
                   </Button>
                 )}
