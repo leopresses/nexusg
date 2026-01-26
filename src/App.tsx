@@ -12,6 +12,10 @@ import Dashboard from "./pages/Dashboard";
 import Onboarding from "./pages/Onboarding";
 import Tasks from "./pages/Tasks";
 import Settings from "./pages/Settings";
+import Clients from "./pages/Clients";
+import Reports from "./pages/Reports";
+import Pricing from "./pages/Pricing";
+import AdminUsersPlans from "./pages/AdminUsersPlans";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -56,6 +60,38 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Settings />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/clients" 
+              element={
+                <ProtectedRoute>
+                  <Clients />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/reports" 
+              element={
+                <ProtectedRoute>
+                  <Reports />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/pricing" 
+              element={
+                <ProtectedRoute>
+                  <Pricing />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/users-plans" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminUsersPlans />
                 </ProtectedRoute>
               } 
             />

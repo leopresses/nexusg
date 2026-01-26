@@ -1,13 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
 import { 
-  LayoutDashboard, 
-  Users, 
-  CheckSquare, 
-  FileText, 
-  Settings as SettingsIcon, 
-  LogOut,
   Upload,
   Palette,
   Building2,
@@ -18,18 +11,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Logo } from "@/components/Logo";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-
-const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", active: false },
-  { icon: Users, label: "Clientes", href: "/clients", active: false },
-  { icon: CheckSquare, label: "Tarefas", href: "/tasks", active: false },
-  { icon: FileText, label: "Relatórios", href: "/reports", active: false },
-  { icon: SettingsIcon, label: "Configurações", href: "/settings", active: true },
-];
+import { AppLayout } from "@/components/AppLayout";
 
 interface WhiteLabelSettings {
   companyName: string;
@@ -42,12 +27,12 @@ interface WhiteLabelSettings {
 }
 
 const defaultSettings: WhiteLabelSettings = {
-  companyName: "Gestão Águia",
+  companyName: "Gestão Nexus",
   logo: null,
-  primaryColor: "#f59e0b",
-  secondaryColor: "#1e293b",
-  accentColor: "#f59e0b",
-  reportFooter: "Relatório gerado por Gestão Águia",
+  primaryColor: "#22c55e",
+  secondaryColor: "#0a1628",
+  accentColor: "#06b6d4",
+  reportFooter: "Relatório gerado por Gestão Nexus",
   showPoweredBy: true,
 };
 
@@ -83,72 +68,29 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
-        <div className="p-4 border-b border-sidebar-border">
-          <Logo size="sm" />
-        </div>
-
-        <nav className="flex-1 p-4">
-          <ul className="space-y-2">
-            {navItems.map((item, index) => (
-              <li key={index}>
-                <Link
-                  to={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
-                    item.active 
-                      ? 'bg-sidebar-accent text-sidebar-primary' 
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent'
-                  }`}
-                >
-                  <item.icon className="h-5 w-5" />
-                  <span className="font-medium">{item.label}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <div className="p-4 border-t border-sidebar-border">
-          <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground">
-            <LogOut className="h-5 w-5" />
-            <span>Sair</span>
+    <AppLayout 
+      title="Configurações" 
+      subtitle="Personalize sua experiência e marca"
+      headerActions={
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleReset}>
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Resetar
+          </Button>
+          <Button onClick={handleSave}>
+            <Save className="h-4 w-4 mr-2" />
+            Salvar Alterações
           </Button>
         </div>
-      </aside>
+      }
+    >
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        {/* Header */}
-        <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Configurações</h1>
-              <p className="text-sm text-muted-foreground">
-                Personalize sua experiência e marca
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleReset}>
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Resetar
-              </Button>
-              <Button onClick={handleSave}>
-                <Save className="h-4 w-4 mr-2" />
-                Salvar Alterações
-              </Button>
-            </div>
-          </div>
-        </header>
-
-        <div className="p-6">
-          <Tabs defaultValue="whitelabel" className="space-y-6">
-            <TabsList className="bg-secondary">
-              <TabsTrigger value="whitelabel">White Label</TabsTrigger>
-              <TabsTrigger value="account">Conta</TabsTrigger>
-              <TabsTrigger value="plan">Plano</TabsTrigger>
-            </TabsList>
+      <Tabs defaultValue="whitelabel" className="space-y-6">
+        <TabsList className="bg-secondary">
+          <TabsTrigger value="whitelabel">White Label</TabsTrigger>
+          <TabsTrigger value="account">Conta</TabsTrigger>
+          <TabsTrigger value="plan">Plano</TabsTrigger>
+        </TabsList>
 
             <TabsContent value="whitelabel" className="space-y-6">
               <div className="grid lg:grid-cols-2 gap-6">
@@ -440,10 +382,8 @@ export default function Settings() {
                   <Button className="w-full">Fazer Upgrade</Button>
                 </CardContent>
               </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </main>
-    </div>
+        </TabsContent>
+      </Tabs>
+    </AppLayout>
   );
 }
