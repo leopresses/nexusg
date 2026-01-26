@@ -16,7 +16,7 @@ const plans = [
     period: "",
     description: "Perfeito para começar a gerenciar seu primeiro cliente.",
     clientsLimit: "1 cliente",
-    features: ["1 cliente", "White-label (sua marca)"],
+    features: ["1 cliente", "White-label (sua marca)", "Relatórios avançados", "API de integração"],
     highlighted: false,
   },
   {
@@ -27,7 +27,7 @@ const plans = [
     period: "/mês",
     description: "Ideal para profissionais que gerenciam múltiplos clientes.",
     clientsLimit: "Até 3 clientes",
-    features: ["Até 3 clientes", "Relatórios avançados", "Tudo do Starter", "Suporte Whatsapp", "API de integração"],
+    features: ["Até 3 clientes", "Tudo do Starter", "Suporte por Whatsapp"],
     highlighted: false,
   },
   {
