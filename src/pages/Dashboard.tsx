@@ -12,16 +12,13 @@ import {
   TrendingUp,
   Eye,
   Phone,
-  MapPin,
   MoreVertical,
-  Calendar,
   ChevronRight,
-  Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { Badge } from "@/components/ui/badge";
-
+import { NotificationBell } from "@/components/NotificationCenter";
 // Mock data
 const stats = [
   { label: "Clientes Ativos", value: "5", icon: Users, change: "+2 este mês" },
@@ -135,10 +132,7 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-1 right-1 h-2 w-2 bg-primary rounded-full" />
-              </Button>
+              <NotificationBell />
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Cliente
