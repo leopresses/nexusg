@@ -20,9 +20,13 @@ export default function Login() {
 
   useEffect(() => {
     if (user) {
+      toast({
+        title: "Você já está logado",
+        description: "Redirecionando para o painel...",
+      });
       navigate("/dashboard");
     }
-  }, [user, navigate]);
+  }, [user, navigate, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

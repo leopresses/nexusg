@@ -9,6 +9,9 @@ import {
   Loader2,
   Search,
   ListTodo,
+  Pencil,
+  Trash2,
+  Link as LinkIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +22,16 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { ClientTaskProgress } from "@/components/clients/ClientTaskProgress";
 import { useClientTasks } from "@/hooks/useClientTasks";
+import { EditClientDialog } from "@/components/clients/EditClientDialog";
+import { DeleteClientDialog } from "@/components/clients/DeleteClientDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 
@@ -33,6 +46,10 @@ export default function Clients() {
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [deletingClient, setDeletingClient] = useState<Client | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const navigate = useNavigate();
 
   const clientIds = clients.map(c => c.id);
@@ -65,6 +82,23 @@ export default function Clients() {
 
   const handleClientClick = (clientId: string) => {
     navigate(`/tasks?client=${clientId}`);
+  };
+
+  const handleEdit = (client: Client, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingClient(client);
+    setEditDialogOpen(true);
+  };
+
+  const handleDelete = (client: Client, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeletingClient(client);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleIntegrateGoogle = (client: Client, e: React.MouseEvent) => {
+    e.stopPropagation();
+    toast.info("Integração Google Business em breve! Esta funcionalidade está sendo desenvolvida.");
   };
 
   if (isLoading) {
@@ -157,13 +191,35 @@ export default function Clients() {
                         </div>
                       </div>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={(e) => handleEdit(client, e as any)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => handleIntegrateGoogle(client, e as any)}>
+                          <LinkIcon className="h-4 w-4 mr-2" />
+                          Integrar Google API
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={(e) => handleDelete(client, e as any)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Excluir
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
 
                   {client.address && (
@@ -207,6 +263,20 @@ export default function Clients() {
           </motion.div>
         )}
       </div>
+
+      <EditClientDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        client={editingClient}
+        onSuccess={fetchClients}
+      />
+
+      <DeleteClientDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        client={deletingClient}
+        onSuccess={fetchClients}
+      />
     </AppLayout>
   );
 }

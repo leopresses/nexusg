@@ -335,7 +335,7 @@ export default function Onboarding() {
               {currentStep === 1 ? (
                 <Button
                   variant="ghost"
-                  onClick={() => navigate(-1)}
+                  onClick={() => navigate("/dashboard")}
                   disabled={isLoading}
                   className="text-muted-foreground hover:text-foreground"
                 >
