@@ -105,6 +105,11 @@ export function useTasks() {
     }
   };
 
+  const updateTaskStatus = async (taskId: string, status: "pending" | "in_progress" | "completed") => {
+    const completedAt = status === "completed" ? new Date().toISOString() : null;
+    await updateTask(taskId, { status, completed_at: completedAt });
+  };
+
   const toggleChecklistItem = async (taskId: string, itemId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
@@ -138,6 +143,7 @@ export function useTasks() {
     isLoading,
     stats,
     toggleChecklistItem,
+    updateTaskStatus,
     refetch: fetchTasks,
   };
 }

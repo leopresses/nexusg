@@ -122,9 +122,15 @@ export default function AdminUsersPlans() {
 
   const updateUserPlan = async (userId: string, newPlan: SubscriptionPlan) => {
     try {
+      // Get new clients_limit based on plan
+      const newLimit = newPlan === 'starter' ? 1 
+        : newPlan === 'pro' ? 3 
+        : newPlan === 'elite' ? 10 
+        : 999999; // agency = unlimited
+
       const { error } = await supabase
         .from("profiles")
-        .update({ plan: newPlan })
+        .update({ plan: newPlan, clients_limit: newLimit })
         .eq("user_id", userId);
 
       if (error) throw error;

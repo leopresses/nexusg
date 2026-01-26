@@ -11,7 +11,7 @@ export default function Tasks() {
   const [searchParams] = useSearchParams();
   const clientFromUrl = searchParams.get("client");
   
-  const { tasks, clients, isLoading, stats, toggleChecklistItem } = useTasks();
+  const { tasks, clients, isLoading, stats, toggleChecklistItem, updateTaskStatus } = useTasks();
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterClient, setFilterClient] = useState<string>(clientFromUrl || "all");
@@ -79,6 +79,7 @@ export default function Tasks() {
                 expandedTask === task.id ? null : task.id
               )}
               onToggleChecklistItem={toggleChecklistItem}
+              onStatusChange={updateTaskStatus}
             />
           ))}
         </div>
