@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { CheckSquare, Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { useTasks } from "@/hooks/useTasks";
@@ -7,11 +8,21 @@ import { TaskStats } from "@/components/tasks/TaskStats";
 import { TaskFilters } from "@/components/tasks/TaskFilters";
 
 export default function Tasks() {
+  const [searchParams] = useSearchParams();
+  const clientFromUrl = searchParams.get("client");
+  
   const { tasks, clients, isLoading, stats, toggleChecklistItem } = useTasks();
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterClient, setFilterClient] = useState<string>("all");
+  const [filterClient, setFilterClient] = useState<string>(clientFromUrl || "all");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Update filter when URL changes
+  useEffect(() => {
+    if (clientFromUrl) {
+      setFilterClient(clientFromUrl);
+    }
+  }, [clientFromUrl]);
 
   const filteredTasks = tasks.filter(task => {
     if (filterStatus !== "all" && task.status !== filterStatus) return false;
@@ -30,10 +41,16 @@ export default function Tasks() {
     );
   }
 
+  // Get selected client name for subtitle
+  const selectedClient = clients.find(c => c.id === filterClient);
+  const subtitle = selectedClient 
+    ? `Tarefas de ${selectedClient.name}`
+    : "Gerencie todas as tarefas dos seus clientes";
+
   return (
     <AppLayout 
       title="Tarefas" 
-      subtitle="Gerencie todas as tarefas dos seus clientes"
+      subtitle={subtitle}
     >
       <div className="space-y-6">
         <TaskFilters

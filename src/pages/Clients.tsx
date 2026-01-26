@@ -8,6 +8,7 @@ import {
   Building2,
   Loader2,
   Search,
+  ListTodo,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,8 @@ import { AppLayout } from "@/components/AppLayout";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { ClientTaskProgress } from "@/components/clients/ClientTaskProgress";
+import { useClientTasks } from "@/hooks/useClientTasks";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 
@@ -31,6 +34,9 @@ export default function Clients() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+
+  const clientIds = clients.map(c => c.id);
+  const { getStatsForClient, isLoading: isLoadingTasks } = useClientTasks(clientIds);
 
   useEffect(() => {
     fetchClients();
@@ -56,6 +62,10 @@ export default function Clients() {
     client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     businessTypeLabels[client.business_type]?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleClientClick = (clientId: string) => {
+    navigate(`/tasks?client=${clientId}`);
+  };
 
   if (isLoading) {
     return (
@@ -120,55 +130,80 @@ export default function Clients() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            {filteredClients.map((client, index) => (
-              <motion.div
-                key={client.id}
-                className="rounded-xl bg-card border border-border p-5 hover:border-primary/30 transition-all duration-200"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-xl gradient-neon flex items-center justify-center text-primary-foreground font-bold text-lg">
-                      {client.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">{client.name}</h3>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Building2 className="h-3 w-3" />
-                        <span>{businessTypeLabels[client.business_type]}</span>
+            {filteredClients.map((client, index) => {
+              const stats = getStatsForClient(client.id);
+              
+              return (
+                <motion.div
+                  key={client.id}
+                  className="rounded-xl bg-card border border-border p-5 hover:border-primary/30 transition-all duration-200 cursor-pointer group"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  onClick={() => handleClientClick(client.id)}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 rounded-xl gradient-neon flex items-center justify-center text-primary-foreground font-bold text-lg">
+                        {client.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold group-hover:text-primary transition-colors">
+                          {client.name}
+                        </h3>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <Building2 className="h-3 w-3" />
+                          <span>{businessTypeLabels[client.business_type]}</span>
+                        </div>
                       </div>
                     </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="icon">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </div>
 
-                {client.address && (
-                  <div className="flex items-start gap-2 text-sm text-muted-foreground mb-4">
-                    <MapPin className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                    <span className="line-clamp-2">{client.address}</span>
+                  {client.address && (
+                    <div className="flex items-start gap-2 text-sm text-muted-foreground mb-4">
+                      <MapPin className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                      <span className="line-clamp-2">{client.address}</span>
+                    </div>
+                  )}
+
+                  {/* Task Progress Section */}
+                  <div className="mb-4 p-3 rounded-lg bg-secondary/30">
+                    <div className="flex items-center gap-2 mb-2">
+                      <ListTodo className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">Tarefas da Semana</span>
+                    </div>
+                    <ClientTaskProgress
+                      pending={stats.pending}
+                      inProgress={stats.in_progress}
+                      completed={stats.completed}
+                      total={stats.total}
+                    />
                   </div>
-                )}
 
-                <div className="flex items-center justify-between pt-4 border-t border-border">
-                  <Badge 
-                    variant="outline"
-                    className={client.is_active 
-                      ? "bg-success/20 text-success border-success/30" 
-                      : "bg-muted text-muted-foreground"
-                    }
-                  >
-                    {client.is_active ? "Ativo" : "Inativo"}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(client.created_at).toLocaleDateString('pt-BR')}
-                  </span>
-                </div>
-              </motion.div>
-            ))}
+                  <div className="flex items-center justify-between pt-4 border-t border-border">
+                    <Badge 
+                      variant="outline"
+                      className={client.is_active 
+                        ? "bg-success/20 text-success border-success/30" 
+                        : "bg-muted text-muted-foreground"
+                      }
+                    >
+                      {client.is_active ? "Ativo" : "Inativo"}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(client.created_at).toLocaleDateString('pt-BR')}
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })}
           </motion.div>
         )}
       </div>
