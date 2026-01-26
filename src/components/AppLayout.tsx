@@ -34,6 +34,7 @@ const baseNavItems = [
 
 const adminNavItems = [
   { icon: Shield, label: "Usuários & Planos", href: "/admin/users-plans" },
+  { icon: FileText, label: "Templates de Tarefas", href: "/admin/templates" },
 ];
 
 export function AppLayout({ children, title, subtitle, headerActions }: AppLayoutProps) {

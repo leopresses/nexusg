@@ -16,6 +16,7 @@ import Clients from "./pages/Clients";
 import Reports from "./pages/Reports";
 import Pricing from "./pages/Pricing";
 import AdminUsersPlans from "./pages/AdminUsersPlans";
+import AdminTemplates from "./pages/AdminTemplates";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -92,6 +93,14 @@ const App = () => (
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminUsersPlans />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/templates" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminTemplates />
                 </ProtectedRoute>
               } 
             />
