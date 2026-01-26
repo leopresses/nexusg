@@ -275,6 +275,11 @@ export type Database = {
     }
     Functions: {
       can_add_client: { Args: { _user_id: string }; Returns: boolean }
+      generate_tasks_for_client: {
+        Args: { _client_id: string; _week_start: string }
+        Returns: undefined
+      }
+      generate_weekly_tasks_for_all_clients: { Args: never; Returns: undefined }
       get_user_client_count: { Args: { _user_id: string }; Returns: number }
       has_role: {
         Args: {

@@ -1,1 +1,4 @@
 project_id = "nnzhffvfeibfippnayyq"
+
+[functions.generate-weekly-tasks]
+verify_jwt = false
