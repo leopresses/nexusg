@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, User, ArrowRight, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const benefits = [
   "1 cliente grátis para sempre",
@@ -22,19 +23,56 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { signUp, user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate("/onboarding");
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    
-    // Simulação - será substituído pela integração com Supabase
-    setTimeout(() => {
-      setIsLoading(false);
+
+    if (password.length < 8) {
       toast({
-        title: "Backend necessário",
-        description: "Ative o Lovable Cloud para habilitar autenticação.",
+        title: "Senha muito curta",
+        description: "A senha deve ter pelo menos 8 caracteres.",
+        variant: "destructive",
       });
-    }, 1000);
+      return;
+    }
+
+    setIsLoading(true);
+
+    const { error } = await signUp(email, password, name);
+
+    if (error) {
+      let errorMessage = "Ocorreu um erro ao criar sua conta.";
+      
+      if (error.message.includes("already registered")) {
+        errorMessage = "Este email já está cadastrado. Tente fazer login.";
+      } else if (error.message.includes("invalid email")) {
+        errorMessage = "Por favor, insira um email válido.";
+      } else if (error.message.includes("weak password")) {
+        errorMessage = "Senha muito fraca. Use letras, números e símbolos.";
+      }
+      
+      toast({
+        title: "Erro no cadastro",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Conta criada!",
+        description: "Bem-vindo ao Gestão Águia! Vamos configurar seu primeiro cliente.",
+      });
+      navigate("/onboarding");
+    }
+
+    setIsLoading(false);
   };
 
   return (

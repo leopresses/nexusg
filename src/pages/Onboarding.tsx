@@ -12,20 +12,27 @@ import {
   Utensils,
   Scissors,
   Coffee,
-  ShoppingBag
+  ShoppingBag,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import type { Database } from "@/integrations/supabase/types";
 
-const businessTypes = [
+type BusinessType = Database["public"]["Enums"]["business_type"];
+
+const businessTypes: { id: BusinessType; icon: typeof Utensils; label: string }[] = [
   { id: "restaurant", icon: Utensils, label: "Restaurante" },
-  { id: "cafe", icon: Coffee, label: "Café / Padaria" },
-  { id: "barbershop", icon: Scissors, label: "Barbearia / Salão" },
+  { id: "service", icon: Coffee, label: "Café / Serviços" },
+  { id: "service", icon: Scissors, label: "Barbearia / Salão" },
   { id: "store", icon: ShoppingBag, label: "Loja" },
-  { id: "services", icon: Store, label: "Serviços" },
+  { id: "other", icon: Store, label: "Outro" },
 ];
 
 const steps = [
@@ -36,20 +43,78 @@ const steps = [
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<BusinessType | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     address: "",
     googleBusinessUrl: "",
   });
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Finish onboarding
-      navigate("/dashboard");
+      // Finish onboarding - create client
+      if (!user) {
+        toast({
+          title: "Erro",
+          description: "Você precisa estar logado para criar um cliente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        // Check if user can add more clients
+        const { data: canAdd, error: canAddError } = await supabase.rpc("can_add_client", {
+          _user_id: user.id,
+        });
+
+        if (canAddError) throw canAddError;
+
+        if (!canAdd) {
+          toast({
+            title: "Limite atingido",
+            description: `Você atingiu o limite de ${profile?.clients_limit || 1} cliente(s) do seu plano. Faça upgrade para adicionar mais.`,
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Create the client
+        const { error: insertError } = await supabase.from("clients").insert({
+          user_id: user.id,
+          name: formData.name,
+          business_type: selectedType || "other",
+          address: formData.address || null,
+          google_business_id: formData.googleBusinessUrl || null,
+        });
+
+        if (insertError) throw insertError;
+
+        toast({
+          title: "Cliente criado!",
+          description: `${formData.name} foi adicionado com sucesso.`,
+        });
+
+        navigate("/dashboard");
+      } catch (error: any) {
+        console.error("Error creating client:", error);
+        toast({
+          title: "Erro ao criar cliente",
+          description: error.message || "Tente novamente mais tarde.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -102,7 +167,7 @@ export default function Onboarding() {
               <span className="text-sm font-medium">Dica</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Você pode adicionar mais clientes depois nas configurações.
+              Seu plano atual permite {profile?.clients_limit || 1} cliente(s).
             </p>
           </div>
         </div>
@@ -137,16 +202,16 @@ export default function Onboarding() {
                 transition={{ duration: 0.3 }}
               >
                 <h1 className="text-3xl font-bold mb-2">
-                  Qual é o tipo do seu <span className="text-gradient-gold">primeiro cliente</span>?
+                  Qual é o tipo do seu <span className="text-gradient-gold">cliente</span>?
                 </h1>
                 <p className="text-muted-foreground mb-8">
                   Isso nos ajuda a personalizar as tarefas semanais
                 </p>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {businessTypes.map((type) => (
+                  {businessTypes.map((type, index) => (
                     <button
-                      key={type.id}
+                      key={index}
                       onClick={() => setSelectedType(type.id)}
                       className={`
                         p-6 rounded-xl border-2 transition-all duration-200 text-left
@@ -231,8 +296,8 @@ export default function Onboarding() {
                 <div className="space-y-6">
                   <div className="p-6 rounded-xl bg-card border border-border">
                     <div className="flex items-center gap-4 mb-4">
-                      <div className="h-12 w-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                        <Globe className="h-6 w-6 text-blue-500" />
+                      <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Globe className="h-6 w-6 text-primary" />
                       </div>
                       <div>
                         <h3 className="font-medium">Google Business Profile</h3>
@@ -267,7 +332,7 @@ export default function Onboarding() {
             <Button
               variant="ghost"
               onClick={handleBack}
-              disabled={currentStep === 1}
+              disabled={currentStep === 1 || isLoading}
               className={currentStep === 1 ? "invisible" : ""}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -276,10 +341,12 @@ export default function Onboarding() {
 
             <Button
               onClick={handleNext}
-              disabled={!canProceed()}
+              disabled={!canProceed() || isLoading}
               className="min-w-[140px]"
             >
-              {currentStep === 3 ? (
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : currentStep === 3 ? (
                 <>
                   Concluir
                   <Check className="h-4 w-4 ml-2" />
