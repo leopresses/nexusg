@@ -254,7 +254,7 @@ export default function Landing() {
       <footer className="py-8 px-6 border-t border-border">
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <Logo size="sm" />
-          <p className="text-sm text-muted-foreground">© 2024 Gestão Águia. Todos os direitos reservados.</p>
+          <p className="text-sm text-muted-foreground">© 2026 Gestão Nexus. Todos os direitos reservados.</p>
           <a
             href="https://wa.me/5535991553748"
             target="_blank"
