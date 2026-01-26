@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Loader2 } from 'lucide-react';
+import { FileText, Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -16,11 +16,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useBrandSettings } from '@/hooks/useBrandSettings';
 import { generateClientReport, downloadPdf, type ReportData, type ClientData, type TaskData } from '@/lib/pdfGenerator';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface GenerateReportDialogProps {
   open: boolean;
@@ -28,7 +37,7 @@ interface GenerateReportDialogProps {
   onReportGenerated: (report: { id: string; name: string; createdAt: Date; type: string }) => void;
 }
 
-type PeriodType = '7days' | '30days' | '90days';
+type PeriodType = '7days' | '30days' | '90days' | 'custom';
 
 export function GenerateReportDialog({ open, onOpenChange, onReportGenerated }: GenerateReportDialogProps) {
   const { user } = useAuth();
@@ -38,6 +47,8 @@ export function GenerateReportDialog({ open, onOpenChange, onReportGenerated }: 
   const [clients, setClients] = useState<ClientData[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [period, setPeriod] = useState<PeriodType>('30days');
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingClients, setIsFetchingClients] = useState(true);
 
@@ -84,6 +95,13 @@ export function GenerateReportDialog({ open, onOpenChange, onReportGenerated }: 
       case '90days':
         start.setDate(start.getDate() - 90);
         break;
+      case 'custom':
+        if (customStartDate && customEndDate) {
+          return { start: customStartDate, end: customEndDate };
+        }
+        // Fallback to 30 days if custom dates not set
+        start.setDate(start.getDate() - 30);
+        break;
     }
     
     return { start, end };
@@ -94,6 +112,24 @@ export function GenerateReportDialog({ open, onOpenChange, onReportGenerated }: 
       toast({
         title: 'Selecione um cliente',
         description: 'Você precisa selecionar um cliente para gerar o relatório.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (period === 'custom' && (!customStartDate || !customEndDate)) {
+      toast({
+        title: 'Selecione as datas',
+        description: 'Você precisa selecionar a data inicial e final para o período personalizado.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (period === 'custom' && customStartDate && customEndDate && customStartDate > customEndDate) {
+      toast({
+        title: 'Datas inválidas',
+        description: 'A data inicial não pode ser maior que a data final.',
         variant: 'destructive',
       });
       return;
@@ -185,7 +221,7 @@ export function GenerateReportDialog({ open, onOpenChange, onReportGenerated }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
@@ -227,9 +263,70 @@ export function GenerateReportDialog({ open, onOpenChange, onReportGenerated }: 
                 <SelectItem value="7days">Últimos 7 dias</SelectItem>
                 <SelectItem value="30days">Últimos 30 dias</SelectItem>
                 <SelectItem value="90days">Últimos 90 dias</SelectItem>
+                <SelectItem value="custom">Personalizado</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {/* Custom Date Range */}
+          {period === 'custom' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Data Inicial</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal bg-secondary border-border",
+                        !customStartDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customStartDate ? format(customStartDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={customStartDate}
+                      onSelect={setCustomStartDate}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label>Data Final</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal bg-secondary border-border",
+                        !customEndDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customEndDate ? format(customEndDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={customEndDate}
+                      onSelect={setCustomEndDate}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-2">

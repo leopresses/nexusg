@@ -85,7 +85,7 @@ export default function Dashboard() {
 
   return (
     <AppLayout 
-      title={`Olá, ${profile?.full_name?.split(" ")[0] || "Usuário"}! 👋`}
+      title={`Olá, ${profile?.full_name || "Usuário"}! 👋`}
       subtitle={`Semana de ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - Visão geral`}
       headerActions={
         <Button onClick={() => navigate("/onboarding")}>

@@ -162,7 +162,7 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-card border-l border-border z-50 flex flex-col"
+            className="fixed right-0 top-0 bottom-0 w-full max-w-lg min-w-[360px] bg-card border-l border-border z-50 flex flex-col"
           >
             {/* Header */}
             <div className="p-4 border-b border-border flex items-center justify-between">

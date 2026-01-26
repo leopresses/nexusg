@@ -9,11 +9,15 @@ import {
   Search,
   MoreVertical,
   Mail,
+  UserPlus,
+  Trash2,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { AppLayout } from "@/components/AppLayout";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import {
@@ -52,6 +56,7 @@ export default function AdminUsersPlans() {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSendingTasks, setIsSendingTasks] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -142,7 +147,31 @@ export default function AdminUsersPlans() {
     }
   };
 
-  const filteredUsers = users.filter((user) =>
+  const sendTasksToAllUsers = async () => {
+    setIsSendingTasks(true);
+    try {
+      const { error } = await supabase.rpc('generate_weekly_tasks_for_all_clients');
+      
+      if (error) throw error;
+      
+      toast.success("Tarefas da semana enviadas para todos os clientes ativos!");
+    } catch (error) {
+      console.error("Error sending tasks:", error);
+      toast.error("Erro ao enviar tarefas");
+    } finally {
+      setIsSendingTasks(false);
+    }
+  };
+
+  const regularUsers = users.filter((u) => !u.roles.includes("admin"));
+  const adminUsers = users.filter((u) => u.roles.includes("admin"));
+
+  const filteredRegularUsers = regularUsers.filter((user) =>
+    user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.user_id.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredAdminUsers = adminUsers.filter((user) =>
     user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.user_id.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -157,10 +186,173 @@ export default function AdminUsersPlans() {
     );
   }
 
+  const renderUserTable = (userList: UserWithRole[], showAdminActions: boolean) => (
+    <motion.div 
+      className="rounded-xl bg-card border border-border overflow-hidden"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+    >
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-muted/50">
+            <tr>
+              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Usuário</th>
+              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Tipo</th>
+              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Plano</th>
+              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Limite</th>
+              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Status</th>
+              <th className="text-right px-6 py-4 text-sm font-medium text-muted-foreground">Ações</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {userList.map((user) => {
+              const isAdmin = user.roles.includes("admin");
+
+              return (
+                <tr key={user.id} className="hover:bg-secondary/50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="font-semibold text-primary">
+                          {user.full_name?.charAt(0).toUpperCase() || "U"}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="font-medium">{user.full_name || "Sem nome"}</div>
+                        <div className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Mail className="h-3 w-3" />
+                          <span className="truncate max-w-[200px]">{user.user_id}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <Badge 
+                      variant="outline"
+                      className={isAdmin 
+                        ? "bg-accent/20 text-accent border-accent/30" 
+                        : "bg-muted text-muted-foreground"
+                      }
+                    >
+                      {isAdmin ? (
+                        <><Shield className="h-3 w-3 mr-1" /> Admin</>
+                      ) : (
+                        <><UserCog className="h-3 w-3 mr-1" /> Usuário</>
+                      )}
+                    </Badge>
+                  </td>
+                  <td className="px-6 py-4">
+                    <Badge 
+                      variant="outline"
+                      className={planColors[user.plan]}
+                    >
+                      {planLabels[user.plan]}
+                    </Badge>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-muted-foreground">
+                      {user.clients_limit >= 999999 ? "Ilimitado" : `${user.clients_limit} clientes`}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <Badge 
+                      variant="outline"
+                      className="bg-success/20 text-success border-success/30"
+                    >
+                      Ativo
+                    </Badge>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {showAdminActions ? (
+                          <DropdownMenuItem 
+                            onClick={() => toggleAdminRole(user.user_id, true)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Remover Admin
+                          </DropdownMenuItem>
+                        ) : (
+                          <>
+                            <DropdownMenuItem 
+                              onClick={() => toggleAdminRole(user.user_id, false)}
+                            >
+                              <UserPlus className="h-4 w-4 mr-2" />
+                              Tornar Admin
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
+                        <DropdownMenuItem 
+                          onClick={() => updateUserPlan(user.user_id, "starter")}
+                          disabled={user.plan === "starter"}
+                        >
+                          Plano Starter
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => updateUserPlan(user.user_id, "pro")}
+                          disabled={user.plan === "pro"}
+                        >
+                          Plano Pro
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => updateUserPlan(user.user_id, "elite")}
+                          disabled={user.plan === "elite"}
+                        >
+                          Plano Elite
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => updateUserPlan(user.user_id, "agency")}
+                          disabled={user.plan === "agency"}
+                        >
+                          Plano Agency
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {userList.length === 0 && (
+        <div className="p-12 text-center">
+          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="font-medium mb-2">Nenhum usuário encontrado</h3>
+          <p className="text-sm text-muted-foreground">
+            Tente ajustar sua busca.
+          </p>
+        </div>
+      )}
+    </motion.div>
+  );
+
   return (
     <AppLayout 
       title="Usuários & Planos" 
       subtitle="Gerencie usuários, permissões e planos"
+      headerActions={
+        <Button 
+          onClick={sendTasksToAllUsers}
+          disabled={isSendingTasks}
+        >
+          {isSendingTasks ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4 mr-2" />
+          )}
+          Enviar Tarefas para Todos
+        </Button>
+      }
     >
       <div className="space-y-6">
         {/* Stats Cards */}
@@ -186,9 +378,7 @@ export default function AdminUsersPlans() {
               </div>
               <span className="text-muted-foreground">Administradores</span>
             </div>
-            <div className="text-3xl font-bold">
-              {users.filter((u) => u.roles.includes("admin")).length}
-            </div>
+            <div className="text-3xl font-bold">{adminUsers.length}</div>
           </div>
 
           <div className="rounded-xl bg-card border border-border p-5">
@@ -215,135 +405,27 @@ export default function AdminUsersPlans() {
           />
         </div>
 
-        {/* Users Table */}
-        <motion.div 
-          className="rounded-xl bg-card border border-border overflow-hidden"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Usuário</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Tipo</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Plano</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Status</th>
-                  <th className="text-right px-6 py-4 text-sm font-medium text-muted-foreground">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredUsers.map((user) => {
-                  const isAdmin = user.roles.includes("admin");
+        {/* Tabs for Users and Admins */}
+        <Tabs defaultValue="users" className="space-y-4">
+          <TabsList className="bg-secondary">
+            <TabsTrigger value="users" className="gap-2">
+              <UserCog className="h-4 w-4" />
+              Usuários ({regularUsers.length})
+            </TabsTrigger>
+            <TabsTrigger value="admins" className="gap-2">
+              <Shield className="h-4 w-4" />
+              Administradores ({adminUsers.length})
+            </TabsTrigger>
+          </TabsList>
 
-                  return (
-                    <tr key={user.id} className="hover:bg-secondary/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <span className="font-semibold text-primary">
-                              {user.full_name?.charAt(0).toUpperCase() || "U"}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="font-medium">{user.full_name || "Sem nome"}</div>
-                            <div className="text-sm text-muted-foreground flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
-                              <span className="truncate max-w-[200px]">{user.user_id}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge 
-                          variant="outline"
-                          className={isAdmin 
-                            ? "bg-accent/20 text-accent border-accent/30" 
-                            : "bg-muted text-muted-foreground"
-                          }
-                        >
-                          {isAdmin ? (
-                            <><Shield className="h-3 w-3 mr-1" /> Admin</>
-                          ) : (
-                            <><UserCog className="h-3 w-3 mr-1" /> Usuário</>
-                          )}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge 
-                          variant="outline"
-                          className={planColors[user.plan]}
-                        >
-                          {planLabels[user.plan]}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge 
-                          variant="outline"
-                          className="bg-success/20 text-success border-success/30"
-                        >
-                          Ativo
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem 
-                              onClick={() => toggleAdminRole(user.user_id, isAdmin)}
-                            >
-                              {isAdmin ? "Remover Admin" : "Tornar Admin"}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => updateUserPlan(user.user_id, "starter")}
-                              disabled={user.plan === "starter"}
-                            >
-                              Plano Starter
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => updateUserPlan(user.user_id, "pro")}
-                              disabled={user.plan === "pro"}
-                            >
-                              Plano Pro
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => updateUserPlan(user.user_id, "elite")}
-                              disabled={user.plan === "elite"}
-                            >
-                              Plano Elite
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => updateUserPlan(user.user_id, "agency")}
-                              disabled={user.plan === "agency"}
-                            >
-                              Plano Agency
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <TabsContent value="users">
+            {renderUserTable(filteredRegularUsers, false)}
+          </TabsContent>
 
-          {filteredUsers.length === 0 && (
-            <div className="p-12 text-center">
-              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="font-medium mb-2">Nenhum usuário encontrado</h3>
-              <p className="text-sm text-muted-foreground">
-                Tente ajustar sua busca.
-              </p>
-            </div>
-          )}
-        </motion.div>
+          <TabsContent value="admins">
+            {renderUserTable(filteredAdminUsers, true)}
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );
