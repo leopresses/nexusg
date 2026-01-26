@@ -9,6 +9,8 @@ import Landing from "./pages/Landing";
 import Demo from "./pages/Demo";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Onboarding from "./pages/Onboarding";
 import Tasks from "./pages/Tasks";
@@ -34,7 +36,9 @@ const App = () => (
             <Route path="/demo" element={<Demo />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route 
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route
               path="/dashboard" 
               element={
                 <ProtectedRoute>

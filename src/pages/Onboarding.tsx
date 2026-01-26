@@ -27,12 +27,19 @@ import type { Database } from "@/integrations/supabase/types";
 
 type BusinessType = Database["public"]["Enums"]["business_type"];
 
-const businessTypes: { id: BusinessType; icon: typeof Utensils; label: string }[] = [
-  { id: "restaurant", icon: Utensils, label: "Restaurante" },
-  { id: "service", icon: Coffee, label: "Café / Serviços" },
-  { id: "service", icon: Scissors, label: "Barbearia / Salão" },
-  { id: "store", icon: ShoppingBag, label: "Loja" },
-  { id: "other", icon: Store, label: "Outro" },
+interface BusinessTypeOption {
+  id: BusinessType;
+  icon: typeof Utensils;
+  label: string;
+  key: string;
+}
+
+const businessTypes: BusinessTypeOption[] = [
+  { id: "restaurant", icon: Utensils, label: "Restaurante", key: "restaurant" },
+  { id: "service", icon: Coffee, label: "Café / Serviços", key: "cafe" },
+  { id: "service", icon: Scissors, label: "Barbearia / Salão", key: "barbershop" },
+  { id: "store", icon: ShoppingBag, label: "Loja", key: "store" },
+  { id: "other", icon: Store, label: "Outro", key: "other" },
 ];
 
 const steps = [
@@ -46,13 +53,16 @@ export default function Onboarding() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedType, setSelectedType] = useState<BusinessType | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     address: "",
     googleBusinessUrl: "",
   });
+
+  // Get the selected business type from the key
+  const selectedType = businessTypes.find((t) => t.key === selectedKey)?.id || null;
 
   const handleNext = async () => {
     if (currentStep < 3) {
@@ -125,7 +135,7 @@ export default function Onboarding() {
   };
 
   const canProceed = () => {
-    if (currentStep === 1) return selectedType !== null;
+    if (currentStep === 1) return selectedKey !== null;
     if (currentStep === 2) return formData.name.length > 0;
     return true;
   };
@@ -211,19 +221,19 @@ export default function Onboarding() {
                 </p>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {businessTypes.map((type, index) => (
+                  {businessTypes.map((type) => (
                     <button
-                      key={index}
-                      onClick={() => setSelectedType(type.id)}
+                      key={type.key}
+                      onClick={() => setSelectedKey(type.key)}
                       className={`
                         p-6 rounded-xl border-2 transition-all duration-200 text-left
-                        ${selectedType === type.id 
+                        ${selectedKey === type.key 
                           ? "border-primary bg-primary/10 shadow-gold" 
                           : "border-border hover:border-primary/50 bg-card"
                         }
                       `}
                     >
-                      <type.icon className={`h-8 w-8 mb-3 ${selectedType === type.id ? "text-primary" : "text-muted-foreground"}`} />
+                      <type.icon className={`h-8 w-8 mb-3 ${selectedKey === type.key ? "text-primary" : "text-muted-foreground"}`} />
                       <span className="font-medium">{type.label}</span>
                     </button>
                   ))}
