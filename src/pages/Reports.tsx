@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/AppLayout";
+import { GenerateReportDialog } from "@/components/reports/GenerateReportDialog";
 
 interface Report {
   id: string;
@@ -18,14 +19,19 @@ interface Report {
 }
 
 export default function Reports() {
-  const [reports] = useState<Report[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const handleReportGenerated = (report: Report) => {
+    setReports((prev) => [report, ...prev]);
+  };
 
   return (
     <AppLayout 
       title="Gerador de Relatórios" 
       subtitle="Crie e gerencie relatórios personalizados para seus clientes"
       headerActions={
-        <Button>
+        <Button onClick={() => setIsDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Gerar Novo Relatório
         </Button>
@@ -46,8 +52,8 @@ export default function Reports() {
               <h3 className="font-semibold text-lg mb-1">Como funciona?</h3>
               <p className="text-muted-foreground">
                 Gere relatórios detalhados sobre o desempenho dos seus clientes. 
-                Os relatórios podem ser exportados em PDF com a identidade visual 
-                personalizada da sua marca.
+                Os relatórios são exportados em PDF com a identidade visual 
+                personalizada da sua marca (configurável em Configurações).
               </p>
             </div>
           </div>
@@ -69,7 +75,7 @@ export default function Reports() {
               Comece gerando seu primeiro relatório para acompanhar o desempenho 
               dos seus clientes ao longo do tempo.
             </p>
-            <Button>
+            <Button onClick={() => setIsDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Gerar Primeiro Relatório
             </Button>
@@ -102,9 +108,9 @@ export default function Reports() {
                       </div>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" disabled>
                     <Download className="h-4 w-4 mr-2" />
-                    Download
+                    Baixado
                   </Button>
                 </div>
               </div>
@@ -112,6 +118,12 @@ export default function Reports() {
           </motion.div>
         )}
       </div>
+
+      <GenerateReportDialog 
+        open={isDialogOpen} 
+        onOpenChange={setIsDialogOpen}
+        onReportGenerated={handleReportGenerated}
+      />
     </AppLayout>
   );
 }
