@@ -17,30 +17,36 @@ export type Database = {
       brand_settings: {
         Row: {
           accent_color: string | null
+          company_name: string | null
           created_at: string
           id: string
           logo_url: string | null
           primary_color: string | null
+          report_footer: string | null
           secondary_color: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           accent_color?: string | null
+          company_name?: string | null
           created_at?: string
           id?: string
           logo_url?: string | null
           primary_color?: string | null
+          report_footer?: string | null
           secondary_color?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           accent_color?: string | null
+          company_name?: string | null
           created_at?: string
           id?: string
           logo_url?: string | null
           primary_color?: string | null
+          report_footer?: string | null
           secondary_color?: string | null
           updated_at?: string
           user_id?: string

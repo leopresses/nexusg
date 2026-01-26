@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   Upload,
@@ -6,7 +6,10 @@ import {
   Building2,
   Save,
   Eye,
-  RotateCcw
+  RotateCcw,
+  Trash2,
+  Loader2,
+  ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,57 +18,136 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { AppLayout } from "@/components/AppLayout";
-
-interface WhiteLabelSettings {
-  companyName: string;
-  logo: string | null;
-  primaryColor: string;
-  secondaryColor: string;
-  accentColor: string;
-  reportFooter: string;
-  showPoweredBy: boolean;
-}
-
-const defaultSettings: WhiteLabelSettings = {
-  companyName: "Gestão Nexus",
-  logo: null,
-  primaryColor: "#22c55e",
-  secondaryColor: "#0a1628",
-  accentColor: "#06b6d4",
-  reportFooter: "Relatório gerado por Gestão Nexus",
-  showPoweredBy: true,
-};
+import { useBrandSettings } from "@/hooks/useBrandSettings";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Settings() {
   const { toast } = useToast();
-  const [settings, setSettings] = useState<WhiteLabelSettings>(defaultSettings);
+  const { user, profile } = useAuth();
+  const { 
+    brandSettings, 
+    isLoading, 
+    isUploading,
+    updateBrandSettings, 
+    uploadLogo,
+    deleteLogo 
+  } = useBrandSettings();
+  
+  const [localSettings, setLocalSettings] = useState({
+    companyName: "",
+    logo: null as string | null,
+    primaryColor: "#22c55e",
+    secondaryColor: "#0a1628",
+    accentColor: "#06b6d4",
+    reportFooter: "",
+  });
   const [previewMode, setPreviewMode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Sync local settings with fetched brand settings
+  useEffect(() => {
+    if (!isLoading) {
+      setLocalSettings({
+        companyName: brandSettings.companyName,
+        logo: brandSettings.logo,
+        primaryColor: brandSettings.primaryColor,
+        secondaryColor: brandSettings.secondaryColor,
+        accentColor: brandSettings.accentColor,
+        reportFooter: brandSettings.reportFooter,
+      });
+    }
+  }, [brandSettings, isLoading]);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSettings({ ...settings, logo: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    const { url, error } = await uploadLogo(file);
+    
+    if (error) {
+      toast({
+        title: "Erro ao fazer upload",
+        description: error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (url) {
+      setLocalSettings((prev) => ({ ...prev, logo: url }));
+      toast({
+        title: "Logo carregado!",
+        description: "Clique em 'Salvar Alterações' para aplicar.",
+      });
     }
   };
 
-  const handleSave = () => {
-    toast({
-      title: "Configurações salvas!",
-      description: "Suas personalizações foram aplicadas com sucesso.",
-    });
+  const handleDeleteLogo = async () => {
+    const { success, error } = await deleteLogo();
+    
+    if (error) {
+      toast({
+        title: "Erro ao remover logo",
+        description: error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (success) {
+      setLocalSettings((prev) => ({ ...prev, logo: null }));
+      toast({
+        title: "Logo removido",
+        description: "O logo foi removido com sucesso.",
+      });
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    
+    const result = await updateBrandSettings(localSettings);
+    
+    if (result.error) {
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar as configurações.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Configurações salvas!",
+        description: "Suas personalizações foram aplicadas com sucesso.",
+      });
+    }
+    
+    setIsSaving(false);
   };
 
   const handleReset = () => {
-    setSettings(defaultSettings);
+    setLocalSettings({
+      companyName: "Gestão Nexus",
+      logo: brandSettings.logo, // Keep the uploaded logo
+      primaryColor: "#22c55e",
+      secondaryColor: "#0a1628",
+      accentColor: "#06b6d4",
+      reportFooter: "Relatório gerado por Gestão Nexus",
+    });
     toast({
       title: "Configurações resetadas",
-      description: "Voltou para as configurações padrão.",
+      description: "Voltou para as configurações padrão (exceto logo).",
     });
   };
+
+  if (isLoading) {
+    return (
+      <AppLayout title="Configurações" subtitle="Personalize sua experiência e marca">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout 
@@ -73,12 +155,16 @@ export default function Settings() {
       subtitle="Personalize sua experiência e marca"
       headerActions={
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleReset}>
+          <Button variant="outline" onClick={handleReset} disabled={isSaving}>
             <RotateCcw className="h-4 w-4 mr-2" />
             Resetar
           </Button>
-          <Button onClick={handleSave}>
-            <Save className="h-4 w-4 mr-2" />
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
             Salvar Alterações
           </Button>
         </div>
@@ -112,8 +198,8 @@ export default function Settings() {
                         <Label htmlFor="companyName">Nome da Empresa</Label>
                         <Input
                           id="companyName"
-                          value={settings.companyName}
-                          onChange={(e) => setSettings({ ...settings, companyName: e.target.value })}
+                          value={localSettings.companyName}
+                          onChange={(e) => setLocalSettings({ ...localSettings, companyName: e.target.value })}
                           className="bg-secondary border-border"
                         />
                       </div>
@@ -121,28 +207,64 @@ export default function Settings() {
                       <div className="space-y-2">
                         <Label>Logo da Empresa</Label>
                         <div className="flex items-center gap-4">
-                          <div className="h-20 w-20 rounded-xl bg-secondary border-2 border-dashed border-border flex items-center justify-center overflow-hidden">
-                            {settings.logo ? (
-                              <img src={settings.logo} alt="Logo" className="h-full w-full object-contain" />
+                          <div className="h-20 w-20 rounded-xl bg-secondary border-2 border-dashed border-border flex items-center justify-center overflow-hidden relative">
+                            {isUploading ? (
+                              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                            ) : localSettings.logo ? (
+                              <img 
+                                src={localSettings.logo} 
+                                alt="Logo" 
+                                className="h-full w-full object-contain"
+                                onError={(e) => {
+                                  e.currentTarget.src = '';
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
                             ) : (
-                              <Upload className="h-6 w-6 text-muted-foreground" />
+                              <ImageIcon className="h-6 w-6 text-muted-foreground" />
                             )}
                           </div>
-                          <div>
-                            <input
-                              type="file"
-                              id="logo-upload"
-                              accept="image/*"
-                              onChange={handleLogoUpload}
-                              className="hidden"
-                            />
-                            <Label htmlFor="logo-upload">
-                              <Button variant="outline" size="sm" asChild>
-                                <span>Escolher arquivo</span>
-                              </Button>
-                            </Label>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              PNG, JPG até 2MB. Recomendado: 200x200px
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="file"
+                                id="logo-upload"
+                                accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+                                onChange={handleLogoUpload}
+                                className="hidden"
+                                disabled={isUploading}
+                              />
+                              <Label htmlFor="logo-upload">
+                                <Button variant="outline" size="sm" asChild disabled={isUploading}>
+                                  <span>
+                                    {isUploading ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Enviando...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Upload className="h-4 w-4 mr-2" />
+                                        Escolher arquivo
+                                      </>
+                                    )}
+                                  </span>
+                                </Button>
+                              </Label>
+                              {localSettings.logo && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={handleDeleteLogo}
+                                  disabled={isUploading}
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              PNG, JPG, WebP ou SVG até 2MB. Recomendado: 200x200px
                             </p>
                           </div>
                         </div>
@@ -152,8 +274,8 @@ export default function Settings() {
                         <Label htmlFor="reportFooter">Texto do rodapé dos relatórios</Label>
                         <Input
                           id="reportFooter"
-                          value={settings.reportFooter}
-                          onChange={(e) => setSettings({ ...settings, reportFooter: e.target.value })}
+                          value={localSettings.reportFooter}
+                          onChange={(e) => setLocalSettings({ ...localSettings, reportFooter: e.target.value })}
                           className="bg-secondary border-border"
                           placeholder="Ex: Relatório gerado por Sua Empresa"
                         />
@@ -180,13 +302,13 @@ export default function Settings() {
                             <input
                               type="color"
                               id="primaryColor"
-                              value={settings.primaryColor}
-                              onChange={(e) => setSettings({ ...settings, primaryColor: e.target.value })}
+                              value={localSettings.primaryColor}
+                              onChange={(e) => setLocalSettings({ ...localSettings, primaryColor: e.target.value })}
                               className="h-10 w-10 rounded-lg cursor-pointer border-0"
                             />
                             <Input
-                              value={settings.primaryColor}
-                              onChange={(e) => setSettings({ ...settings, primaryColor: e.target.value })}
+                              value={localSettings.primaryColor}
+                              onChange={(e) => setLocalSettings({ ...localSettings, primaryColor: e.target.value })}
                               className="bg-secondary border-border flex-1"
                             />
                           </div>
@@ -198,13 +320,13 @@ export default function Settings() {
                             <input
                               type="color"
                               id="secondaryColor"
-                              value={settings.secondaryColor}
-                              onChange={(e) => setSettings({ ...settings, secondaryColor: e.target.value })}
+                              value={localSettings.secondaryColor}
+                              onChange={(e) => setLocalSettings({ ...localSettings, secondaryColor: e.target.value })}
                               className="h-10 w-10 rounded-lg cursor-pointer border-0"
                             />
                             <Input
-                              value={settings.secondaryColor}
-                              onChange={(e) => setSettings({ ...settings, secondaryColor: e.target.value })}
+                              value={localSettings.secondaryColor}
+                              onChange={(e) => setLocalSettings({ ...localSettings, secondaryColor: e.target.value })}
                               className="bg-secondary border-border flex-1"
                             />
                           </div>
@@ -216,13 +338,13 @@ export default function Settings() {
                             <input
                               type="color"
                               id="accentColor"
-                              value={settings.accentColor}
-                              onChange={(e) => setSettings({ ...settings, accentColor: e.target.value })}
+                              value={localSettings.accentColor}
+                              onChange={(e) => setLocalSettings({ ...localSettings, accentColor: e.target.value })}
                               className="h-10 w-10 rounded-lg cursor-pointer border-0"
                             />
                             <Input
-                              value={settings.accentColor}
-                              onChange={(e) => setSettings({ ...settings, accentColor: e.target.value })}
+                              value={localSettings.accentColor}
+                              onChange={(e) => setLocalSettings({ ...localSettings, accentColor: e.target.value })}
                               className="bg-secondary border-border flex-1"
                             />
                           </div>
@@ -255,23 +377,30 @@ export default function Settings() {
                     {/* Report Header Preview */}
                     <div 
                       className="p-6"
-                      style={{ backgroundColor: settings.secondaryColor }}
+                      style={{ backgroundColor: localSettings.secondaryColor }}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          {settings.logo ? (
-                            <img src={settings.logo} alt="Logo" className="h-10 w-10 object-contain" />
+                          {localSettings.logo ? (
+                            <img 
+                              src={localSettings.logo} 
+                              alt="Logo" 
+                              className="h-10 w-10 object-contain rounded-lg"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
                           ) : (
                             <div 
                               className="h-10 w-10 rounded-lg flex items-center justify-center"
-                              style={{ backgroundColor: settings.primaryColor }}
+                              style={{ backgroundColor: localSettings.primaryColor }}
                             >
                               <span className="text-white font-bold">
-                                {settings.companyName.charAt(0)}
+                                {localSettings.companyName.charAt(0)}
                               </span>
                             </div>
                           )}
-                          <span className="font-bold text-white">{settings.companyName}</span>
+                          <span className="font-bold text-white">{localSettings.companyName}</span>
                         </div>
                         <span className="text-white/70 text-sm">Relatório Semanal</span>
                       </div>
@@ -284,23 +413,23 @@ export default function Settings() {
                       <div className="grid grid-cols-3 gap-4 mb-6">
                         <div 
                           className="p-4 rounded-lg text-center"
-                          style={{ backgroundColor: `${settings.primaryColor}15` }}
+                          style={{ backgroundColor: `${localSettings.primaryColor}15` }}
                         >
-                          <div className="text-2xl font-bold" style={{ color: settings.primaryColor }}>456</div>
+                          <div className="text-2xl font-bold" style={{ color: localSettings.primaryColor }}>456</div>
                           <div className="text-xs text-gray-500">Visualizações</div>
                         </div>
                         <div 
                           className="p-4 rounded-lg text-center"
-                          style={{ backgroundColor: `${settings.primaryColor}15` }}
+                          style={{ backgroundColor: `${localSettings.primaryColor}15` }}
                         >
-                          <div className="text-2xl font-bold" style={{ color: settings.primaryColor }}>23</div>
+                          <div className="text-2xl font-bold" style={{ color: localSettings.primaryColor }}>23</div>
                           <div className="text-xs text-gray-500">Chamadas</div>
                         </div>
                         <div 
                           className="p-4 rounded-lg text-center"
-                          style={{ backgroundColor: `${settings.primaryColor}15` }}
+                          style={{ backgroundColor: `${localSettings.primaryColor}15` }}
                         >
-                          <div className="text-2xl font-bold" style={{ color: settings.primaryColor }}>89</div>
+                          <div className="text-2xl font-bold" style={{ color: localSettings.primaryColor }}>89</div>
                           <div className="text-xs text-gray-500">Rotas</div>
                         </div>
                       </div>
@@ -312,7 +441,7 @@ export default function Settings() {
                             <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
                               <div 
                                 className="h-4 w-4 rounded-full flex items-center justify-center"
-                                style={{ backgroundColor: settings.primaryColor }}
+                                style={{ backgroundColor: localSettings.primaryColor }}
                               >
                                 <span className="text-white text-[10px]">✓</span>
                               </div>
@@ -327,11 +456,11 @@ export default function Settings() {
                     <div 
                       className="p-4 text-center text-sm"
                       style={{ 
-                        backgroundColor: settings.secondaryColor,
+                        backgroundColor: localSettings.secondaryColor,
                         color: "rgba(255,255,255,0.7)"
                       }}
                     >
-                      {settings.reportFooter}
+                      {localSettings.reportFooter}
                     </div>
                   </motion.div>
 
@@ -351,11 +480,18 @@ export default function Settings() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label>Email</Label>
-                    <Input value="usuario@email.com" disabled className="bg-secondary border-border" />
+                    <Input 
+                      value={user?.email || ""} 
+                      disabled 
+                      className="bg-secondary border-border" 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Nome</Label>
-                    <Input defaultValue="João Silva" className="bg-secondary border-border" />
+                    <Input 
+                      defaultValue={profile?.full_name || ""} 
+                      className="bg-secondary border-border" 
+                    />
                   </div>
                   <Button variant="outline">Alterar Senha</Button>
                 </CardContent>
@@ -371,15 +507,19 @@ export default function Settings() {
                 <CardContent>
                   <div className="flex items-center justify-between p-4 rounded-xl bg-primary/10 border border-primary/20 mb-4">
                     <div>
-                      <h3 className="font-semibold text-lg">Plano Pro</h3>
-                      <p className="text-sm text-muted-foreground">5 clientes • R$49/mês</p>
+                      <h3 className="font-semibold text-lg capitalize">{profile?.plan || "Starter"}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {profile?.clients_limit || 1} cliente{(profile?.clients_limit || 1) > 1 ? "s" : ""}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Clientes usados</p>
-                      <p className="text-2xl font-bold text-primary">3/5</p>
+                      <p className="text-sm text-muted-foreground">Limite de clientes</p>
+                      <p className="text-2xl font-bold text-primary">{profile?.clients_limit || 1}</p>
                     </div>
                   </div>
-                  <Button className="w-full">Fazer Upgrade</Button>
+                  <Button className="w-full" asChild>
+                    <a href="/pricing">Ver Planos</a>
+                  </Button>
                 </CardContent>
               </Card>
         </TabsContent>
