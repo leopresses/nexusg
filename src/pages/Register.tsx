@@ -9,12 +9,7 @@ import { Logo } from "@/components/Logo";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
-const benefits = [
-  "1 cliente grátis para sempre",
-  "Tarefas semanais automatizadas",
-  "Relatórios em PDF",
-  "Suporte via WhatsApp"
-];
+const benefits = ["1 cliente grátis para sempre", "Tarefas semanais automatizadas", "Relatórios em PDF"];
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -50,7 +45,7 @@ export default function Register() {
 
     if (error) {
       let errorMessage = "Ocorreu um erro ao criar sua conta.";
-      
+
       if (error.message.includes("already registered")) {
         errorMessage = "Este email já está cadastrado. Tente fazer login.";
       } else if (error.message.includes("invalid email")) {
@@ -58,7 +53,7 @@ export default function Register() {
       } else if (error.message.includes("weak password")) {
         errorMessage = "Senha muito fraca. Use letras, números e símbolos.";
       }
-      
+
       toast({
         title: "Erro no cadastro",
         description: errorMessage,
@@ -83,8 +78,8 @@ export default function Register() {
         <div className="absolute inset-0 bg-hero-pattern" />
         <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl" />
         <div className="absolute bottom-1/3 right-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
-        
-        <motion.div 
+
+        <motion.div
           className="relative max-w-md"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -96,10 +91,10 @@ export default function Register() {
           <p className="text-muted-foreground mb-8">
             Crie sua conta em segundos e comece a gerenciar seu primeiro cliente imediatamente.
           </p>
-          
+
           <div className="space-y-4">
             {benefits.map((benefit, index) => (
-              <motion.div 
+              <motion.div
                 key={index}
                 className="flex items-center gap-3"
                 initial={{ opacity: 0, x: -20 }}
@@ -118,7 +113,7 @@ export default function Register() {
 
       {/* Right side - Form */}
       <div className="flex-1 flex items-center justify-center p-8">
-        <motion.div 
+        <motion.div
           className="w-full max-w-md"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -130,9 +125,7 @@ export default function Register() {
 
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">Criar sua conta</h1>
-            <p className="text-muted-foreground">
-              Preencha os dados abaixo para começar
-            </p>
+            <p className="text-muted-foreground">Preencha os dados abaixo para começar</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -192,20 +185,20 @@ export default function Register() {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full h-12" 
-              disabled={isLoading}
-            >
+            <Button type="submit" className="w-full h-12" disabled={isLoading}>
               {isLoading ? "Criando conta..." : "Criar conta grátis"}
               <ArrowRight className="h-5 w-5" />
             </Button>
 
             <p className="text-xs text-muted-foreground text-center">
               Ao criar uma conta, você concorda com nossos{" "}
-              <a href="#" className="text-primary hover:underline">Termos de Uso</a>
-              {" "}e{" "}
-              <a href="#" className="text-primary hover:underline">Política de Privacidade</a>
+              <a href="#" className="text-primary hover:underline">
+                Termos de Uso
+              </a>{" "}
+              e{" "}
+              <a href="#" className="text-primary hover:underline">
+                Política de Privacidade
+              </a>
             </p>
           </form>
 
