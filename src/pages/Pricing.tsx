@@ -5,11 +5,14 @@ import {
   Crown,
   Rocket,
   Building,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
+
+const WHATSAPP_NUMBER = "5535991553748";
 
 const plans = [
   {
@@ -19,6 +22,7 @@ const plans = [
     price: "Grátis",
     period: "",
     description: "Perfeito para começar a gerenciar seu primeiro cliente.",
+    clientsLimit: "1 cliente",
     features: [
       "1 cliente",
       "Tarefas ilimitadas",
@@ -26,36 +30,34 @@ const plans = [
       "Suporte por email",
     ],
     highlighted: false,
-    buttonText: "Plano Atual",
-    buttonVariant: "outline" as const,
   },
   {
     id: "pro",
     name: "Pro",
     icon: Crown,
-    price: "R$ 97",
+    price: "R$ 49,90",
     period: "/mês",
     description: "Ideal para profissionais que gerenciam múltiplos clientes.",
+    clientsLimit: "Até 3 clientes",
     features: [
-      "Até 10 clientes",
+      "Até 3 clientes",
       "Tarefas ilimitadas",
       "Relatórios avançados",
       "White-label (sua marca)",
       "Suporte prioritário",
     ],
     highlighted: true,
-    buttonText: "Fazer Upgrade",
-    buttonVariant: "default" as const,
   },
   {
     id: "elite",
     name: "Elite",
     icon: Rocket,
-    price: "R$ 197",
+    price: "R$ 197,00",
     period: "/mês",
     description: "Para agências que precisam de recursos avançados.",
+    clientsLimit: "Até 10 clientes",
     features: [
-      "Até 30 clientes",
+      "Até 10 clientes",
       "Tudo do Pro",
       "API de integração",
       "Múltiplos usuários",
@@ -63,16 +65,15 @@ const plans = [
       "Suporte 24/7",
     ],
     highlighted: false,
-    buttonText: "Fazer Upgrade",
-    buttonVariant: "outline" as const,
   },
   {
     id: "agency",
     name: "Agency",
     icon: Building,
-    price: "R$ 397",
+    price: "R$ 297,00",
     period: "/mês",
     description: "Solução completa para grandes operações.",
+    clientsLimit: "Clientes ilimitados",
     features: [
       "Clientes ilimitados",
       "Tudo do Elite",
@@ -82,14 +83,25 @@ const plans = [
       "Integrações customizadas",
     ],
     highlighted: false,
-    buttonText: "Fazer Upgrade",
-    buttonVariant: "outline" as const,
   },
 ];
 
 export default function Pricing() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const currentPlan = profile?.plan || "starter";
+  const userEmail = user?.email || "";
+
+  const handleUpgrade = (planId: string, planName: string, planPrice: string, clientsLimit: string) => {
+    const message = encodeURIComponent(
+      `Olá! Quero contratar/upgrade no Gestão Nexus.\n\n` +
+      `Plano de interesse: ${planName}\n` +
+      `Preço: ${planPrice}/mês\n` +
+      `Limite: ${clientsLimit}\n` +
+      `Meu e-mail: ${userEmail}\n\n` +
+      `Pode me ajudar com o processo?`
+    );
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank');
+  };
 
   return (
     <AppLayout 
@@ -108,6 +120,11 @@ export default function Pricing() {
               <h3 className="font-semibold text-lg mb-1">Seu plano atual</h3>
               <p className="text-muted-foreground">
                 Você está no plano <span className="text-primary font-semibold uppercase">{currentPlan}</span>
+                {profile?.clients_limit && (
+                  <span className="ml-2">
+                    ({profile.clients_limit >= 999999 ? 'Clientes ilimitados' : `Até ${profile.clients_limit} cliente(s)`})
+                  </span>
+                )}
               </p>
             </div>
             <Badge className="bg-primary/20 text-primary border-primary/30 text-sm px-4 py-1">
@@ -174,13 +191,24 @@ export default function Pricing() {
                   ))}
                 </ul>
 
-                <Button 
-                  variant={isCurrentPlan ? "outline" : plan.buttonVariant}
-                  className="w-full"
-                  disabled={isCurrentPlan}
-                >
-                  {isCurrentPlan ? "Plano Atual" : plan.buttonText}
-                </Button>
+                {isCurrentPlan ? (
+                  <Button variant="outline" className="w-full" disabled>
+                    Plano Atual
+                  </Button>
+                ) : plan.id === "starter" ? (
+                  <Button variant="outline" className="w-full" disabled>
+                    Plano Gratuito
+                  </Button>
+                ) : (
+                  <Button 
+                    variant={plan.highlighted ? "default" : "outline"}
+                    className="w-full gap-2"
+                    onClick={() => handleUpgrade(plan.id, plan.name, plan.price, plan.clientsLimit)}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    Fazer Upgrade
+                  </Button>
+                )}
               </motion.div>
             );
           })}
@@ -196,7 +224,7 @@ export default function Pricing() {
           <p className="text-muted-foreground">
             Precisa de ajuda para escolher o plano ideal?{" "}
             <a 
-              href="https://wa.me/5535991553748" 
+              href={`https://wa.me/${WHATSAPP_NUMBER}`}
               target="_blank" 
               rel="noopener noreferrer"
               className="text-primary hover:underline"

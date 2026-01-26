@@ -167,7 +167,9 @@ export default function Onboarding() {
               <span className="text-sm font-medium">Dica</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Seu plano atual permite {profile?.clients_limit || 1} cliente(s).
+              Seu plano atual permite {profile?.clients_limit && profile.clients_limit >= 999999 
+                ? "clientes ilimitados" 
+                : `${profile?.clients_limit || 1} cliente(s)`}.
             </p>
           </div>
         </div>
@@ -329,15 +331,27 @@ export default function Onboarding() {
 
           {/* Navigation buttons */}
           <div className="flex items-center justify-between mt-10">
-            <Button
-              variant="ghost"
-              onClick={handleBack}
-              disabled={currentStep === 1 || isLoading}
-              className={currentStep === 1 ? "invisible" : ""}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar
-            </Button>
+            <div className="flex items-center gap-2">
+              {currentStep === 1 ? (
+                <Button
+                  variant="ghost"
+                  onClick={() => navigate(-1)}
+                  disabled={isLoading}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  Cancelar
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  onClick={handleBack}
+                  disabled={isLoading}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Voltar
+                </Button>
+              )}
+            </div>
 
             <Button
               onClick={handleNext}

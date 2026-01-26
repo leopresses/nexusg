@@ -29,9 +29,9 @@ const features = [
 
 const plans = [
   { name: "Starter", clients: "1 cliente", price: "Grátis", popular: false },
-  { name: "Pro", clients: "5 clientes", price: "R$49/mês", popular: true },
-  { name: "Elite", clients: "10 clientes", price: "R$89/mês", popular: false },
-  { name: "Agency", clients: "Ilimitado", price: "R$149/mês", popular: false },
+  { name: "Pro", clients: "3 clientes", price: "R$ 49,90/mês", popular: true },
+  { name: "Elite", clients: "10 clientes", price: "R$ 197,00/mês", popular: false },
+  { name: "Agency", clients: "Ilimitado", price: "R$ 297,00/mês", popular: false },
 ];
 
 const fadeInUp = {
@@ -87,7 +87,7 @@ export default function Landing() {
             </motion.div>
 
             <motion.h1 variants={fadeInUp} className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-              Cresça no Google com <span className="text-gradient-gold">precisão de águia</span>
+              Cresça no Google com <span className="text-gradient-gold">Gestão Nexus</span>
             </motion.h1>
 
             <motion.p variants={fadeInUp} className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
@@ -102,9 +102,11 @@ export default function Landing() {
                   <ArrowRight className="h-5 w-5" />
                 </Button>
               </Link>
-              <Button variant="glass" size="xl" className="w-full sm:w-auto">
-                Ver Demonstração
-              </Button>
+              <Link to="/demo">
+                <Button variant="glass" size="xl" className="w-full sm:w-auto">
+                  Ver Demonstração
+                </Button>
+              </Link>
             </motion.div>
 
             <motion.div

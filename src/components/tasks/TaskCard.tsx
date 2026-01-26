@@ -8,7 +8,10 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import type { TaskWithClient, ChecklistItem } from "@/hooks/useTasks";
+
+type TaskStatus = "pending" | "in_progress" | "completed";
 
 const statusConfig = {
   pending: { 
@@ -33,13 +36,15 @@ interface TaskCardProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   onToggleChecklistItem: (taskId: string, itemId: string) => void;
+  onStatusChange?: (taskId: string, status: TaskStatus) => void;
 }
 
 export function TaskCard({ 
   task, 
   isExpanded, 
   onToggleExpand, 
-  onToggleChecklistItem 
+  onToggleChecklistItem,
+  onStatusChange
 }: TaskCardProps) {
   const StatusIcon = statusConfig[task.status].icon;
   
@@ -58,6 +63,12 @@ export function TaskCard({
       day: "2-digit", 
       month: "short" 
     });
+  };
+
+  const handleStatusChange = (newStatus: TaskStatus) => {
+    if (onStatusChange) {
+      onStatusChange(task.id, newStatus);
+    }
   };
 
   return (
@@ -124,6 +135,40 @@ export function TaskCard({
             className="border-t border-border"
           >
             <div className="p-4 bg-secondary/30">
+              {/* Status Control */}
+              <div className="flex items-center gap-4 mb-4 pb-4 border-b border-border flex-wrap">
+                <span className="text-sm font-medium">Alterar Status:</span>
+                <div className="flex gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    size="sm"
+                    variant={task.status === 'pending' ? 'default' : 'outline'}
+                    className="gap-1"
+                    onClick={() => handleStatusChange('pending')}
+                  >
+                    <Clock className="h-3 w-3" />
+                    Pendente
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={task.status === 'in_progress' ? 'default' : 'outline'}
+                    className="gap-1"
+                    onClick={() => handleStatusChange('in_progress')}
+                  >
+                    <AlertCircle className="h-3 w-3" />
+                    Em Progresso
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={task.status === 'completed' ? 'default' : 'outline'}
+                    className="gap-1"
+                    onClick={() => handleStatusChange('completed')}
+                  >
+                    <CheckCircle2 className="h-3 w-3" />
+                    Concluída
+                  </Button>
+                </div>
+              </div>
+
               {task.description && (
                 <p className="text-sm text-muted-foreground mb-4">{task.description}</p>
               )}
