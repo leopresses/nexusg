@@ -1,14 +1,5 @@
 import { motion } from "framer-motion";
-import { 
-  CheckCircle2, 
-  BarChart3, 
-  Users, 
-  Calendar, 
-  FileText, 
-  Zap,
-  ArrowRight,
-  Star
-} from "lucide-react";
+import { CheckCircle2, BarChart3, Users, Calendar, FileText, Zap, ArrowRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { Link } from "react-router-dom";
@@ -17,22 +8,22 @@ const features = [
   {
     icon: Calendar,
     title: "Tarefas Automatizadas",
-    description: "Templates semanais que geram tarefas automaticamente para todos os seus clientes."
+    description: "Templates semanais que geram tarefas automaticamente para todos os seus clientes.",
   },
   {
     icon: BarChart3,
     title: "Métricas do Google",
-    description: "Acompanhe visualizações, chamadas e rotas do Google Business em tempo real."
+    description: "Acompanhe visualizações, chamadas e rotas do Google Business em tempo real.",
   },
   {
     icon: FileText,
     title: "Relatórios em PDF",
-    description: "Gere relatórios profissionais automaticamente para apresentar aos clientes."
+    description: "Gere relatórios profissionais automaticamente para apresentar aos clientes.",
   },
   {
     icon: Users,
     title: "Multi-clientes",
-    description: "Gerencie múltiplos estabelecimentos de forma organizada e eficiente."
+    description: "Gerencie múltiplos estabelecimentos de forma organizada e eficiente.",
   },
 ];
 
@@ -45,15 +36,15 @@ const plans = [
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 }
+  visible: { opacity: 1, y: 0 },
 };
 
 const stagger = {
   visible: {
     transition: {
-      staggerChildren: 0.1
-    }
-  }
+      staggerChildren: 0.1,
+    },
+  },
 };
 
 export default function Landing() {
@@ -65,10 +56,14 @@ export default function Landing() {
           <Logo size="sm" />
           <div className="flex items-center gap-4">
             <Link to="/login">
-              <Button variant="ghost" size="sm">Entrar</Button>
+              <Button variant="ghost" size="sm">
+                Entrar
+              </Button>
             </Link>
             <Link to="/register">
-              <Button variant="default" size="sm">Começar Grátis</Button>
+              <Button variant="default" size="sm">
+                Começar Grátis
+              </Button>
             </Link>
           </div>
         </div>
@@ -80,44 +75,27 @@ export default function Landing() {
         <div className="absolute inset-0 bg-hero-pattern" />
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        
+
         <div className="container mx-auto relative">
-          <motion.div 
-            className="max-w-4xl mx-auto text-center"
-            initial="hidden"
-            animate="visible"
-            variants={stagger}
-          >
-            <motion.div 
+          <motion.div className="max-w-4xl mx-auto text-center" initial="hidden" animate="visible" variants={stagger}>
+            <motion.div
               variants={fadeInUp}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-8"
             >
               <Zap className="h-4 w-4 text-primary" />
-              <span className="text-sm text-muted-foreground">
-                A plataforma #1 para gestão de Google Business
-              </span>
+              <span className="text-sm text-muted-foreground">A plataforma #1 para gestão de Google Business</span>
             </motion.div>
 
-            <motion.h1 
-              variants={fadeInUp}
-              className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight"
-            >
-              Cresça no Google com{" "}
-              <span className="text-gradient-gold">precisão de águia</span>
+            <motion.h1 variants={fadeInUp} className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
+              Cresça no Google com <span className="text-gradient-gold">precisão de águia</span>
             </motion.h1>
 
-            <motion.p 
-              variants={fadeInUp}
-              className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
-            >
-              Automatize tarefas, acompanhe métricas e gere relatórios profissionais 
-              para restaurantes e negócios locais.
+            <motion.p variants={fadeInUp} className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
+              Automatize tarefas, acompanhe métricas e gere relatórios profissionais para restaurantes e negócios
+              locais.
             </motion.p>
 
-            <motion.div 
-              variants={fadeInUp}
-              className="flex flex-col sm:flex-row gap-4 justify-center"
-            >
+            <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/register">
                 <Button variant="hero" size="xl" className="w-full sm:w-auto">
                   Começar Gratuitamente
@@ -129,7 +107,7 @@ export default function Landing() {
               </Button>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               variants={fadeInUp}
               className="mt-10 flex items-center justify-center gap-6 text-sm text-muted-foreground"
             >
@@ -153,22 +131,21 @@ export default function Landing() {
       {/* Features Section */}
       <section className="py-20 px-6 relative">
         <div className="container mx-auto">
-          <motion.div 
+          <motion.div
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Tudo que você precisa para{" "}
-              <span className="text-gradient-gold">dominar o Google</span>
+              Tudo que você precisa para <span className="text-gradient-gold">dominar o Google</span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Ferramentas poderosas para agências e gestores que querem resultados reais.
             </p>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
             initial="hidden"
             whileInView="visible"
@@ -196,7 +173,7 @@ export default function Landing() {
       <section className="py-20 px-6 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent" />
         <div className="container mx-auto relative">
-          <motion.div 
+          <motion.div
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -210,7 +187,7 @@ export default function Landing() {
             </p>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto"
             initial="hidden"
             whileInView="visible"
@@ -222,8 +199,8 @@ export default function Landing() {
                 key={index}
                 variants={fadeInUp}
                 className={`relative p-6 rounded-2xl border transition-all duration-300 ${
-                  plan.popular 
-                    ? "bg-card border-primary shadow-gold scale-105" 
+                  plan.popular
+                    ? "bg-card border-primary shadow-gold scale-105"
                     : "bg-card border-border hover:border-primary/50"
                 }`}
               >
@@ -238,10 +215,7 @@ export default function Landing() {
                   <p className="text-sm text-muted-foreground mb-4">{plan.clients}</p>
                   <div className="text-2xl font-bold mb-6">{plan.price}</div>
                   <Link to="/register">
-                    <Button 
-                      variant={plan.popular ? "default" : "outline"} 
-                      className="w-full"
-                    >
+                    <Button variant={plan.popular ? "default" : "outline"} className="w-full">
                       Escolher Plano
                     </Button>
                   </Link>
@@ -255,18 +229,16 @@ export default function Landing() {
       {/* CTA Section */}
       <section className="py-20 px-6">
         <div className="container mx-auto">
-          <motion.div 
+          <motion.div
             className="max-w-4xl mx-auto text-center p-12 rounded-3xl gradient-card border border-border shadow-elevated"
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Pronto para voar mais alto?
-            </h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Pronto para voar mais alto?</h2>
             <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-              Junte-se a centenas de agências e gestores que já estão transformando 
-              a presença digital dos seus clientes.
+              Junte-se a centenas de agências e gestores que já estão transformando a presença digital dos seus
+              clientes.
             </p>
             <Link to="/register">
               <Button variant="hero" size="xl">
@@ -282,12 +254,10 @@ export default function Landing() {
       <footer className="py-8 px-6 border-t border-border">
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <Logo size="sm" />
-          <p className="text-sm text-muted-foreground">
-            © 2024 Gestão Águia. Todos os direitos reservados.
-          </p>
-          <a 
-            href="https://wa.me/5511999999999" 
-            target="_blank" 
+          <p className="text-sm text-muted-foreground">© 2024 Gestão Águia. Todos os direitos reservados.</p>
+          <a
+            href="https://wa.me/5535991553748"
+            target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-primary hover:underline"
           >
