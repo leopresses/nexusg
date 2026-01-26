@@ -16,6 +16,7 @@ export function useBrandSettings() {
   const { user } = useAuth();
   const [brandSettings, setBrandSettings] = useState<BrandSettings>(defaultBrandSettings);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -40,18 +41,99 @@ export function useBrandSettings() {
 
       if (data) {
         setBrandSettings({
-          companyName: defaultBrandSettings.companyName,
+          companyName: (data as any).company_name || defaultBrandSettings.companyName,
           logo: data.logo_url,
           primaryColor: data.primary_color || defaultBrandSettings.primaryColor,
           secondaryColor: data.secondary_color || defaultBrandSettings.secondaryColor,
           accentColor: data.accent_color || defaultBrandSettings.accentColor,
-          reportFooter: defaultBrandSettings.reportFooter,
+          reportFooter: (data as any).report_footer || defaultBrandSettings.reportFooter,
         });
       }
     } catch (error) {
       console.error('Error fetching brand settings:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const uploadLogo = async (file: File): Promise<{ url: string | null; error: string | null }> => {
+    if (!user) return { url: null, error: 'User not authenticated' };
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      return { url: null, error: 'O arquivo deve ter no máximo 2MB' };
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
+      return { url: null, error: 'Formato de arquivo não suportado. Use PNG, JPG, WebP ou SVG.' };
+    }
+
+    setIsUploading(true);
+
+    try {
+      // Generate unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/logo.${fileExt}`;
+
+      // Delete existing logo if any
+      await supabase.storage
+        .from('brand-logos')
+        .remove([`${user.id}/logo.png`, `${user.id}/logo.jpg`, `${user.id}/logo.jpeg`, `${user.id}/logo.webp`, `${user.id}/logo.svg`]);
+
+      // Upload new logo
+      const { error: uploadError } = await supabase.storage
+        .from('brand-logos')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        return { url: null, error: 'Erro ao fazer upload do arquivo' };
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('brand-logos')
+        .getPublicUrl(fileName);
+
+      return { url: urlData.publicUrl, error: null };
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      return { url: null, error: 'Erro ao fazer upload do arquivo' };
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const deleteLogo = async (): Promise<{ success: boolean; error: string | null }> => {
+    if (!user) return { success: false, error: 'User not authenticated' };
+
+    try {
+      // List and delete all logo files for this user
+      const { data: files } = await supabase.storage
+        .from('brand-logos')
+        .list(user.id);
+
+      if (files && files.length > 0) {
+        const filesToDelete = files.map(f => `${user.id}/${f.name}`);
+        await supabase.storage.from('brand-logos').remove(filesToDelete);
+      }
+
+      // Update database
+      await supabase
+        .from('brand_settings')
+        .update({ logo_url: null, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id);
+
+      setBrandSettings((prev) => ({ ...prev, logo: null }));
+      return { success: true, error: null };
+    } catch (error) {
+      console.error('Error deleting logo:', error);
+      return { success: false, error: 'Erro ao remover logo' };
     }
   };
 
@@ -66,6 +148,8 @@ export function useBrandSettings() {
           primary_color: newSettings.primaryColor,
           secondary_color: newSettings.secondaryColor,
           accent_color: newSettings.accentColor,
+          company_name: newSettings.companyName,
+          report_footer: newSettings.reportFooter,
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', user.id);
@@ -83,7 +167,10 @@ export function useBrandSettings() {
   return {
     brandSettings,
     isLoading,
+    isUploading,
     updateBrandSettings,
+    uploadLogo,
+    deleteLogo,
     refetch: fetchBrandSettings,
   };
 }
