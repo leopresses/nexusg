@@ -144,31 +144,32 @@ export function GenerateReportDialog({ open, onOpenChange, onReportGenerated }: 
 
       const periodDates = getPeriodDates(period);
 
-      // Fetch tasks for this client within the period
+      // Fetch tasks for this client within the period - ONLY COMPLETED TASKS
       const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
         .select('id, title, status, completed_at, client_id')
         .eq('client_id', selectedClientId)
+        .eq('status', 'completed')  // Only completed tasks
         .gte('created_at', periodDates.start.toISOString())
         .lte('created_at', periodDates.end.toISOString())
-        .order('created_at', { ascending: false });
+        .order('completed_at', { ascending: false });
 
       if (tasksError) throw tasksError;
 
       const tasks: TaskData[] = (tasksData || []).map((t) => ({
         id: t.id,
         title: t.title,
-        status: t.status as 'pending' | 'in_progress' | 'completed',
+        status: 'completed' as const,
         completed_at: t.completed_at,
         client_id: t.client_id,
       }));
 
-      // Calculate metrics
+      // Calculate metrics - all tasks are completed
       const totalTasks = tasks.length;
-      const completedTasks = tasks.filter((t) => t.status === 'completed').length;
-      const pendingTasks = tasks.filter((t) => t.status === 'pending').length;
-      const inProgressTasks = tasks.filter((t) => t.status === 'in_progress').length;
-      const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      const completedTasks = totalTasks;
+      const pendingTasks = 0;
+      const inProgressTasks = 0;
+      const completionRate = 100;
 
       const reportData: ReportData = {
         client: selectedClient,

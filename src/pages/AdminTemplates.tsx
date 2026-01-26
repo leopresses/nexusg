@@ -10,6 +10,7 @@ import {
   Trash2,
   CheckSquare,
   ListChecks,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +44,7 @@ export default function AdminTemplates() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<TaskTemplate | null>(null);
   const [deletingTemplate, setDeletingTemplate] = useState<TaskTemplate | null>(null);
+  const [isSendingTasks, setIsSendingTasks] = useState(false);
 
   useEffect(() => {
     fetchTemplates();
@@ -117,6 +119,22 @@ export default function AdminTemplates() {
     }
   };
 
+  const sendTasksToAllUsers = async () => {
+    setIsSendingTasks(true);
+    try {
+      const { error } = await supabase.rpc('generate_weekly_tasks_for_all_clients');
+      
+      if (error) throw error;
+      
+      toast.success("Templates sincronizados para todos os clientes ativos!");
+    } catch (error) {
+      console.error("Error sending tasks:", error);
+      toast.error("Erro ao sincronizar templates");
+    } finally {
+      setIsSendingTasks(false);
+    }
+  };
+
   const filteredTemplates = templates.filter((template) =>
     template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     template.description?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -139,10 +157,24 @@ export default function AdminTemplates() {
       title="Templates de Tarefas" 
       subtitle="Gerencie os templates do método"
       headerActions={
-        <Button onClick={handleCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Template
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline"
+            onClick={sendTasksToAllUsers}
+            disabled={isSendingTasks}
+          >
+            {isSendingTasks ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4 mr-2" />
+            )}
+            Sincronizar para Todos
+          </Button>
+          <Button onClick={handleCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Template
+          </Button>
+        </div>
       }
     >
       <div className="space-y-6">

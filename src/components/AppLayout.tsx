@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
-import { NotificationBell } from "@/components/NotificationCenter";
 import { useAuth } from "@/hooks/useAuth";
 
 interface AppLayoutProps {
@@ -127,7 +126,6 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
               )}
             </div>
             <div className="flex items-center gap-4">
-              <NotificationBell />
               {headerActions}
             </div>
           </div>

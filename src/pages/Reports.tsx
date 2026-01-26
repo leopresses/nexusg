@@ -6,10 +6,12 @@ import {
   Download,
   Calendar,
   Clock,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/AppLayout";
 import { GenerateReportDialog } from "@/components/reports/GenerateReportDialog";
+import { DeleteReportDialog } from "@/components/reports/DeleteReportDialog";
 
 interface Report {
   id: string;
@@ -21,9 +23,24 @@ interface Report {
 export default function Reports() {
   const [reports, setReports] = useState<Report[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
 
   const handleReportGenerated = (report: Report) => {
     setReports((prev) => [report, ...prev]);
+  };
+
+  const handleDeleteClick = (report: Report) => {
+    setReportToDelete(report);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (reportToDelete) {
+      setReports((prev) => prev.filter((r) => r.id !== reportToDelete.id));
+      setReportToDelete(null);
+      setDeleteDialogOpen(false);
+    }
   };
 
   return (
@@ -52,8 +69,9 @@ export default function Reports() {
               <h3 className="font-semibold text-lg mb-1">Como funciona?</h3>
               <p className="text-muted-foreground">
                 Gere relatórios detalhados sobre o desempenho dos seus clientes. 
-                Os relatórios são exportados em PDF com a identidade visual 
-                personalizada da sua marca (configurável em Configurações).
+                Os relatórios mostram apenas as <strong>tarefas concluídas</strong> e são 
+                exportados em PDF com a identidade visual personalizada da sua marca 
+                (configurável em Configurações).
               </p>
             </div>
           </div>
@@ -108,10 +126,20 @@ export default function Reports() {
                       </div>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" disabled>
-                    <Download className="h-4 w-4 mr-2" />
-                    Baixado
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" disabled>
+                      <Download className="h-4 w-4 mr-2" />
+                      Baixado
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => handleDeleteClick(report)}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -123,6 +151,13 @@ export default function Reports() {
         open={isDialogOpen} 
         onOpenChange={setIsDialogOpen}
         onReportGenerated={handleReportGenerated}
+      />
+
+      <DeleteReportDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        reportName={reportToDelete?.name || ""}
+        onConfirm={handleConfirmDelete}
       />
     </AppLayout>
   );

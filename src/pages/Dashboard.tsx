@@ -8,7 +8,6 @@ import {
   TrendingUp,
   Eye,
   Phone,
-  MoreVertical,
   ChevronRight,
   Loader2,
 } from "lucide-react";
@@ -36,9 +35,18 @@ const statusLabels = {
   completed: "Concluída",
 };
 
+// Task stats for the total count across all tasks
+interface TaskStats {
+  pending: number;
+  in_progress: number;
+  completed: number;
+  total: number;
+}
+
 export default function Dashboard() {
   const [clients, setClients] = useState<Client[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [recentTasks, setRecentTasks] = useState<Task[]>([]);
+  const [taskStats, setTaskStats] = useState<TaskStats>({ pending: 0, in_progress: 0, completed: 0, total: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -49,13 +57,40 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const [clientsRes, tasksRes] = await Promise.all([
-        supabase.from("clients").select("*").eq("is_active", true).order("created_at", { ascending: false }),
-        supabase.from("tasks").select("*, clients(name)").order("created_at", { ascending: false }).limit(5),
+      // Get all clients
+      const clientsRes = await supabase
+        .from("clients")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+
+      // Get recent tasks for display (limited)
+      const recentTasksRes = await supabase
+        .from("tasks")
+        .select("*, clients(name)")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      // Get total task counts by status (no limit)
+      const [pendingCount, inProgressCount, completedCount] = await Promise.all([
+        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "in_progress"),
+        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "completed"),
       ]);
 
       if (clientsRes.data) setClients(clientsRes.data);
-      if (tasksRes.data) setTasks(tasksRes.data as Task[]);
+      if (recentTasksRes.data) setRecentTasks(recentTasksRes.data as Task[]);
+      
+      const pending = pendingCount.count || 0;
+      const inProgress = inProgressCount.count || 0;
+      const completed = completedCount.count || 0;
+      
+      setTaskStats({
+        pending,
+        in_progress: inProgress,
+        completed,
+        total: pending + inProgress + completed,
+      });
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -63,14 +98,15 @@ export default function Dashboard() {
     }
   };
 
-  const pendingTasks = tasks.filter((t) => t.status === "pending").length;
-  const completedTasks = tasks.filter((t) => t.status === "completed").length;
+  const completionRate = taskStats.total > 0 
+    ? Math.round((taskStats.completed / taskStats.total) * 100) 
+    : 0;
 
   const stats = [
     { label: "Clientes Ativos", value: clients.length.toString(), icon: Users, change: `Limite: ${profile?.clients_limit || 1}` },
-    { label: "Tarefas Pendentes", value: pendingTasks.toString(), icon: CheckSquare, change: `${completedTasks} concluídas` },
+    { label: "Tarefas Pendentes", value: taskStats.pending.toString(), icon: CheckSquare, change: `${taskStats.completed} concluídas` },
     { label: "Seu Plano", value: profile?.plan?.toUpperCase() || "STARTER", icon: Eye, change: "Plano atual" },
-    { label: "Taxa de Conclusão", value: tasks.length > 0 ? `${Math.round((completedTasks / tasks.length) * 100)}%` : "0%", icon: Phone, change: "Esta semana" },
+    { label: "Taxa de Conclusão", value: `${completionRate}%`, icon: Phone, change: "Total geral" },
   ];
 
   if (isLoading) {
@@ -174,9 +210,6 @@ export default function Dashboard() {
                           </div>
                           <div className="text-xs text-muted-foreground">Google</div>
                         </div>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
                       </div>
                     </div>
                   </div>
@@ -199,7 +232,7 @@ export default function Dashboard() {
               </Link>
             </div>
             <div className="p-4 space-y-3">
-              {tasks.length === 0 ? (
+              {recentTasks.length === 0 ? (
                 <div className="text-center py-8">
                   <CheckSquare className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground">
@@ -207,27 +240,40 @@ export default function Dashboard() {
                   </p>
                 </div>
               ) : (
-                tasks.map((task) => (
-                  <div 
-                    key={task.id} 
-                    className="p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <h4 className="text-sm font-medium leading-tight">{task.title}</h4>
+                <>
+                  {recentTasks.slice(0, 5).map((task) => (
+                    <div 
+                      key={task.id} 
+                      className="p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer"
+                      onClick={() => navigate("/tasks")}
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <h4 className="text-sm font-medium leading-tight">{task.title}</h4>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">
+                          {task.clients?.name || "Cliente"}
+                        </span>
+                        <Badge 
+                          variant="outline" 
+                          className={`text-xs ${statusColors[task.status as keyof typeof statusColors]}`}
+                        >
+                          {statusLabels[task.status as keyof typeof statusLabels]}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        {task.clients?.name || "Cliente"}
-                      </span>
-                      <Badge 
-                        variant="outline" 
-                        className={`text-xs ${statusColors[task.status as keyof typeof statusColors]}`}
-                      >
-                        {statusLabels[task.status as keyof typeof statusLabels]}
-                      </Badge>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                  {taskStats.total > 5 && (
+                    <Button 
+                      variant="outline" 
+                      className="w-full mt-2"
+                      onClick={() => navigate("/tasks")}
+                    >
+                      Ver todas ({taskStats.total} tarefas)
+                      <ChevronRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </motion.div>

@@ -11,7 +11,6 @@ import {
   Mail,
   UserPlus,
   Trash2,
-  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { DeleteUserDialog } from "@/components/admin/DeleteUserDialog";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type AppRole = Database["public"]["Enums"]["app_role"];
@@ -56,7 +56,8 @@ export default function AdminUsersPlans() {
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isSendingTasks, setIsSendingTasks] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -147,19 +148,38 @@ export default function AdminUsersPlans() {
     }
   };
 
-  const sendTasksToAllUsers = async () => {
-    setIsSendingTasks(true);
+  const handleDeleteUser = (user: UserWithRole) => {
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+
     try {
-      const { error } = await supabase.rpc('generate_weekly_tasks_for_all_clients');
-      
+      // Soft delete: set clients_limit to 0 and plan to starter to effectively disable the account
+      const { error } = await supabase
+        .from("profiles")
+        .update({ clients_limit: 0, plan: 'starter' })
+        .eq("user_id", userToDelete.user_id);
+
       if (error) throw error;
-      
-      toast.success("Tarefas da semana enviadas para todos os clientes ativos!");
+
+      // Also remove any admin roles
+      await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", userToDelete.user_id)
+        .eq("role", "admin");
+
+      toast.success("Usuário desativado com sucesso");
+      fetchUsers();
     } catch (error) {
-      console.error("Error sending tasks:", error);
-      toast.error("Erro ao enviar tarefas");
+      console.error("Error deleting user:", error);
+      toast.error("Erro ao excluir usuário");
     } finally {
-      setIsSendingTasks(false);
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
     }
   };
 
@@ -208,6 +228,7 @@ export default function AdminUsersPlans() {
           <tbody className="divide-y divide-border">
             {userList.map((user) => {
               const isAdmin = user.roles.includes("admin");
+              const isDisabled = user.clients_limit === 0;
 
               return (
                 <tr key={user.id} className="hover:bg-secondary/50 transition-colors">
@@ -258,9 +279,12 @@ export default function AdminUsersPlans() {
                   <td className="px-6 py-4">
                     <Badge 
                       variant="outline"
-                      className="bg-success/20 text-success border-success/30"
+                      className={isDisabled 
+                        ? "bg-destructive/20 text-destructive border-destructive/30"
+                        : "bg-success/20 text-success border-success/30"
+                      }
                     >
-                      Ativo
+                      {isDisabled ? "Desativado" : "Ativo"}
                     </Badge>
                   </td>
                   <td className="px-6 py-4 text-right">
@@ -314,6 +338,14 @@ export default function AdminUsersPlans() {
                         >
                           Plano Agency
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => handleDeleteUser(user)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Excluir Usuário
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </td>
@@ -340,19 +372,6 @@ export default function AdminUsersPlans() {
     <AppLayout 
       title="Usuários & Planos" 
       subtitle="Gerencie usuários, permissões e planos"
-      headerActions={
-        <Button 
-          onClick={sendTasksToAllUsers}
-          disabled={isSendingTasks}
-        >
-          {isSendingTasks ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4 mr-2" />
-          )}
-          Enviar Tarefas para Todos
-        </Button>
-      }
     >
       <div className="space-y-6">
         {/* Stats Cards */}
@@ -427,6 +446,13 @@ export default function AdminUsersPlans() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <DeleteUserDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        userName={userToDelete?.full_name || "Usuário"}
+        onConfirm={confirmDeleteUser}
+      />
     </AppLayout>
   );
 }

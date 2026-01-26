@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
 
 const benefits = ["1 cliente grátis para sempre", "Tarefas semanais automatizadas", "Relatórios em PDF"];
 
@@ -27,13 +28,22 @@ export default function Register() {
     }
   }, [user, navigate]);
 
+  const validatePassword = (pwd: string): { valid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    if (pwd.length < 8) errors.push("Mínimo 8 caracteres");
+    if (!/[A-Z]/.test(pwd)) errors.push("1 letra maiúscula");
+    if (!/[0-9]/.test(pwd)) errors.push("1 número");
+    return { valid: errors.length === 0, errors };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (password.length < 8) {
+    const validation = validatePassword(password);
+    if (!validation.valid) {
       toast({
-        title: "Senha muito curta",
-        description: "A senha deve ter pelo menos 8 caracteres.",
+        title: "Senha inválida",
+        description: `Requisitos: ${validation.errors.join(", ")}`,
         variant: "destructive",
       });
       return;
@@ -62,7 +72,7 @@ export default function Register() {
     } else {
       toast({
         title: "Conta criada!",
-        description: "Bem-vindo ao Gestão Águia! Vamos configurar seu primeiro cliente.",
+        description: "Bem-vindo ao Gestão Nexus! Vamos configurar seu primeiro cliente.",
       });
       navigate("/onboarding");
     }
@@ -183,6 +193,7 @@ export default function Register() {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
+              <PasswordStrengthIndicator password={password} />
             </div>
 
             <Button type="submit" className="w-full h-12" disabled={isLoading}>
