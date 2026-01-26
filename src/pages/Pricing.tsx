@@ -27,7 +27,7 @@ const plans = [
     period: "/mês",
     description: "Ideal para profissionais que gerenciam múltiplos clientes.",
     clientsLimit: "Até 3 clientes",
-    features: ["Até 3 clientes", "Relatórios avançados", "Tudo do Starter", "Suporte Whatsapp"],
+    features: ["Até 3 clientes", "Relatórios avançados", "Tudo do Starter", "Suporte Whatsapp", "API de integração"],
     highlighted: false,
   },
   {
@@ -38,7 +38,7 @@ const plans = [
     period: "/mês",
     description: "Para agências que precisam de recursos avançados.",
     clientsLimit: "Até 10 clientes",
-    features: ["Até 10 clientes", "Tudo do Pro", "API de integração"],
+    features: ["Até 10 clientes", "Tudo do Pro"],
     highlighted: true,
   },
   {
