@@ -129,12 +129,20 @@ export default function Login() {
             </Button>
           </form>
 
-          <p className="mt-8 text-center text-muted-foreground">
-            Não tem uma conta?{" "}
-            <Link to="/register" className="text-primary hover:underline font-medium">
-              Criar conta grátis
+          <div className="mt-8 space-y-4 text-center">
+            <p className="text-muted-foreground">
+              Não tem uma conta?{" "}
+              <Link to="/register" className="text-primary hover:underline font-medium">
+                Criar conta grátis
+              </Link>
+            </p>
+            <Link 
+              to="/" 
+              className="inline-block text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              ← Voltar para tela inicial
             </Link>
-          </p>
+          </div>
         </motion.div>
       </div>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CheckSquare, Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
@@ -11,7 +11,7 @@ export default function Tasks() {
   const [searchParams] = useSearchParams();
   const clientFromUrl = searchParams.get("client");
   
-  const { tasks, clients, isLoading, stats, toggleChecklistItem, updateTaskStatus } = useTasks();
+  const { tasks, clients, isLoading, toggleChecklistItem, updateTaskStatus } = useTasks();
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterClient, setFilterClient] = useState<string>(clientFromUrl || "all");
@@ -24,12 +24,40 @@ export default function Tasks() {
     }
   }, [clientFromUrl]);
 
-  const filteredTasks = tasks.filter(task => {
-    if (filterStatus !== "all" && task.status !== filterStatus) return false;
-    if (filterClient !== "all" && task.client_id !== filterClient) return false;
-    if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
+  // Memoize filtered tasks for performance and consistency
+  const filteredTasks = useMemo(() => {
+    return tasks.filter(task => {
+      // Filter by client - must match exactly if not "all"
+      if (filterClient !== "all") {
+        if (task.client_id !== filterClient) return false;
+      }
+      
+      // Filter by status - must match exactly if not "all"
+      if (filterStatus !== "all") {
+        if (task.status !== filterStatus) return false;
+      }
+      
+      // Filter by search query
+      if (searchQuery) {
+        if (!task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      }
+      
+      return true;
+    });
+  }, [tasks, filterClient, filterStatus, searchQuery]);
+
+  // Calculate stats based on filtered tasks (when client is selected) or all tasks
+  const stats = useMemo(() => {
+    const tasksToCount = filterClient !== "all" 
+      ? tasks.filter(t => t.client_id === filterClient)
+      : tasks;
+    
+    return {
+      pending: tasksToCount.filter(t => t.status === "pending").length,
+      in_progress: tasksToCount.filter(t => t.status === "in_progress").length,
+      completed: tasksToCount.filter(t => t.status === "completed").length,
+    };
+  }, [tasks, filterClient]);
 
   if (isLoading) {
     return (

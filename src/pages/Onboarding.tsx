@@ -340,48 +340,59 @@ export default function Onboarding() {
           </AnimatePresence>
 
           {/* Navigation buttons */}
-          <div className="flex items-center justify-between mt-10">
-            <div className="flex items-center gap-2">
-              {currentStep === 1 ? (
-                <Button
-                  variant="ghost"
-                  onClick={() => navigate("/dashboard")}
-                  disabled={isLoading}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  Cancelar
-                </Button>
-              ) : (
-                <Button
-                  variant="ghost"
-                  onClick={handleBack}
-                  disabled={isLoading}
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Voltar
-                </Button>
-              )}
-            </div>
+          <div className="flex flex-col gap-4 mt-10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {currentStep === 1 ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => navigate("/dashboard")}
+                    disabled={isLoading}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    Cancelar
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    onClick={handleBack}
+                    disabled={isLoading}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Voltar
+                  </Button>
+                )}
+              </div>
 
-            <Button
-              onClick={handleNext}
-              disabled={!canProceed() || isLoading}
-              className="min-w-[140px]"
+              <Button
+                onClick={handleNext}
+                disabled={!canProceed() || isLoading}
+                className="min-w-[140px]"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : currentStep === 3 ? (
+                  <>
+                    Concluir
+                    <Check className="h-4 w-4 ml-2" />
+                  </>
+                ) : (
+                  <>
+                    Continuar
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            {/* Back to home link */}
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors text-center"
             >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : currentStep === 3 ? (
-                <>
-                  Concluir
-                  <Check className="h-4 w-4 ml-2" />
-                </>
-              ) : (
-                <>
-                  Continuar
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </>
-              )}
-            </Button>
+              ← Voltar para tela inicial
+            </button>
           </div>
         </div>
       </div>
