@@ -112,12 +112,20 @@ export default function ForgotPassword() {
           </Button>
         </form>
 
-        <p className="mt-8 text-center text-muted-foreground">
-          Lembrou sua senha?{" "}
-          <Link to="/login" className="text-primary hover:underline font-medium">
-            Fazer login
+        <div className="mt-8 space-y-4 text-center">
+          <p className="text-muted-foreground">
+            Lembrou sua senha?{" "}
+            <Link to="/login" className="text-primary hover:underline font-medium">
+              Fazer login
+            </Link>
+          </p>
+          <Link 
+            to="/" 
+            className="inline-block text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            ← Voltar para tela inicial
           </Link>
-        </p>
+        </div>
       </motion.div>
     </div>
   );

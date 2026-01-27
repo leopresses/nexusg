@@ -190,6 +190,15 @@ export default function ResetPassword() {
             <ArrowRight className="h-5 w-5 ml-2" />
           </Button>
         </form>
+
+        <div className="mt-8 text-center">
+          <Link 
+            to="/" 
+            className="inline-block text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            ← Voltar para tela inicial
+          </Link>
+        </div>
       </motion.div>
     </div>
   );

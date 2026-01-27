@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
@@ -10,10 +10,12 @@ import {
   CreditCard,
   Shield,
   Menu,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -37,14 +39,35 @@ const adminNavItems = [
 ];
 
 export function AppLayout({ children, title, subtitle, headerActions }: AppLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
+
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  }, [location.pathname, isMobile]);
+
+  // Set sidebar open by default on desktop
+  useEffect(() => {
+    if (!isMobile) {
+      setSidebarOpen(true);
+    }
+  }, [isMobile]);
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
+  };
+
+  const handleNavClick = () => {
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
   };
 
   const navItems = isAdmin ? [...baseNavItems, ...adminNavItems] : baseNavItems;
@@ -58,18 +81,36 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
 
   return (
     <div className="min-h-screen bg-background flex">
+      {/* Mobile overlay */}
+      {isMobile && sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-sidebar border-r border-sidebar-border transition-all duration-300 flex flex-col fixed md:relative h-screen z-50`}>
+      <aside 
+        className={`
+          ${isMobile 
+            ? `fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
+            : 'relative w-64'
+          }
+          bg-sidebar border-r border-sidebar-border flex flex-col h-screen
+        `}
+      >
         <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
-          <Logo size="sm" showText={sidebarOpen} />
-          <Button 
-            variant="ghost" 
-            size="icon"
-            className="md:hidden text-sidebar-foreground"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
+          <Logo size="sm" showText={true} />
+          {isMobile && (
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="text-sidebar-foreground"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          )}
         </div>
 
         <nav className="flex-1 p-4 overflow-y-auto">
@@ -78,6 +119,7 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
               <li key={index}>
                 <Link
                   to={item.href}
+                  onClick={handleNavClick}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
                     isActive(item.href)
                       ? 'bg-sidebar-accent text-sidebar-primary' 
@@ -85,7 +127,7 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
                   }`}
                 >
                   <item.icon className="h-5 w-5 flex-shrink-0" />
-                  {sidebarOpen && <span className="font-medium">{item.label}</span>}
+                  <span className="font-medium">{item.label}</span>
                 </Link>
               </li>
             ))}
@@ -99,31 +141,33 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
             onClick={handleSignOut}
           >
             <LogOut className="h-5 w-5" />
-            {sidebarOpen && <span>Sair</span>}
+            <span>Sair</span>
           </Button>
         </div>
       </aside>
 
-      {/* Mobile sidebar toggle */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="fixed top-4 left-4 z-40 md:hidden"
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-      >
-        <Menu className="h-5 w-5" />
-      </Button>
-
       {/* Main Content */}
-      <main className={`flex-1 overflow-auto ${sidebarOpen ? 'md:ml-0' : ''}`}>
+      <main className="flex-1 overflow-auto">
         {/* Header */}
-        <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border px-6 py-4">
+        <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border px-4 md:px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">{title}</h1>
-              {subtitle && (
-                <p className="text-sm text-muted-foreground">{subtitle}</p>
+            <div className="flex items-center gap-3">
+              {/* Mobile menu toggle */}
+              {isMobile && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSidebarOpen(true)}
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
               )}
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold">{title}</h1>
+                {subtitle && (
+                  <p className="text-sm text-muted-foreground">{subtitle}</p>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-4">
               {headerActions}
@@ -131,7 +175,7 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
           </div>
         </header>
 
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           {children}
         </div>
       </main>
