@@ -86,13 +86,26 @@ export default function AdminTemplates() {
     if (!deletingTemplate) return;
 
     try {
+      // First, delete all pending tasks associated with this template
+      const { error: tasksError } = await supabase
+        .from("tasks")
+        .delete()
+        .eq("template_id", deletingTemplate.id)
+        .eq("status", "pending");
+
+      if (tasksError) {
+        console.error("Error deleting associated tasks:", tasksError);
+        // Continue with template deletion even if task deletion fails
+      }
+
+      // Then delete the template itself
       const { error } = await supabase
         .from("task_templates")
         .delete()
         .eq("id", deletingTemplate.id);
 
       if (error) throw error;
-      toast.success("Template excluído com sucesso");
+      toast.success("Template e tarefas pendentes excluídos com sucesso");
       fetchTemplates();
     } catch (error) {
       console.error("Error deleting template:", error);
