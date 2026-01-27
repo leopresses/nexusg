@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { Network } from "lucide-react";
 
 interface LogoProps {
@@ -17,12 +18,12 @@ const textSizeClasses = {
   lg: "text-2xl"
 };
 
-export function Logo({
+export const Logo = forwardRef<HTMLDivElement, LogoProps>(({
   size = "md",
   showText = true
-}: LogoProps) {
+}, ref) => {
   return (
-    <div className="flex items-center gap-3">
+    <div ref={ref} className="flex items-center gap-3">
       <div className={`${sizeClasses[size]} gradient-gold rounded-xl flex items-center justify-center shadow-gold`}>
         <Network className="h-2/3 w-2/3 text-primary-foreground" strokeWidth={2.5} />
       </div>
@@ -35,4 +36,6 @@ export function Logo({
       )}
     </div>
   );
-}
+});
+
+Logo.displayName = "Logo";

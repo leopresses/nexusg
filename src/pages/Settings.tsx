@@ -10,6 +10,8 @@ import {
   Trash2,
   Loader2,
   ImageIcon,
+  User,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +22,263 @@ import { useToast } from "@/hooks/use-toast";
 import { AppLayout } from "@/components/AppLayout";
 import { useBrandSettings } from "@/hooks/useBrandSettings";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+
+// Account Settings Component
+function AccountSettings() {
+  const { user, profile, refreshProfile } = useAuth();
+  const { toast } = useToast();
+  const [fullName, setFullName] = useState(profile?.full_name || "");
+  const [isSavingName, setIsSavingName] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+
+  useEffect(() => {
+    if (profile?.full_name) {
+      setFullName(profile.full_name);
+    }
+  }, [profile?.full_name]);
+
+  const handleSaveName = async () => {
+    if (!user) return;
+    
+    setIsSavingName(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ full_name: fullName })
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      await refreshProfile();
+      toast({
+        title: "Nome atualizado!",
+        description: "Seu nome foi salvo com sucesso.",
+      });
+    } catch (error: any) {
+      console.error("Error updating name:", error);
+      toast({
+        title: "Erro ao salvar",
+        description: error.message || "Não foi possível atualizar o nome.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingName(false);
+    }
+  };
+
+  const validatePassword = (pwd: string): { valid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    if (pwd.length < 8) errors.push("Mínimo 8 caracteres");
+    if (!/[A-Z]/.test(pwd)) errors.push("1 letra maiúscula");
+    if (!/[0-9]/.test(pwd)) errors.push("1 número");
+    return { valid: errors.length === 0, errors };
+  };
+
+  const handleChangePassword = async () => {
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      toast({
+        title: "Preencha todos os campos",
+        description: "Todos os campos de senha são obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast({
+        title: "Senhas não coincidem",
+        description: "A nova senha e a confirmação devem ser iguais.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const validation = validatePassword(passwordForm.newPassword);
+    if (!validation.valid) {
+      toast({
+        title: "Senha fraca",
+        description: `Requisitos: ${validation.errors.join(", ")}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      // First verify current password by signing in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || "",
+        password: passwordForm.currentPassword,
+      });
+
+      if (signInError) {
+        toast({
+          title: "Senha atual incorreta",
+          description: "A senha atual informada está incorreta.",
+          variant: "destructive",
+        });
+        setIsChangingPassword(false);
+        return;
+      }
+
+      // Update to new password
+      const { error } = await supabase.auth.updateUser({
+        password: passwordForm.newPassword,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Senha alterada!",
+        description: "Sua senha foi atualizada com sucesso.",
+      });
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setShowPasswordForm(false);
+    } catch (error: any) {
+      console.error("Error changing password:", error);
+      toast({
+        title: "Erro ao alterar senha",
+        description: error.message || "Não foi possível alterar a senha.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Informações Pessoais
+          </CardTitle>
+          <CardDescription>Gerencie suas informações de perfil</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Email</Label>
+            <Input 
+              value={user?.email || ""} 
+              disabled 
+              className="bg-secondary border-border" 
+            />
+            <p className="text-xs text-muted-foreground">O email não pode ser alterado.</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="fullName">Nome Completo</Label>
+            <div className="flex gap-2">
+              <Input 
+                id="fullName"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="bg-secondary border-border" 
+                placeholder="Seu nome completo"
+              />
+              <Button 
+                onClick={handleSaveName} 
+                disabled={isSavingName || fullName === profile?.full_name}
+              >
+                {isSavingName ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="h-5 w-5" />
+            Segurança
+          </CardTitle>
+          <CardDescription>Altere sua senha de acesso</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!showPasswordForm ? (
+            <Button variant="outline" onClick={() => setShowPasswordForm(true)}>
+              <Lock className="h-4 w-4 mr-2" />
+              Alterar Senha
+            </Button>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="currentPassword">Senha Atual</Label>
+                <Input 
+                  id="currentPassword"
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                  className="bg-secondary border-border" 
+                  placeholder="Digite sua senha atual"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">Nova Senha</Label>
+                <Input 
+                  id="newPassword"
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                  className="bg-secondary border-border" 
+                  placeholder="Mínimo 8 caracteres, 1 maiúscula, 1 número"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
+                <Input 
+                  id="confirmPassword"
+                  type="password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                  className="bg-secondary border-border" 
+                  placeholder="Repita a nova senha"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowPasswordForm(false);
+                    setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                  }}
+                  disabled={isChangingPassword}
+                >
+                  Cancelar
+                </Button>
+                <Button onClick={handleChangePassword} disabled={isChangingPassword}>
+                  {isChangingPassword ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Salvar Nova Senha
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export default function Settings() {
   const { toast } = useToast();
@@ -472,30 +731,7 @@ export default function Settings() {
             </TabsContent>
 
             <TabsContent value="account">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Configurações da Conta</CardTitle>
-                  <CardDescription>Gerencie suas informações pessoais</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input 
-                      value={user?.email || ""} 
-                      disabled 
-                      className="bg-secondary border-border" 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Nome</Label>
-                    <Input 
-                      defaultValue={profile?.full_name || ""} 
-                      className="bg-secondary border-border" 
-                    />
-                  </div>
-                  <Button variant="outline">Alterar Senha</Button>
-                </CardContent>
-              </Card>
+              <AccountSettings />
             </TabsContent>
 
             <TabsContent value="plan">
@@ -509,12 +745,16 @@ export default function Settings() {
                     <div>
                       <h3 className="font-semibold text-lg capitalize">{profile?.plan || "Starter"}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {profile?.clients_limit || 1} cliente{(profile?.clients_limit || 1) > 1 ? "s" : ""}
+                        {(profile?.clients_limit || 1) >= 999999 
+                          ? "Clientes ilimitados" 
+                          : `${profile?.clients_limit || 1} cliente${(profile?.clients_limit || 1) > 1 ? "s" : ""}`}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-muted-foreground">Limite de clientes</p>
-                      <p className="text-2xl font-bold text-primary">{profile?.clients_limit || 1}</p>
+                      <p className="text-2xl font-bold text-primary">
+                        {(profile?.clients_limit || 1) >= 999999 ? "∞" : profile?.clients_limit || 1}
+                      </p>
                     </div>
                   </div>
                   <Button className="w-full" asChild>

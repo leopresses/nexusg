@@ -172,6 +172,7 @@ export default function Pricing() {
                     className="w-full gap-2"
                     onClick={() => handleUpgrade(plan.id, plan.name, plan.price, plan.clientsLimit)}
                   >
+                    <MessageCircle className="h-4 w-4" />
                     Fazer Upgrade
                   </Button>
                 )}
