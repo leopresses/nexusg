@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Trash2, AlertTriangle } from "lucide-react";
+import { Trash2, AlertTriangle, Loader2 } from "lucide-react";
 
 interface DeleteUserDialogProps {
   open: boolean;
@@ -29,10 +29,18 @@ export function DeleteUserDialog({
   const [confirmText, setConfirmText] = useState("");
   const confirmWord = "EXCLUIR";
 
-  const handleConfirm = () => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleConfirm = async (e: React.MouseEvent) => {
+    e.preventDefault();
     if (confirmText === confirmWord) {
-      onConfirm();
-      setConfirmText("");
+      setIsLoading(true);
+      try {
+        await onConfirm();
+        setConfirmText("");
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -80,14 +88,18 @@ export function DeleteUserDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleConfirm}
-            disabled={confirmText !== confirmWord}
+            disabled={confirmText !== confirmWord || isLoading}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Excluir Usuário
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4 mr-2" />
+            )}
+            {isLoading ? "Excluindo..." : "Excluir Usuário"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
