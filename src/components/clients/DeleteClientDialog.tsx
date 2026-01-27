@@ -31,7 +31,10 @@ export function DeleteClientDialog({
 }: DeleteClientDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleDelete = async () => {
+  const handleDelete = async (e: React.MouseEvent) => {
+    // Prevent default behavior that closes the dialog immediately
+    e.preventDefault();
+    
     if (!client) return;
 
     setIsLoading(true);
@@ -44,8 +47,8 @@ export function DeleteClientDialog({
       if (error) throw error;
 
       toast.success("Cliente excluído com sucesso!");
-      onSuccess();
       onOpenChange(false);
+      onSuccess();
     } catch (error) {
       console.error("Error deleting client:", error);
       toast.error("Erro ao excluir cliente");
