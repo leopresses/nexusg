@@ -34,8 +34,9 @@ export function DeleteTemplateDialog({
           <AlertDialogTitle>Excluir Template</AlertDialogTitle>
           <AlertDialogDescription>
             Tem certeza que deseja excluir o template "{template.title}"? 
-            Esta ação não pode ser desfeita. As tarefas já criadas a partir 
-            deste template não serão afetadas.
+            Esta ação não pode ser desfeita. <strong>Todas as tarefas pendentes</strong> criadas 
+            a partir deste template serão excluídas. Tarefas em andamento ou concluídas 
+            não serão afetadas.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
