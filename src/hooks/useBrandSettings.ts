@@ -40,9 +40,26 @@ export function useBrandSettings() {
       }
 
       if (data) {
+        // Get signed URL for logo if logo_url is stored
+        let logoUrl: string | null = null;
+        if (data.logo_url) {
+          // Extract the file path from the stored URL (format: userId/logo.ext)
+          const urlParts = data.logo_url.split('/brand-logos/');
+          if (urlParts.length > 1) {
+            const filePath = urlParts[1];
+            const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+              .from('brand-logos')
+              .createSignedUrl(filePath, 3600); // 1 hour expiry
+            
+            if (!signedUrlError && signedUrlData) {
+              logoUrl = signedUrlData.signedUrl;
+            }
+          }
+        }
+
         setBrandSettings({
           companyName: (data as any).company_name || defaultBrandSettings.companyName,
-          logo: data.logo_url,
+          logo: logoUrl,
           primaryColor: data.primary_color || defaultBrandSettings.primaryColor,
           secondaryColor: data.secondary_color || defaultBrandSettings.secondaryColor,
           accentColor: data.accent_color || defaultBrandSettings.accentColor,
@@ -95,7 +112,7 @@ export function useBrandSettings() {
         return { url: null, error: 'Erro ao fazer upload do arquivo' };
       }
 
-      // Get public URL
+      // Get public URL (stored in database for reference, signed URLs used for display)
       const { data: urlData } = supabase.storage
         .from('brand-logos')
         .getPublicUrl(fileName);
