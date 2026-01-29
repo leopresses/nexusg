@@ -65,29 +65,25 @@ export default function AdminUsersPlans() {
 
   const fetchUsers = async () => {
     try {
-      // Fetch all profiles (admin can see all via RLS)
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // Use edge function to fetch all users (service role required for admin view)
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
 
-      if (profilesError) throw profilesError;
+      if (!token) {
+        throw new Error("No authentication token");
+      }
 
-      // Fetch all user roles
-      const { data: roles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("*");
+      const response = await supabase.functions.invoke("admin-list-users", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      if (rolesError) throw rolesError;
+      if (response.error) {
+        throw response.error;
+      }
 
-      // Combine profiles with roles
-      const usersWithRoles: UserWithRole[] = (profiles || []).map((profile) => ({
-        ...profile,
-        roles: (roles || [])
-          .filter((r) => r.user_id === profile.user_id)
-          .map((r) => r.role),
-      }));
-
+      const usersWithRoles: UserWithRole[] = response.data.users || [];
       setUsers(usersWithRoles);
     } catch (error) {
       console.error("Error fetching users:", error);
