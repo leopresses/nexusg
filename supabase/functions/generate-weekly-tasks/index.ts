@@ -82,11 +82,10 @@ Deno.serve(async (req) => {
 
     console.log("Admin access verified for user:", userId);
 
-    // Use service role client for the actual task generation
-    const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Call the database function to generate tasks for all clients
-    const { error } = await supabaseService.rpc("generate_weekly_tasks_for_all_clients");
+    // Use the authenticated client to call the database function
+    // This preserves auth.uid() context so the function operates on the admin's own clients
+    // The function generate_weekly_tasks_for_all_clients is privacy-scoped to caller's clients
+    const { error } = await supabaseWithAuth.rpc("generate_weekly_tasks_for_all_clients");
 
     if (error) {
       console.error("Error generating weekly tasks:", error);
