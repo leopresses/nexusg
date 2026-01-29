@@ -1,19 +1,79 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encode as encodeBase64, decode as decodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// AES-GCM decryption for tokens
+async function decryptToken(ciphertext: string, key: string): Promise<string> {
+  const decoder = new TextDecoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(key.padEnd(32, "0").slice(0, 32)), // Ensure 256-bit key
+    { name: "AES-GCM" },
+    false,
+    ["decrypt"]
+  );
+  
+  const combined = new Uint8Array(decodeBase64(ciphertext));
+  const iv = combined.slice(0, 12); // First 12 bytes are IV
+  const encrypted = combined.slice(12);
+  
+  const plaintext = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    keyMaterial,
+    encrypted
+  );
+  
+  return decoder.decode(plaintext);
+}
+
+// AES-GCM encryption for tokens (for re-encrypting refreshed tokens)
+async function encryptToken(plaintext: string, key: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(key.padEnd(32, "0").slice(0, 32)),
+    { name: "AES-GCM" },
+    false,
+    ["encrypt"]
+  );
+  
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    keyMaterial,
+    encoder.encode(plaintext)
+  );
+  
+  const combined = new Uint8Array(iv.length + new Uint8Array(ciphertext).length);
+  combined.set(iv);
+  combined.set(new Uint8Array(ciphertext), iv.length);
+  
+  return encodeBase64(combined.buffer);
+}
+
 interface RefreshResult {
   accessToken: string;
+  encryptedAccessToken: string;
   expiresAt: string;
 }
 
-async function refreshAccessToken(refreshToken: string): Promise<RefreshResult | null> {
+async function refreshAccessToken(encryptedRefreshToken: string, encryptionKey: string): Promise<RefreshResult | null> {
   const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID")!;
   const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
+
+  // Decrypt the refresh token
+  let refreshToken: string;
+  try {
+    refreshToken = await decryptToken(encryptedRefreshToken, encryptionKey);
+  } catch (error) {
+    console.error("Failed to decrypt refresh token:", error);
+    return null;
+  }
 
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -32,8 +92,13 @@ async function refreshAccessToken(refreshToken: string): Promise<RefreshResult |
   }
 
   const tokens = await response.json();
+  
+  // Encrypt the new access token
+  const encryptedAccessToken = await encryptToken(tokens.access_token, encryptionKey);
+  
   return {
-    accessToken: tokens.access_token,
+    accessToken: tokens.access_token, // Plain for immediate use
+    encryptedAccessToken, // Encrypted for storage
     expiresAt: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
   };
 }
@@ -100,7 +165,16 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const encryptionKey = Deno.env.get("TOKEN_ENCRYPTION_KEY");
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+    if (!encryptionKey) {
+      console.error("TOKEN_ENCRYPTION_KEY not configured");
+      return new Response(
+        JSON.stringify({ error: "Encryption key not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Authentication is REQUIRED - either user JWT or service role key
     const authHeader = req.headers.get("Authorization");
@@ -159,7 +233,6 @@ serve(async (req) => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const dateStr = yesterday.toISOString().split("T")[0];
-    const [year, month, day] = dateStr.split("-");
 
     console.log(`Syncing metrics for date: ${dateStr}`);
 
@@ -195,7 +268,20 @@ serve(async (req) => {
 
     for (const connection of connections) {
       try {
-        let accessToken = connection.access_token;
+        let accessToken: string;
+
+        // Decrypt the access token
+        try {
+          accessToken = await decryptToken(connection.access_token, encryptionKey);
+        } catch (decryptError) {
+          console.error(`Failed to decrypt access token for user ${connection.user_id}:`, decryptError);
+          await supabaseAdmin
+            .from("google_user_connections")
+            .update({ status: "error", error_message: "Token decryption failed" })
+            .eq("user_id", connection.user_id);
+          totalErrors++;
+          continue;
+        }
 
         // Check if token needs refresh
         const tokenExpires = new Date(connection.token_expires_at);
@@ -208,7 +294,7 @@ serve(async (req) => {
             continue;
           }
 
-          const refreshResult = await refreshAccessToken(connection.refresh_token);
+          const refreshResult = await refreshAccessToken(connection.refresh_token, encryptionKey);
           
           if (!refreshResult) {
             await supabaseAdmin
@@ -218,10 +304,11 @@ serve(async (req) => {
             continue;
           }
 
+          // Save the new encrypted access token
           await supabaseAdmin
             .from("google_user_connections")
             .update({
-              access_token: refreshResult.accessToken,
+              access_token: refreshResult.encryptedAccessToken,
               token_expires_at: refreshResult.expiresAt,
               error_message: null,
             })
@@ -243,7 +330,7 @@ serve(async (req) => {
 
         for (const location of locations) {
           const metrics = await fetchMetricsForLocation(
-            accessToken!,
+            accessToken,
             location.location_name,
             dateStr,
             dateStr
