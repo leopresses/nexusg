@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Loader2, Calendar as CalendarIcon } from 'lucide-react';
+import { FileText, Loader2, Calendar as CalendarIcon, TrendingUp } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -26,7 +26,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useBrandSettings } from '@/hooks/useBrandSettings';
 import { useReports } from '@/hooks/useReports';
-import { generateClientReport, downloadPdf, type ReportData, type ClientData, type TaskData } from '@/lib/pdfGenerator';
+import { useGoogleMetrics } from '@/hooks/useGoogleMetrics';
+import { generateClientReport, downloadPdf, type ReportData, type ClientData, type TaskData, type GoogleMetrics } from '@/lib/pdfGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -43,6 +44,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
   const { user } = useAuth();
   const { brandSettings } = useBrandSettings();
   const { saveReport } = useReports();
+  const { getMetricsByClientForPeriod } = useGoogleMetrics();
   const { toast } = useToast();
   
   const [clients, setClients] = useState<ClientData[]>([]);
@@ -172,6 +174,22 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
       const inProgressTasks = 0;
       const completionRate = 100;
 
+      // Fetch Google Business metrics for this client and period
+      let googleMetrics: GoogleMetrics | undefined;
+      try {
+        const metricsMap = await getMetricsByClientForPeriod(
+          [selectedClientId],
+          periodDates.start,
+          periodDates.end
+        );
+        const clientMetrics = metricsMap.get(selectedClientId);
+        if (clientMetrics && (clientMetrics.views > 0 || clientMetrics.calls > 0)) {
+          googleMetrics = clientMetrics;
+        }
+      } catch (error) {
+        console.log('No Google metrics available:', error);
+      }
+
       const reportData: ReportData = {
         client: selectedClient,
         tasks,
@@ -183,6 +201,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
           inProgressTasks,
           completionRate,
         },
+        googleMetrics,
       };
 
       // Generate PDF
@@ -204,6 +223,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
           pendingTasks,
           inProgressTasks,
           completionRate,
+          googleMetrics: googleMetrics || null,
         },
       });
       

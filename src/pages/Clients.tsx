@@ -12,6 +12,8 @@ import {
   Pencil,
   Trash2,
   Link as LinkIcon,
+  Unlink,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +26,9 @@ import { ClientTaskProgress } from "@/components/clients/ClientTaskProgress";
 import { useClientTasks } from "@/hooks/useClientTasks";
 import { EditClientDialog } from "@/components/clients/EditClientDialog";
 import { DeleteClientDialog } from "@/components/clients/DeleteClientDialog";
+import { LinkLocationDialog } from "@/components/google/LinkLocationDialog";
+import { useGoogleConnection, type ClientGoogleLocation } from "@/hooks/useGoogleConnection";
+import { useAuth } from "@/hooks/useAuth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,21 +50,44 @@ const businessTypeLabels: Record<string, string> = {
 };
 
 export default function Clients() {
+  const { user } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
+  const [linkingClient, setLinkingClient] = useState<Client | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [clientLocations, setClientLocations] = useState<Map<string, ClientGoogleLocation>>(new Map());
   const navigate = useNavigate();
 
+  const { connection, getClientLocation, unlinkLocationFromClient } = useGoogleConnection();
   const clientIds = clients.map(c => c.id);
   const { getStatsForClient, isLoading: isLoadingTasks } = useClientTasks(clientIds);
 
   useEffect(() => {
     fetchClients();
   }, []);
+
+  // Fetch Google locations for all clients
+  useEffect(() => {
+    const fetchLocations = async () => {
+      if (!user || clients.length === 0) return;
+      
+      const locMap = new Map<string, ClientGoogleLocation>();
+      for (const client of clients) {
+        const loc = await getClientLocation(client.id);
+        if (loc) {
+          locMap.set(client.id, loc);
+        }
+      }
+      setClientLocations(locMap);
+    };
+
+    fetchLocations();
+  }, [clients, user, getClientLocation]);
 
   const fetchClients = async () => {
     try {
@@ -100,7 +128,29 @@ export default function Clients() {
 
   const handleIntegrateGoogle = (client: Client, e: React.MouseEvent) => {
     e.stopPropagation();
-    toast.info("Integração Google Business em breve! Esta funcionalidade está sendo desenvolvida.");
+    setLinkingClient(client);
+    setLinkDialogOpen(true);
+  };
+
+  const handleUnlinkGoogle = async (client: Client, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const success = await unlinkLocationFromClient(client.id);
+    if (success) {
+      setClientLocations((prev) => {
+        const updated = new Map(prev);
+        updated.delete(client.id);
+        return updated;
+      });
+    }
+  };
+
+  const handleLinkSuccess = async () => {
+    if (linkingClient) {
+      const loc = await getClientLocation(linkingClient.id);
+      if (loc) {
+        setClientLocations((prev) => new Map(prev).set(linkingClient.id, loc));
+      }
+    }
   };
 
   if (isLoading) {
@@ -211,15 +261,28 @@ export default function Clients() {
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={(e) => handleEdit(client, e as any)}>
                           <Pencil className="h-4 w-4 mr-2" />
                           Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => handleIntegrateGoogle(client, e as any)}>
-                          <LinkIcon className="h-4 w-4 mr-2" />
-                          Integrar Google API
-                        </DropdownMenuItem>
+                        {clientLocations.has(client.id) ? (
+                          <>
+                            <DropdownMenuItem onClick={(e) => handleIntegrateGoogle(client, e as any)}>
+                              <LinkIcon className="h-4 w-4 mr-2" />
+                              Trocar Location
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => handleUnlinkGoogle(client, e as any)}>
+                              <Unlink className="h-4 w-4 mr-2" />
+                              Remover Vínculo Google
+                            </DropdownMenuItem>
+                          </>
+                        ) : (
+                          <DropdownMenuItem onClick={(e) => handleIntegrateGoogle(client, e as any)}>
+                            <LinkIcon className="h-4 w-4 mr-2" />
+                            Vincular Google Business
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
                           onClick={(e) => handleDelete(client, e as any)}
@@ -236,6 +299,16 @@ export default function Clients() {
                     <div className="flex items-start gap-2 text-sm text-muted-foreground mb-4">
                       <MapPin className="h-4 w-4 flex-shrink-0 mt-0.5" />
                       <span className="line-clamp-2">{client.address}</span>
+                    </div>
+                  )}
+
+                  {/* Google Business Badge */}
+                  {clientLocations.has(client.id) && (
+                    <div className="mb-4 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-blue-500" />
+                      <span className="text-xs text-blue-500 font-medium">
+                        Google vinculado: {clientLocations.get(client.id)?.location_title}
+                      </span>
                     </div>
                   )}
 
@@ -286,6 +359,15 @@ export default function Clients() {
         onOpenChange={setDeleteDialogOpen}
         client={deletingClient}
         onSuccess={fetchClients}
+      />
+
+      <LinkLocationDialog
+        open={linkDialogOpen}
+        onOpenChange={setLinkDialogOpen}
+        clientId={linkingClient?.id || ""}
+        clientName={linkingClient?.name || ""}
+        currentLocation={linkingClient ? clientLocations.get(linkingClient.id) : null}
+        onSuccess={handleLinkSuccess}
       />
     </AppLayout>
   );
