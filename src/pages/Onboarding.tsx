@@ -36,8 +36,8 @@ interface BusinessTypeOption {
 
 const businessTypes: BusinessTypeOption[] = [
   { id: "restaurant", icon: Utensils, label: "Restaurante", key: "restaurant" },
-  { id: "service", icon: Coffee, label: "Café / Serviços", key: "cafe" },
-  { id: "service", icon: Scissors, label: "Barbearia / Salão", key: "barbershop" },
+  { id: "cafe_service", icon: Coffee, label: "Café / Serviços", key: "cafe" },
+  { id: "barbershop_salon", icon: Scissors, label: "Barbearia / Salão", key: "barbershop" },
   { id: "store", icon: ShoppingBag, label: "Loja", key: "store" },
   { id: "other", icon: Store, label: "Outro", key: "other" },
 ];

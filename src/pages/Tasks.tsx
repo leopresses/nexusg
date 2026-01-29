@@ -1,21 +1,28 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { CheckSquare, Loader2 } from "lucide-react";
+import { CheckSquare, Loader2, Plus, Calendar, CalendarDays } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { useTasks } from "@/hooks/useTasks";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskStats } from "@/components/tasks/TaskStats";
 import { TaskFilters } from "@/components/tasks/TaskFilters";
+import { CreateCustomTaskDialog } from "@/components/tasks/CreateCustomTaskDialog";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Tasks() {
   const [searchParams] = useSearchParams();
   const clientFromUrl = searchParams.get("client");
   
-  const { tasks, clients, isLoading, toggleChecklistItem, updateTaskStatus } = useTasks();
+  const { tasks, clients, isLoading, toggleChecklistItem, updateTaskStatus, refetch } = useTasks();
+  const { playStatusChangeSound } = useUserPreferences();
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterClient, setFilterClient] = useState<string>(clientFromUrl || "all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [frequencyTab, setFrequencyTab] = useState<"all" | "daily" | "weekly">("all");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Update filter when URL changes
   useEffect(() => {
@@ -23,6 +30,18 @@ export default function Tasks() {
       setFilterClient(clientFromUrl);
     }
   }, [clientFromUrl]);
+
+  // Handle status change with sound
+  const handleStatusChange = async (taskId: string, status: "pending" | "in_progress" | "completed") => {
+    await updateTaskStatus(taskId, status);
+    playStatusChangeSound();
+  };
+
+  // Handle checklist toggle with sound
+  const handleChecklistToggle = async (taskId: string, itemId: string) => {
+    await toggleChecklistItem(taskId, itemId);
+    playStatusChangeSound();
+  };
 
   // Memoize filtered tasks for performance and consistency
   const filteredTasks = useMemo(() => {
@@ -37,6 +56,12 @@ export default function Tasks() {
         if (task.status !== filterStatus) return false;
       }
       
+      // Filter by frequency
+      if (frequencyTab !== "all") {
+        const taskFrequency = (task as any).frequency || "weekly";
+        if (taskFrequency !== frequencyTab) return false;
+      }
+      
       // Filter by search query
       if (searchQuery) {
         if (!task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
@@ -44,20 +69,26 @@ export default function Tasks() {
       
       return true;
     });
-  }, [tasks, filterClient, filterStatus, searchQuery]);
+  }, [tasks, filterClient, filterStatus, frequencyTab, searchQuery]);
 
   // Calculate stats based on filtered tasks (when client is selected) or all tasks
   const stats = useMemo(() => {
-    const tasksToCount = filterClient !== "all" 
-      ? tasks.filter(t => t.client_id === filterClient)
-      : tasks;
+    let tasksToCount = tasks;
+    
+    if (filterClient !== "all") {
+      tasksToCount = tasks.filter(t => t.client_id === filterClient);
+    }
+    
+    if (frequencyTab !== "all") {
+      tasksToCount = tasksToCount.filter(t => ((t as any).frequency || "weekly") === frequencyTab);
+    }
     
     return {
       pending: tasksToCount.filter(t => t.status === "pending").length,
       in_progress: tasksToCount.filter(t => t.status === "in_progress").length,
       completed: tasksToCount.filter(t => t.status === "completed").length,
     };
-  }, [tasks, filterClient]);
+  }, [tasks, filterClient, frequencyTab]);
 
   if (isLoading) {
     return (
@@ -79,8 +110,32 @@ export default function Tasks() {
     <AppLayout 
       title="Tarefas" 
       subtitle={subtitle}
+      headerActions={
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nova Tarefa
+        </Button>
+      }
     >
       <div className="space-y-6">
+        {/* Frequency Tabs */}
+        <Tabs value={frequencyTab} onValueChange={(v) => setFrequencyTab(v as any)}>
+          <TabsList className="bg-secondary">
+            <TabsTrigger value="all" className="gap-2">
+              <CheckSquare className="h-4 w-4" />
+              Todas
+            </TabsTrigger>
+            <TabsTrigger value="daily" className="gap-2">
+              <Calendar className="h-4 w-4" />
+              Diárias
+            </TabsTrigger>
+            <TabsTrigger value="weekly" className="gap-2">
+              <CalendarDays className="h-4 w-4" />
+              Semanais
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         <TaskFilters
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -106,8 +161,8 @@ export default function Tasks() {
               onToggleExpand={() => setExpandedTask(
                 expandedTask === task.id ? null : task.id
               )}
-              onToggleChecklistItem={toggleChecklistItem}
-              onStatusChange={updateTaskStatus}
+              onToggleChecklistItem={handleChecklistToggle}
+              onStatusChange={handleStatusChange}
             />
           ))}
         </div>
@@ -125,6 +180,14 @@ export default function Tasks() {
           </div>
         )}
       </div>
+
+      <CreateCustomTaskDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        clients={clients}
+        selectedClientId={filterClient !== "all" ? filterClient : undefined}
+        onSuccess={refetch}
+      />
     </AppLayout>
   );
 }

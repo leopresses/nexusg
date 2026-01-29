@@ -11,6 +11,9 @@ import {
   CheckSquare,
   ListChecks,
   Send,
+  Calendar,
+  CalendarDays,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,12 +32,22 @@ import { TemplateDialog } from "@/components/templates/TemplateDialog";
 import { DeleteTemplateDialog } from "@/components/templates/DeleteTemplateDialog";
 
 type TaskTemplate = Database["public"]["Tables"]["task_templates"]["Row"];
+type BusinessType = Database["public"]["Enums"]["business_type"];
 
 export interface ChecklistItem {
   id: string;
   text: string;
   completed: boolean;
 }
+
+const businessTypeLabels: Record<BusinessType, string> = {
+  restaurant: "Restaurante",
+  store: "Loja",
+  service: "Serviço",
+  other: "Outro",
+  cafe_service: "Café/Serviços",
+  barbershop_salon: "Barbearia/Salão",
+};
 
 export default function AdminTemplates() {
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
@@ -55,7 +68,7 @@ export default function AdminTemplates() {
       const { data, error } = await supabase
         .from("task_templates")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("sort_order", { ascending: true });
 
       if (error) throw error;
       setTemplates(data || []);
@@ -154,6 +167,8 @@ export default function AdminTemplates() {
   );
 
   const activeCount = templates.filter((t) => t.is_active).length;
+  const dailyCount = templates.filter((t) => (t as any).frequency === "daily").length;
+  const weeklyCount = templates.filter((t) => (t as any).frequency !== "daily").length;
 
   if (isLoading) {
     return (
@@ -193,7 +208,7 @@ export default function AdminTemplates() {
       <div className="space-y-6">
         {/* Stats Cards */}
         <motion.div 
-          className="grid grid-cols-1 md:grid-cols-3 gap-4"
+          className="grid grid-cols-1 md:grid-cols-4 gap-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
@@ -202,7 +217,7 @@ export default function AdminTemplates() {
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                 <FileText className="h-5 w-5 text-primary" />
               </div>
-              <span className="text-muted-foreground">Total de Templates</span>
+              <span className="text-muted-foreground">Total</span>
             </div>
             <div className="text-3xl font-bold">{templates.length}</div>
           </div>
@@ -212,19 +227,29 @@ export default function AdminTemplates() {
               <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
                 <CheckSquare className="h-5 w-5 text-success" />
               </div>
-              <span className="text-muted-foreground">Templates Ativos</span>
+              <span className="text-muted-foreground">Ativos</span>
             </div>
             <div className="text-3xl font-bold">{activeCount}</div>
           </div>
 
           <div className="rounded-xl bg-card border border-border p-5">
             <div className="flex items-center gap-3 mb-3">
-              <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                <ListChecks className="h-5 w-5 text-muted-foreground" />
+              <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                <Calendar className="h-5 w-5 text-warning" />
               </div>
-              <span className="text-muted-foreground">Templates Inativos</span>
+              <span className="text-muted-foreground">Diários</span>
             </div>
-            <div className="text-3xl font-bold">{templates.length - activeCount}</div>
+            <div className="text-3xl font-bold">{dailyCount}</div>
+          </div>
+
+          <div className="rounded-xl bg-card border border-border p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <CalendarDays className="h-5 w-5 text-primary" />
+              </div>
+              <span className="text-muted-foreground">Semanais</span>
+            </div>
+            <div className="text-3xl font-bold">{weeklyCount}</div>
           </div>
         </motion.div>
 
@@ -248,6 +273,8 @@ export default function AdminTemplates() {
         >
           {filteredTemplates.map((template) => {
             const checklist = (template.checklist as unknown as ChecklistItem[]) || [];
+            const frequency = (template as any).frequency || "weekly";
+            const targetTypes = ((template as any).target_client_types as BusinessType[]) || [];
             
             return (
               <div 
@@ -256,7 +283,7 @@ export default function AdminTemplates() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
                       <h3 className="font-semibold text-lg truncate">{template.title}</h3>
                       <Badge 
                         variant="outline"
@@ -267,6 +294,19 @@ export default function AdminTemplates() {
                       >
                         {template.is_active ? "Ativo" : "Inativo"}
                       </Badge>
+                      <Badge 
+                        variant="outline"
+                        className={frequency === "daily"
+                          ? "bg-warning/20 text-warning border-warning/30"
+                          : "bg-primary/20 text-primary border-primary/30"
+                        }
+                      >
+                        {frequency === "daily" ? (
+                          <><Calendar className="h-3 w-3 mr-1" /> Diária</>
+                        ) : (
+                          <><CalendarDays className="h-3 w-3 mr-1" /> Semanal</>
+                        )}
+                      </Badge>
                     </div>
                     
                     {template.description && (
@@ -275,12 +315,28 @@ export default function AdminTemplates() {
                       </p>
                     )}
 
-                    {checklist.length > 0 && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <ListChecks className="h-4 w-4" />
-                        <span>{checklist.length} itens no checklist</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-4 flex-wrap">
+                      {checklist.length > 0 && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <ListChecks className="h-4 w-4" />
+                          <span>{checklist.length} itens</span>
+                        </div>
+                      )}
+                      
+                      {targetTypes.length > 0 && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Tag className="h-4 w-4" />
+                          <span>{targetTypes.map(t => businessTypeLabels[t]).join(", ")}</span>
+                        </div>
+                      )}
+                      
+                      {targetTypes.length === 0 && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Tag className="h-4 w-4" />
+                          <span>Todos os tipos</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <DropdownMenu>

@@ -12,15 +12,20 @@ import {
   ImageIcon,
   User,
   Lock,
+  Volume2,
+  VolumeX,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { AppLayout } from "@/components/AppLayout";
 import { useBrandSettings } from "@/hooks/useBrandSettings";
+import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -280,6 +285,57 @@ function AccountSettings() {
   );
 }
 
+// Preferences Settings Component
+function PreferencesSettings() {
+  const { preferences, updateSoundEnabled, playStatusChangeSound } = useUserPreferences();
+
+  const handleSoundToggle = async (enabled: boolean) => {
+    await updateSoundEnabled(enabled);
+    if (enabled) {
+      // Play a test sound when enabling
+      playStatusChangeSound();
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <SettingsIcon className="h-5 w-5" />
+            Configurações Gerais
+          </CardTitle>
+          <CardDescription>Personalize sua experiência no aplicativo</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                {preferences.soundEnabled ? (
+                  <Volume2 className="h-4 w-4 text-primary" />
+                ) : (
+                  <VolumeX className="h-4 w-4 text-muted-foreground" />
+                )}
+                <Label htmlFor="sound-toggle" className="font-medium">
+                  Som de Ações
+                </Label>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Tocar som ao mudar status de tarefas
+              </p>
+            </div>
+            <Switch
+              id="sound-toggle"
+              checked={preferences.soundEnabled}
+              onCheckedChange={handleSoundToggle}
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function Settings() {
   const { toast } = useToast();
   const { user, profile } = useAuth();
@@ -433,6 +489,7 @@ export default function Settings() {
       <Tabs defaultValue="whitelabel" className="space-y-6">
         <TabsList className="bg-secondary">
           <TabsTrigger value="whitelabel">White Label</TabsTrigger>
+          <TabsTrigger value="preferences">Preferências</TabsTrigger>
           <TabsTrigger value="account">Conta</TabsTrigger>
           <TabsTrigger value="plan">Plano</TabsTrigger>
         </TabsList>
@@ -728,6 +785,10 @@ export default function Settings() {
                   </p>
                 </div>
               </div>
+            </TabsContent>
+
+            <TabsContent value="preferences">
+              <PreferencesSettings />
             </TabsContent>
 
             <TabsContent value="account">

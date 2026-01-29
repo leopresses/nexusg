@@ -40,6 +40,8 @@ const businessTypeLabels: Record<string, string> = {
   store: "Loja",
   service: "Serviço",
   other: "Outro",
+  cafe_service: "Café/Serviços",
+  barbershop_salon: "Barbearia/Salão",
 };
 
 export default function Clients() {
@@ -176,10 +178,18 @@ export default function Clients() {
                   transition={{ delay: index * 0.05 }}
                   onClick={() => handleClientClick(client.id)}
                 >
-                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 rounded-xl gradient-neon flex items-center justify-center text-primary-foreground font-bold text-lg">
-                        {client.name.charAt(0).toUpperCase()}
+                      <div className="h-12 w-12 rounded-xl gradient-neon flex items-center justify-center text-primary-foreground font-bold text-lg overflow-hidden">
+                        {(client as any).avatar_url ? (
+                          <img 
+                            src={(client as any).avatar_url} 
+                            alt={client.name} 
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          client.name.charAt(0).toUpperCase()
+                        )}
                       </div>
                       <div>
                         <h3 className="font-semibold group-hover:text-primary transition-colors">
