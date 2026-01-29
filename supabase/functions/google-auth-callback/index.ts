@@ -19,25 +19,27 @@ serve(async (req) => {
 
     if (!code || !state) {
       console.error("Missing code or state");
-      return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=missing_params`);
+      return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=auth_failed`);
     }
 
-    // Decode and validate state
+    // Decode and validate state - use generic error message for all state validation failures
     let stateData;
     try {
       stateData = JSON.parse(atob(state));
-    } catch {
-      console.error("Invalid state encoding");
-      return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=invalid_state`);
+      
+      const { userId, timestamp } = stateData;
+      
+      // Validate required fields and check state age (10 minutes max)
+      if (!userId || !timestamp || Date.now() - timestamp > 10 * 60 * 1000) {
+        throw new Error("Invalid state data");
+      }
+    } catch (stateError) {
+      // Use generic error message to prevent timing attacks
+      console.error("State validation failed:", stateError);
+      return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=auth_failed`);
     }
 
-    const { userId, timestamp } = stateData;
-    
-    // Check state age (10 minutes max)
-    if (Date.now() - timestamp > 10 * 60 * 1000) {
-      console.error("State expired");
-      return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=expired`);
-    }
+    const { userId } = stateData;
 
     // Exchange code for tokens
     const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID")!;
@@ -60,7 +62,7 @@ serve(async (req) => {
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error("Token exchange failed:", errorText);
-      return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=token_exchange_failed`);
+      return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=auth_failed`);
     }
 
     const tokens = await tokenResponse.json();
@@ -102,7 +104,7 @@ serve(async (req) => {
 
     if (dbError) {
       console.error("Database error:", dbError);
-      return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=db_error`);
+      return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=auth_failed`);
     }
 
     console.log("Google connection saved for user:", userId);
@@ -112,6 +114,6 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in google-auth-callback:", error);
     const frontendUrl = Deno.env.get("FRONTEND_URL") || "https://nexusg.lovable.app";
-    return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=internal_error`);
+    return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=auth_failed`);
   }
 });
