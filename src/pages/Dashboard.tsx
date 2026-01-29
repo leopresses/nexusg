@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { AppLayout } from "@/components/AppLayout";
 import { ProgressBar } from "@/components/dashboard/ProgressBar";
+import { ClientAvatar } from "@/components/clients/ClientAvatar";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
@@ -288,15 +289,10 @@ export default function Dashboard() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="h-12 w-12 rounded-xl gradient-neon flex items-center justify-center text-primary-foreground font-bold text-lg overflow-hidden">
-                          {(client as any).avatar_url ? (
-                            <img 
-                              src={(client as any).avatar_url} 
-                              alt={client.name} 
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            client.name.charAt(0)
-                          )}
+                          <ClientAvatar
+                            avatarUrl={(client as any).avatar_url}
+                            clientName={client.name}
+                          />
                         </div>
                         <div>
                           <h3 className="font-medium">{client.name}</h3>
