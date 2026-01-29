@@ -56,6 +56,7 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          avatar_url: string | null
           business_type: Database["public"]["Enums"]["business_type"]
           created_at: string
           google_business_id: string | null
@@ -69,6 +70,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          avatar_url?: string | null
           business_type?: Database["public"]["Enums"]["business_type"]
           created_at?: string
           google_business_id?: string | null
@@ -82,6 +84,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          avatar_url?: string | null
           business_type?: Database["public"]["Enums"]["business_type"]
           created_at?: string
           google_business_id?: string | null
@@ -158,14 +161,63 @@ export type Database = {
         }
         Relationships: []
       }
+      reports: {
+        Row: {
+          client_id: string
+          created_at: string
+          file_url: string | null
+          id: string
+          metrics: Json | null
+          name: string
+          period_end: string
+          period_start: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          metrics?: Json | null
+          name: string
+          period_end: string
+          period_start: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          metrics?: Json | null
+          name?: string
+          period_end?: string
+          period_start?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_templates: {
         Row: {
           checklist: Json | null
           created_at: string
           created_by: string | null
           description: string | null
+          frequency: Database["public"]["Enums"]["task_frequency"] | null
           id: string
           is_active: boolean
+          sort_order: number | null
+          target_client_types:
+            | Database["public"]["Enums"]["business_type"][]
+            | null
           title: string
           updated_at: string
         }
@@ -174,8 +226,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          frequency?: Database["public"]["Enums"]["task_frequency"] | null
           id?: string
           is_active?: boolean
+          sort_order?: number | null
+          target_client_types?:
+            | Database["public"]["Enums"]["business_type"][]
+            | null
           title: string
           updated_at?: string
         }
@@ -184,8 +241,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          frequency?: Database["public"]["Enums"]["task_frequency"] | null
           id?: string
           is_active?: boolean
+          sort_order?: number | null
+          target_client_types?:
+            | Database["public"]["Enums"]["business_type"][]
+            | null
           title?: string
           updated_at?: string
         }
@@ -199,8 +261,11 @@ export type Database = {
           created_at: string
           description: string | null
           due_date: string | null
+          frequency: Database["public"]["Enums"]["task_frequency"] | null
           id: string
+          is_custom: boolean | null
           status: Database["public"]["Enums"]["task_status"]
+          task_date: string | null
           template_id: string | null
           title: string
           updated_at: string
@@ -213,8 +278,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
+          frequency?: Database["public"]["Enums"]["task_frequency"] | null
           id?: string
+          is_custom?: boolean | null
           status?: Database["public"]["Enums"]["task_status"]
+          task_date?: string | null
           template_id?: string | null
           title: string
           updated_at?: string
@@ -227,8 +295,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
+          frequency?: Database["public"]["Enums"]["task_frequency"] | null
           id?: string
+          is_custom?: boolean | null
           status?: Database["public"]["Enums"]["task_status"]
+          task_date?: string | null
           template_id?: string | null
           title?: string
           updated_at?: string
@@ -250,6 +321,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          sound_enabled: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sound_enabled?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sound_enabled?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -275,6 +370,11 @@ export type Database = {
     }
     Functions: {
       can_add_client: { Args: { _user_id: string }; Returns: boolean }
+      generate_daily_tasks_for_all_clients: { Args: never; Returns: undefined }
+      generate_daily_tasks_for_client: {
+        Args: { _client_id: string; _task_date: string }
+        Returns: undefined
+      }
       generate_tasks_for_client: {
         Args: { _client_id: string; _week_start: string }
         Returns: undefined
@@ -291,8 +391,15 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
-      business_type: "restaurant" | "store" | "service" | "other"
+      business_type:
+        | "restaurant"
+        | "store"
+        | "service"
+        | "other"
+        | "cafe_service"
+        | "barbershop_salon"
       subscription_plan: "starter" | "pro" | "elite" | "agency"
+      task_frequency: "daily" | "weekly"
       task_status: "pending" | "in_progress" | "completed"
     }
     CompositeTypes: {
@@ -422,8 +529,16 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
-      business_type: ["restaurant", "store", "service", "other"],
+      business_type: [
+        "restaurant",
+        "store",
+        "service",
+        "other",
+        "cafe_service",
+        "barbershop_salon",
+      ],
       subscription_plan: ["starter", "pro", "elite", "agency"],
+      task_frequency: ["daily", "weekly"],
       task_status: ["pending", "in_progress", "completed"],
     },
   },
