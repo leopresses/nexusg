@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2, Upload, User, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { useClientAvatarUrl } from "@/hooks/useClientAvatarUrl";
 
 interface ClientAvatarUploadProps {
   clientId: string;
@@ -18,6 +19,13 @@ export function ClientAvatarUpload({
 }: ClientAvatarUploadProps) {
   const { user } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
+  const [internalAvatarUrl, setInternalAvatarUrl] = useState<string | null>(currentAvatarUrl);
+  const signedAvatarUrl = useClientAvatarUrl(internalAvatarUrl);
+
+  // Sync internal state with prop
+  useEffect(() => {
+    setInternalAvatarUrl(currentAvatarUrl);
+  }, [currentAvatarUrl]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -55,20 +63,21 @@ export function ClientAvatarUpload({
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from("client-avatars")
-        .getPublicUrl(fileName);
+      // Build the storage path URL (will be converted to signed URL on display)
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const storedUrl = `${baseUrl}/storage/v1/object/public/client-avatars/${fileName}`;
 
-      // Update client record
+      // Update client record with the storage path URL
       const { error: updateError } = await supabase
         .from("clients")
-        .update({ avatar_url: urlData.publicUrl })
+        .update({ avatar_url: storedUrl })
         .eq("id", clientId);
 
       if (updateError) throw updateError;
 
-      onAvatarChange(urlData.publicUrl);
+      // Update internal state to trigger signed URL refresh
+      setInternalAvatarUrl(storedUrl);
+      onAvatarChange(storedUrl);
       toast.success("Avatar atualizado!");
     } catch (error) {
       console.error("Error uploading avatar:", error);
@@ -95,6 +104,7 @@ export function ClientAvatarUpload({
 
       if (error) throw error;
 
+      setInternalAvatarUrl(null);
       onAvatarChange(null);
       toast.success("Avatar removido!");
     } catch (error) {
@@ -110,9 +120,9 @@ export function ClientAvatarUpload({
       <div className="h-16 w-16 rounded-xl bg-secondary border-2 border-dashed border-border flex items-center justify-center overflow-hidden">
         {isUploading ? (
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        ) : currentAvatarUrl ? (
+        ) : signedAvatarUrl ? (
           <img
-            src={currentAvatarUrl}
+            src={signedAvatarUrl}
             alt="Avatar"
             className="h-full w-full object-cover"
             onError={(e) => {
@@ -146,7 +156,7 @@ export function ClientAvatarUpload({
               </span>
             </Button>
           </label>
-          {currentAvatarUrl && (
+          {internalAvatarUrl && (
             <Button
               variant="ghost"
               size="sm"

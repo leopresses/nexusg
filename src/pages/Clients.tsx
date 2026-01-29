@@ -29,6 +29,7 @@ import { DeleteClientDialog } from "@/components/clients/DeleteClientDialog";
 import { LinkLocationDialog } from "@/components/google/LinkLocationDialog";
 import { useGoogleConnection, type ClientGoogleLocation } from "@/hooks/useGoogleConnection";
 import { useAuth } from "@/hooks/useAuth";
+import { ClientAvatar } from "@/components/clients/ClientAvatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -231,15 +232,10 @@ export default function Clients() {
                     <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="h-12 w-12 rounded-xl gradient-neon flex items-center justify-center text-primary-foreground font-bold text-lg overflow-hidden">
-                        {(client as any).avatar_url ? (
-                          <img 
-                            src={(client as any).avatar_url} 
-                            alt={client.name} 
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          client.name.charAt(0).toUpperCase()
-                        )}
+                        <ClientAvatar
+                          avatarUrl={(client as any).avatar_url}
+                          clientName={client.name}
+                        />
                       </div>
                       <div>
                         <h3 className="font-semibold group-hover:text-primary transition-colors">
