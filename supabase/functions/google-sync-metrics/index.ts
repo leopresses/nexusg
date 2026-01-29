@@ -102,22 +102,57 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    // Check for auth header (optional for cron, required for manual trigger)
+    // Authentication is REQUIRED - either user JWT or service role key
     const authHeader = req.headers.get("Authorization");
     let specificUserId: string | null = null;
+    let isServiceRoleAuth = false;
 
-    if (authHeader?.startsWith("Bearer ")) {
+    if (!authHeader) {
+      console.error("Missing authorization header");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - missing authorization" }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
+
+    // Check if this is a service role key (for cron jobs)
+    if (authHeader === `Bearer ${serviceRoleKey}`) {
+      console.log("Authenticated via service role key (cron job)");
+      isServiceRoleAuth = true;
+    } else if (authHeader.startsWith("Bearer ")) {
+      // Validate user JWT
       const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
       const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         global: { headers: { Authorization: authHeader } },
       });
 
       const token = authHeader.replace("Bearer ", "");
-      const { data: claimsData } = await supabase.auth.getClaims(token);
+      const { data: userData, error: userError } = await supabase.auth.getUser(token);
       
-      if (claimsData?.claims?.sub) {
-        specificUserId = claimsData.claims.sub;
+      if (userError || !userData?.user) {
+        console.error("Invalid token:", userError?.message);
+        return new Response(
+          JSON.stringify({ error: "Unauthorized - invalid token" }),
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          }
+        );
       }
+      
+      specificUserId = userData.user.id;
+      console.log("Authenticated user:", specificUserId);
+    } else {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - invalid authorization format" }),
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
     }
 
     // Get yesterday's date for metrics
@@ -128,13 +163,14 @@ serve(async (req) => {
 
     console.log(`Syncing metrics for date: ${dateStr}`);
 
-    // Get all connected users (or specific user)
+    // Get all connected users (or specific user if authenticated with JWT)
     let connectionQuery = supabaseAdmin
       .from("google_user_connections")
       .select("*")
       .eq("status", "connected");
 
-    if (specificUserId) {
+    // If user JWT auth (not service role), only sync their own data
+    if (specificUserId && !isServiceRoleAuth) {
       connectionQuery = connectionQuery.eq("user_id", specificUserId);
     }
 
