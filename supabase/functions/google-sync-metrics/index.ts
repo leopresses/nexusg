@@ -2,10 +2,22 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encode as encodeBase64, decode as decodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// Allowed origins for CORS
+const allowedOrigins = [
+  "https://nexusg.lovable.app",
+  "https://id-preview--a37866c6-77e2-4449-8805-ec48acb8f5b5.lovable.app",
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") || "";
+  const allowedOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+  
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
 
 // AES-GCM decryption for tokens
 async function decryptToken(ciphertext: string, key: string): Promise<string> {
@@ -158,6 +170,8 @@ async function fetchMetricsForLocation(
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -171,7 +185,7 @@ serve(async (req) => {
     if (!encryptionKey) {
       console.error("TOKEN_ENCRYPTION_KEY not configured");
       return new Response(
-        JSON.stringify({ error: "Encryption key not configured" }),
+        JSON.stringify({ error: "Configuration error" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -184,7 +198,7 @@ serve(async (req) => {
     if (!authHeader) {
       console.error("Missing authorization header");
       return new Response(
-        JSON.stringify({ error: "Unauthorized - missing authorization" }),
+        JSON.stringify({ error: "Unauthorized" }),
         { 
           status: 401, 
           headers: { ...corsHeaders, "Content-Type": "application/json" } 
@@ -209,7 +223,7 @@ serve(async (req) => {
       if (userError || !userData?.user) {
         console.error("Invalid token:", userError?.message);
         return new Response(
-          JSON.stringify({ error: "Unauthorized - invalid token" }),
+          JSON.stringify({ error: "Unauthorized" }),
           { 
             status: 401, 
             headers: { ...corsHeaders, "Content-Type": "application/json" } 
@@ -221,7 +235,7 @@ serve(async (req) => {
       console.log("Authenticated user:", specificUserId);
     } else {
       return new Response(
-        JSON.stringify({ error: "Unauthorized - invalid authorization format" }),
+        JSON.stringify({ error: "Unauthorized" }),
         { 
           status: 401, 
           headers: { ...corsHeaders, "Content-Type": "application/json" } 
@@ -251,7 +265,7 @@ serve(async (req) => {
 
     if (connError) {
       console.error("Error fetching connections:", connError);
-      return new Response(JSON.stringify({ error: "Database error" }), {
+      return new Response(JSON.stringify({ error: "Operation failed" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -392,10 +406,10 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in google-sync-metrics:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "Operation failed" }),
       {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
       }
     );
   }

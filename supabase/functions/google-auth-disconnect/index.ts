@@ -1,12 +1,51 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encode as encodeBase64, decode as decodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// Allowed origins for CORS
+const allowedOrigins = [
+  "https://nexusg.lovable.app",
+  "https://id-preview--a37866c6-77e2-4449-8805-ec48acb8f5b5.lovable.app",
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") || "";
+  const allowedOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+  
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
+
+// AES-GCM decryption for tokens
+async function decryptToken(ciphertext: string, key: string): Promise<string> {
+  const decoder = new TextDecoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(key.padEnd(32, "0").slice(0, 32)),
+    { name: "AES-GCM" },
+    false,
+    ["decrypt"]
+  );
+  
+  const combined = new Uint8Array(decodeBase64(ciphertext));
+  const iv = combined.slice(0, 12);
+  const encrypted = combined.slice(12);
+  
+  const plaintext = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    keyMaterial,
+    encrypted
+  );
+  
+  return decoder.decode(plaintext);
+}
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -23,10 +62,19 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const encryptionKey = Deno.env.get("TOKEN_ENCRYPTION_KEY");
     
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
+
+    if (!encryptionKey) {
+      console.error("TOKEN_ENCRYPTION_KEY not configured");
+      return new Response(JSON.stringify({ error: "Configuration error" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const token = authHeader.replace("Bearer ", "");
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
@@ -40,7 +88,7 @@ serve(async (req) => {
 
     const userId = claimsData.claims.sub;
     if (!userId) {
-      return new Response(JSON.stringify({ error: "User ID not found" }), {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -53,15 +101,16 @@ serve(async (req) => {
       .eq("user_id", userId)
       .single();
 
-    // Try to revoke the token at Google
+    // Try to revoke the token at Google (decrypt first)
     if (connection?.access_token) {
       try {
-        await fetch(`https://oauth2.googleapis.com/revoke?token=${connection.access_token}`, {
+        const decryptedToken = await decryptToken(connection.access_token, encryptionKey);
+        await fetch(`https://oauth2.googleapis.com/revoke?token=${decryptedToken}`, {
           method: "POST",
         });
         console.log("Token revoked at Google");
       } catch (e) {
-        console.log("Token revocation failed (might be already expired):", e);
+        console.log("Token revocation failed (might be already expired or decryption error):", e);
       }
     }
 
@@ -78,7 +127,7 @@ serve(async (req) => {
 
     if (updateError) {
       console.error("Error updating connection:", updateError);
-      return new Response(JSON.stringify({ error: "Failed to disconnect" }), {
+      return new Response(JSON.stringify({ error: "Disconnect failed" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -105,7 +154,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in google-auth-disconnect:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "Operation failed" }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
