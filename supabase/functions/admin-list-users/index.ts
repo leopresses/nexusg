@@ -1,11 +1,25 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Allowed origins for CORS
+const allowedOrigins = [
+  "https://nexusg.lovable.app",
+  "https://id-preview--a37866c6-77e2-4449-8805-ec48acb8f5b5.lovable.app",
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") || "";
+  const allowedOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+  
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -16,7 +30,7 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: "No authorization header" }),
+        JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -34,7 +48,7 @@ Deno.serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseWithAuth.auth.getUser();
     if (userError || !user) {
       return new Response(
-        JSON.stringify({ error: "Invalid authentication" }),
+        JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -62,7 +76,8 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: false });
 
     if (profilesError) {
-      throw profilesError;
+      console.error("Error fetching profiles:", profilesError);
+      throw new Error("Database operation failed");
     }
 
     // Fetch all user roles
@@ -71,7 +86,8 @@ Deno.serve(async (req) => {
       .select("*");
 
     if (rolesError) {
-      throw rolesError;
+      console.error("Error fetching roles:", rolesError);
+      throw new Error("Database operation failed");
     }
 
     // Combine profiles with roles
@@ -88,9 +104,8 @@ Deno.serve(async (req) => {
     );
   } catch (error: unknown) {
     console.error("Error in admin-list-users:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: message }),
+      JSON.stringify({ error: "Operation failed" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

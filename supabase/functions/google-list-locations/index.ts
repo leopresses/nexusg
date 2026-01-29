@@ -1,14 +1,91 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encode as encodeBase64, decode as decodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// Allowed origins for CORS
+const allowedOrigins = [
+  "https://nexusg.lovable.app",
+  "https://id-preview--a37866c6-77e2-4449-8805-ec48acb8f5b5.lovable.app",
+];
 
-async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; expiresAt: string } | null> {
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") || "";
+  const allowedOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+  
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
+
+// AES-GCM decryption for tokens
+async function decryptToken(ciphertext: string, key: string): Promise<string> {
+  const decoder = new TextDecoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(key.padEnd(32, "0").slice(0, 32)),
+    { name: "AES-GCM" },
+    false,
+    ["decrypt"]
+  );
+  
+  const combined = new Uint8Array(decodeBase64(ciphertext));
+  const iv = combined.slice(0, 12);
+  const encrypted = combined.slice(12);
+  
+  const plaintext = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    keyMaterial,
+    encrypted
+  );
+  
+  return decoder.decode(plaintext);
+}
+
+// AES-GCM encryption for tokens (for re-encrypting refreshed tokens)
+async function encryptToken(plaintext: string, key: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(key.padEnd(32, "0").slice(0, 32)),
+    { name: "AES-GCM" },
+    false,
+    ["encrypt"]
+  );
+  
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    keyMaterial,
+    encoder.encode(plaintext)
+  );
+  
+  const combined = new Uint8Array(iv.length + new Uint8Array(ciphertext).length);
+  combined.set(iv);
+  combined.set(new Uint8Array(ciphertext), iv.length);
+  
+  return encodeBase64(combined.buffer);
+}
+
+interface RefreshResult {
+  accessToken: string;
+  encryptedAccessToken: string;
+  expiresAt: string;
+}
+
+async function refreshAccessToken(encryptedRefreshToken: string, encryptionKey: string): Promise<RefreshResult | null> {
   const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID")!;
   const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
+
+  // Decrypt the refresh token
+  let refreshToken: string;
+  try {
+    refreshToken = await decryptToken(encryptedRefreshToken, encryptionKey);
+  } catch (error) {
+    console.error("Failed to decrypt refresh token:", error);
+    return null;
+  }
 
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -27,13 +104,20 @@ async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: 
   }
 
   const tokens = await response.json();
+  
+  // Encrypt the new access token
+  const encryptedAccessToken = await encryptToken(tokens.access_token, encryptionKey);
+  
   return {
     accessToken: tokens.access_token,
+    encryptedAccessToken,
     expiresAt: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
   };
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -51,11 +135,20 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const encryptionKey = Deno.env.get("TOKEN_ENCRYPTION_KEY");
     
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+    if (!encryptionKey) {
+      console.error("TOKEN_ENCRYPTION_KEY not configured");
+      return new Response(JSON.stringify({ error: "Configuration error" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const token = authHeader.replace("Bearer ", "");
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
@@ -90,7 +183,22 @@ serve(async (req) => {
       });
     }
 
-    let accessToken = connection.access_token;
+    // Decrypt the access token
+    let accessToken: string;
+    try {
+      accessToken = await decryptToken(connection.access_token, encryptionKey);
+    } catch (decryptError) {
+      console.error("Failed to decrypt access token:", decryptError);
+      await supabaseAdmin
+        .from("google_user_connections")
+        .update({ status: "error", error_message: "Token error" })
+        .eq("user_id", userId);
+      
+      return new Response(JSON.stringify({ error: "Please reconnect your Google account" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Check if token needs refresh
     const tokenExpires = new Date(connection.token_expires_at);
@@ -98,37 +206,36 @@ serve(async (req) => {
       console.log("Token expired, refreshing...");
       
       if (!connection.refresh_token) {
-        // Mark as error if no refresh token
         await supabaseAdmin
           .from("google_user_connections")
-          .update({ status: "error", error_message: "Refresh token missing" })
+          .update({ status: "error", error_message: "Session expired" })
           .eq("user_id", userId);
         
-        return new Response(JSON.stringify({ error: "Refresh token missing, please reconnect" }), {
+        return new Response(JSON.stringify({ error: "Please reconnect your Google account" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const refreshResult = await refreshAccessToken(connection.refresh_token);
+      const refreshResult = await refreshAccessToken(connection.refresh_token, encryptionKey);
       
       if (!refreshResult) {
         await supabaseAdmin
           .from("google_user_connections")
-          .update({ status: "error", error_message: "Token refresh failed" })
+          .update({ status: "error", error_message: "Authentication expired" })
           .eq("user_id", userId);
         
-        return new Response(JSON.stringify({ error: "Token refresh failed, please reconnect" }), {
+        return new Response(JSON.stringify({ error: "Please reconnect your Google account" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      // Update tokens in database
+      // Update tokens in database (encrypted)
       await supabaseAdmin
         .from("google_user_connections")
         .update({
-          access_token: refreshResult.accessToken,
+          access_token: refreshResult.encryptedAccessToken,
           token_expires_at: refreshResult.expiresAt,
           error_message: null,
         })
@@ -146,17 +253,16 @@ serve(async (req) => {
     );
 
     if (!accountsResponse.ok) {
-      const errorText = await accountsResponse.text();
-      console.error("Failed to fetch accounts:", errorText);
+      console.error("Failed to fetch accounts:", await accountsResponse.text());
       
       if (accountsResponse.status === 401 || accountsResponse.status === 403) {
         await supabaseAdmin
           .from("google_user_connections")
-          .update({ status: "error", error_message: "Access denied by Google" })
+          .update({ status: "error", error_message: "Access denied" })
           .eq("user_id", userId);
       }
       
-      return new Response(JSON.stringify({ error: "Failed to fetch Google Business accounts" }), {
+      return new Response(JSON.stringify({ error: "Failed to fetch business accounts" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -223,7 +329,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in google-list-locations:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "Operation failed" }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -1,12 +1,26 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// Allowed origins for CORS
+const allowedOrigins = [
+  "https://nexusg.lovable.app",
+  "https://id-preview--a37866c6-77e2-4449-8805-ec48acb8f5b5.lovable.app",
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") || "";
+  const allowedOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+  
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -40,7 +54,7 @@ serve(async (req) => {
 
     const userId = claimsData.claims.sub;
     if (!userId) {
-      return new Response(JSON.stringify({ error: "User ID not found" }), {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -53,7 +67,7 @@ serve(async (req) => {
     const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
     if (!googleClientId) {
       console.error("GOOGLE_CLIENT_ID not configured");
-      return new Response(JSON.stringify({ error: "Google OAuth not configured" }), {
+      return new Response(JSON.stringify({ error: "Configuration error" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -100,7 +114,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in google-auth-connect:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "Operation failed" }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
