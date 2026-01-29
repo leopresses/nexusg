@@ -53,6 +53,50 @@ export type Database = {
         }
         Relationships: []
       }
+      client_google_locations: {
+        Row: {
+          address: string | null
+          client_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          location_name: string
+          location_title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          client_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location_name: string
+          location_title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location_name?: string
+          location_title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_google_locations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -93,6 +137,92 @@ export type Database = {
           logo_url?: string | null
           monthly_revenue?: number | null
           name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      google_metrics_daily: {
+        Row: {
+          calls: number | null
+          client_id: string
+          created_at: string
+          date: string
+          directions: number | null
+          id: string
+          messages: number | null
+          user_id: string
+          views: number | null
+          website_clicks: number | null
+        }
+        Insert: {
+          calls?: number | null
+          client_id: string
+          created_at?: string
+          date: string
+          directions?: number | null
+          id?: string
+          messages?: number | null
+          user_id: string
+          views?: number | null
+          website_clicks?: number | null
+        }
+        Update: {
+          calls?: number | null
+          client_id?: string
+          created_at?: string
+          date?: string
+          directions?: number | null
+          id?: string
+          messages?: number | null
+          user_id?: string
+          views?: number | null
+          website_clicks?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_metrics_daily_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      google_user_connections: {
+        Row: {
+          access_token: string | null
+          created_at: string
+          error_message: string | null
+          google_email: string | null
+          last_sync_at: string | null
+          refresh_token: string | null
+          status: string
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string
+          error_message?: string | null
+          google_email?: string | null
+          last_sync_at?: string | null
+          refresh_token?: string | null
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string
+          error_message?: string | null
+          google_email?: string | null
+          last_sync_at?: string | null
+          refresh_token?: string | null
+          status?: string
+          token_expires_at?: string | null
           updated_at?: string
           user_id?: string
         }

@@ -1,0 +1,239 @@
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+
+export interface GoogleConnection {
+  user_id: string;
+  google_email: string | null;
+  status: "connected" | "error" | "disconnected";
+  last_sync_at: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GoogleLocation {
+  name: string;
+  title: string;
+  address: string;
+  accountName: string;
+}
+
+export interface ClientGoogleLocation {
+  id: string;
+  user_id: string;
+  client_id: string;
+  location_name: string;
+  location_title: string;
+  address: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useGoogleConnection() {
+  const { user } = useAuth();
+  const [connection, setConnection] = useState<GoogleConnection | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [locations, setLocations] = useState<GoogleLocation[]>([]);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+
+  const fetchConnection = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("google_user_connections")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setConnection(data as GoogleConnection | null);
+    } catch (error) {
+      console.error("Error fetching Google connection:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchConnection();
+  }, [fetchConnection]);
+
+  const connect = async () => {
+    if (!user) return;
+
+    setIsConnecting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-auth-connect", {
+        body: { redirectUrl: window.location.origin },
+      });
+
+      if (error) throw error;
+
+      if (data?.authUrl) {
+        // Redirect to Google OAuth
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error("No auth URL returned");
+      }
+    } catch (error) {
+      console.error("Error connecting Google:", error);
+      toast.error("Erro ao conectar com Google. Tente novamente.");
+      setIsConnecting(false);
+    }
+  };
+
+  const disconnect = async () => {
+    if (!user) return;
+
+    setIsDisconnecting(true);
+    try {
+      const { error } = await supabase.functions.invoke("google-auth-disconnect");
+
+      if (error) throw error;
+
+      setConnection(null);
+      setLocations([]);
+      toast.success("Google desconectado com sucesso!");
+    } catch (error) {
+      console.error("Error disconnecting Google:", error);
+      toast.error("Erro ao desconectar do Google.");
+    } finally {
+      setIsDisconnecting(false);
+    }
+  };
+
+  const fetchLocations = async () => {
+    if (!user || connection?.status !== "connected") return;
+
+    setIsLoadingLocations(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-list-locations");
+
+      if (error) throw error;
+
+      setLocations(data?.locations || []);
+      return data?.locations || [];
+    } catch (error) {
+      console.error("Error fetching locations:", error);
+      toast.error("Erro ao buscar localizações do Google Business.");
+      return [];
+    } finally {
+      setIsLoadingLocations(false);
+    }
+  };
+
+  const syncMetrics = async () => {
+    if (!user) return;
+
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-sync-metrics");
+
+      if (error) throw error;
+
+      toast.success(`Métricas sincronizadas! ${data?.synced || 0} registros atualizados.`);
+      await fetchConnection();
+    } catch (error) {
+      console.error("Error syncing metrics:", error);
+      toast.error("Erro ao sincronizar métricas.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const linkLocationToClient = async (
+    clientId: string,
+    location: GoogleLocation
+  ): Promise<boolean> => {
+    if (!user) return false;
+
+    try {
+      const { error } = await supabase.from("client_google_locations").upsert(
+        {
+          user_id: user.id,
+          client_id: clientId,
+          location_name: location.name,
+          location_title: location.title,
+          address: location.address,
+          is_active: true,
+        },
+        { onConflict: "client_id" }
+      );
+
+      if (error) throw error;
+
+      toast.success("Localização vinculada com sucesso!");
+      return true;
+    } catch (error) {
+      console.error("Error linking location:", error);
+      toast.error("Erro ao vincular localização.");
+      return false;
+    }
+  };
+
+  const unlinkLocationFromClient = async (clientId: string): Promise<boolean> => {
+    if (!user) return false;
+
+    try {
+      const { error } = await supabase
+        .from("client_google_locations")
+        .update({ is_active: false })
+        .eq("client_id", clientId)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      toast.success("Vínculo removido com sucesso!");
+      return true;
+    } catch (error) {
+      console.error("Error unlinking location:", error);
+      toast.error("Erro ao remover vínculo.");
+      return false;
+    }
+  };
+
+  const getClientLocation = async (clientId: string): Promise<ClientGoogleLocation | null> => {
+    if (!user) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from("client_google_locations")
+        .select("*")
+        .eq("client_id", clientId)
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data as ClientGoogleLocation | null;
+    } catch (error) {
+      console.error("Error fetching client location:", error);
+      return null;
+    }
+  };
+
+  return {
+    connection,
+    isLoading,
+    isConnecting,
+    isDisconnecting,
+    isSyncing,
+    locations,
+    isLoadingLocations,
+    connect,
+    disconnect,
+    fetchConnection,
+    fetchLocations,
+    syncMetrics,
+    linkLocationToClient,
+    unlinkLocationFromClient,
+    getClientLocation,
+  };
+}

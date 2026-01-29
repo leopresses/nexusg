@@ -26,6 +26,14 @@ export interface TaskData {
   client_id: string;
 }
 
+export interface GoogleMetrics {
+  views: number;
+  calls: number;
+  directions: number;
+  websiteClicks: number;
+  messages: number;
+}
+
 export interface ReportData {
   client: ClientData;
   tasks: TaskData[];
@@ -40,6 +48,7 @@ export interface ReportData {
     inProgressTasks: number;
     completionRate: number;
   };
+  googleMetrics?: GoogleMetrics;
 }
 
 // Convert hex to RGB
@@ -155,40 +164,101 @@ export async function generateClientReport(
   // ===== METRICS CARDS =====
   yPos += 20;
   
-  const cardWidth = (pageWidth - margin * 2 - 15) / 4;
+  const hasGoogleMetrics = reportData.googleMetrics && (
+    reportData.googleMetrics.views > 0 ||
+    reportData.googleMetrics.calls > 0 ||
+    reportData.googleMetrics.directions > 0 ||
+    reportData.googleMetrics.websiteClicks > 0
+  );
+  
+  // Task Metrics Cards
+  const taskCardWidth = (pageWidth - margin * 2 - 15) / 4;
   const cardHeight = 35;
   
-  const metrics = [
+  const taskMetrics = [
     { label: 'Total de Tarefas', value: reportData.metrics.totalTasks.toString() },
     { label: 'Concluídas', value: reportData.metrics.completedTasks.toString() },
     { label: 'Em Progresso', value: reportData.metrics.inProgressTasks.toString() },
     { label: 'Taxa de Conclusão', value: `${reportData.metrics.completionRate}%` },
   ];
   
-  metrics.forEach((metric, index) => {
-    const xPos = margin + index * (cardWidth + 5);
+  taskMetrics.forEach((metric, index) => {
+    const xPos = margin + index * (taskCardWidth + 5);
     
     // Card background with light tint
     doc.setFillColor(240, 240, 240);
-    doc.roundedRect(xPos, yPos, cardWidth, cardHeight, 4, 4, 'F');
+    doc.roundedRect(xPos, yPos, taskCardWidth, cardHeight, 4, 4, 'F');
     
     // Card border
     doc.setDrawColor(primaryRgb.r, primaryRgb.g, primaryRgb.b);
     doc.setLineWidth(0.5);
-    doc.roundedRect(xPos, yPos, cardWidth, cardHeight, 4, 4, 'S');
+    doc.roundedRect(xPos, yPos, taskCardWidth, cardHeight, 4, 4, 'S');
     
     // Value
     doc.setTextColor(primaryRgb.r, primaryRgb.g, primaryRgb.b);
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text(metric.value, xPos + cardWidth / 2, yPos + 16, { align: 'center' });
+    doc.text(metric.value, xPos + taskCardWidth / 2, yPos + 16, { align: 'center' });
     
     // Label
     doc.setTextColor(80, 80, 80);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text(metric.label, xPos + cardWidth / 2, yPos + 26, { align: 'center' });
+    doc.text(metric.label, xPos + taskCardWidth / 2, yPos + 26, { align: 'center' });
   });
+  
+  // ===== GOOGLE BUSINESS METRICS (if available) =====
+  if (hasGoogleMetrics) {
+    yPos += cardHeight + 15;
+    
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Métricas do Google Business', margin, yPos);
+    
+    yPos += 10;
+    
+    const googleCardWidth = (pageWidth - margin * 2 - 20) / 5;
+    const googleCardHeight = 30;
+    
+    const googleMetrics = [
+      { label: 'Visualizações', value: reportData.googleMetrics!.views.toString() },
+      { label: 'Ligações', value: reportData.googleMetrics!.calls.toString() },
+      { label: 'Rotas', value: reportData.googleMetrics!.directions.toString() },
+      { label: 'Cliques Site', value: reportData.googleMetrics!.websiteClicks.toString() },
+      { label: 'Mensagens', value: reportData.googleMetrics!.messages.toString() },
+    ];
+    
+    // Blue color for Google metrics
+    const googleBlue = { r: 66, g: 133, b: 244 };
+    
+    googleMetrics.forEach((metric, index) => {
+      const xPos = margin + index * (googleCardWidth + 5);
+      
+      // Card background
+      doc.setFillColor(235, 243, 254);
+      doc.roundedRect(xPos, yPos, googleCardWidth, googleCardHeight, 3, 3, 'F');
+      
+      // Card border
+      doc.setDrawColor(googleBlue.r, googleBlue.g, googleBlue.b);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(xPos, yPos, googleCardWidth, googleCardHeight, 3, 3, 'S');
+      
+      // Value
+      doc.setTextColor(googleBlue.r, googleBlue.g, googleBlue.b);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(metric.value, xPos + googleCardWidth / 2, yPos + 12, { align: 'center' });
+      
+      // Label
+      doc.setTextColor(80, 80, 80);
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'normal');
+      doc.text(metric.label, xPos + googleCardWidth / 2, yPos + 22, { align: 'center' });
+    });
+    
+    yPos += googleCardHeight;
+  }
   
   // ===== TASKS TABLE =====
   yPos += cardHeight + 20;

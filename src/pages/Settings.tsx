@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useSearchParams } from "react-router-dom";
 import { 
   Upload,
   Palette,
@@ -15,6 +16,7 @@ import {
   Volume2,
   VolumeX,
   Settings as SettingsIcon,
+  Link as LinkIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +30,7 @@ import { useBrandSettings } from "@/hooks/useBrandSettings";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { GoogleIntegrationSettings } from "@/components/google/GoogleIntegrationSettings";
 
 // Account Settings Component
 function AccountSettings() {
@@ -489,6 +492,7 @@ export default function Settings() {
       <Tabs defaultValue="whitelabel" className="space-y-6">
         <TabsList className="bg-secondary">
           <TabsTrigger value="whitelabel">White Label</TabsTrigger>
+          <TabsTrigger value="integrations">Integrações</TabsTrigger>
           <TabsTrigger value="preferences">Preferências</TabsTrigger>
           <TabsTrigger value="account">Conta</TabsTrigger>
           <TabsTrigger value="plan">Plano</TabsTrigger>
@@ -785,6 +789,10 @@ export default function Settings() {
                   </p>
                 </div>
               </div>
+            </TabsContent>
+
+            <TabsContent value="integrations" className="space-y-6">
+              <GoogleIntegrationSettings />
             </TabsContent>
 
             <TabsContent value="preferences">
