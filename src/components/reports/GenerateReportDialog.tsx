@@ -25,6 +25,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useBrandSettings } from '@/hooks/useBrandSettings';
+import { useReports } from '@/hooks/useReports';
 import { generateClientReport, downloadPdf, type ReportData, type ClientData, type TaskData } from '@/lib/pdfGenerator';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -34,14 +35,14 @@ import { cn } from '@/lib/utils';
 interface GenerateReportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onReportGenerated: (report: { id: string; name: string; createdAt: Date; type: string }) => void;
 }
 
 type PeriodType = '7days' | '30days' | '90days' | 'custom';
 
-export function GenerateReportDialog({ open, onOpenChange, onReportGenerated }: GenerateReportDialogProps) {
+export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialogProps) {
   const { user } = useAuth();
   const { brandSettings } = useBrandSettings();
+  const { saveReport } = useReports();
   const { toast } = useToast();
   
   const [clients, setClients] = useState<ClientData[]>([]);
@@ -191,15 +192,20 @@ export function GenerateReportDialog({ open, onOpenChange, onReportGenerated }: 
       const filename = `relatorio-${selectedClient.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
       downloadPdf(pdf, filename);
 
-      // Notify success
-      const newReport = {
-        id: crypto.randomUUID(),
+      // Save report to database
+      await saveReport({
+        clientId: selectedClientId,
         name: `Relatório - ${selectedClient.name}`,
-        createdAt: new Date(),
-        type: 'performance',
-      };
-      
-      onReportGenerated(newReport);
+        periodStart: periodDates.start,
+        periodEnd: periodDates.end,
+        metrics: {
+          totalTasks,
+          completedTasks,
+          pendingTasks,
+          inProgressTasks,
+          completionRate,
+        },
+      });
       
       toast({
         title: 'Relatório gerado!',

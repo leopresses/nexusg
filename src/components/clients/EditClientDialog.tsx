@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ClientAvatarUpload } from "./ClientAvatarUpload";
 import type { Database } from "@/integrations/supabase/types";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
@@ -36,6 +37,8 @@ const businessTypeLabels: Record<BusinessType, string> = {
   store: "Loja",
   service: "Serviço",
   other: "Outro",
+  cafe_service: "Café/Serviços",
+  barbershop_salon: "Barbearia/Salão",
 };
 
 export function EditClientDialog({ 
@@ -48,12 +51,14 @@ export function EditClientDialog({
   const [name, setName] = useState("");
   const [businessType, setBusinessType] = useState<BusinessType>("other");
   const [address, setAddress] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (client) {
       setName(client.name);
       setBusinessType(client.business_type);
       setAddress(client.address || "");
+      setAvatarUrl((client as any).avatar_url || null);
     }
   }, [client]);
 
@@ -96,6 +101,18 @@ export function EditClientDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          {/* Avatar Upload */}
+          {client && (
+            <div className="space-y-2">
+              <Label>Foto do Cliente</Label>
+              <ClientAvatarUpload
+                clientId={client.id}
+                currentAvatarUrl={avatarUrl}
+                onAvatarChange={setAvatarUrl}
+              />
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="name">Nome do Cliente</Label>
             <Input

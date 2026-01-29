@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { 
   FileText, 
@@ -7,41 +6,60 @@ import {
   Calendar,
   Clock,
   Trash2,
+  Loader2,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/AppLayout";
 import { GenerateReportDialog } from "@/components/reports/GenerateReportDialog";
 import { DeleteReportDialog } from "@/components/reports/DeleteReportDialog";
-
-interface Report {
-  id: string;
-  name: string;
-  createdAt: Date;
-  type: string;
-}
+import { useReports, type Report } from "@/hooks/useReports";
+import { useState } from "react";
 
 export default function Reports() {
-  const [reports, setReports] = useState<Report[]>([]);
+  const { reports, isLoading, deleteReport } = useReports();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
-
-  const handleReportGenerated = (report: Report) => {
-    setReports((prev) => [report, ...prev]);
-  };
 
   const handleDeleteClick = (report: Report) => {
     setReportToDelete(report);
     setDeleteDialogOpen(true);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (reportToDelete) {
-      setReports((prev) => prev.filter((r) => r.id !== reportToDelete.id));
+      await deleteReport(reportToDelete.id);
       setReportToDelete(null);
       setDeleteDialogOpen(false);
     }
   };
+
+  const handleShareWhatsApp = (report: Report) => {
+    const clientName = report.client?.name || "Cliente";
+    const periodStart = new Date(report.period_start).toLocaleDateString("pt-BR");
+    const periodEnd = new Date(report.period_end).toLocaleDateString("pt-BR");
+    
+    const message = encodeURIComponent(
+      `📊 *Relatório de Performance*\n\n` +
+      `📌 Cliente: ${clientName}\n` +
+      `📅 Período: ${periodStart} - ${periodEnd}\n` +
+      `✅ Tarefas concluídas: ${report.metrics?.completedTasks || 0}\n\n` +
+      `Relatório gerado por Gestão Nexus`
+    );
+    
+    window.open(`https://wa.me/?text=${message}`, "_blank");
+  };
+
+  if (isLoading) {
+    return (
+      <AppLayout title="Gerador de Relatórios" subtitle="Crie e gerencie relatórios personalizados para seus clientes">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout 
@@ -117,19 +135,30 @@ export default function Reports() {
                       <div className="flex items-center gap-3 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          {report.createdAt.toLocaleDateString('pt-BR')}
+                          {new Date(report.created_at).toLocaleDateString('pt-BR')}
                         </span>
                         <span className="flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {report.createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(report.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </span>
+                        {report.client && (
+                          <span className="text-primary">{report.client.name}</span>
+                        )}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleShareWhatsApp(report)}
+                    >
+                      <Share2 className="h-4 w-4 mr-2" />
+                      WhatsApp
+                    </Button>
                     <Button variant="outline" size="sm" disabled>
                       <Download className="h-4 w-4 mr-2" />
-                      Baixado
+                      PDF
                     </Button>
                     <Button 
                       variant="ghost" 
@@ -150,7 +179,6 @@ export default function Reports() {
       <GenerateReportDialog 
         open={isDialogOpen} 
         onOpenChange={setIsDialogOpen}
-        onReportGenerated={handleReportGenerated}
       />
 
       <DeleteReportDialog

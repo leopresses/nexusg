@@ -10,6 +10,8 @@ import {
   Phone,
   ChevronRight,
   Loader2,
+  Calendar,
+  CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { AppLayout } from "@/components/AppLayout";
+import { ProgressBar } from "@/components/dashboard/ProgressBar";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
@@ -43,10 +46,19 @@ interface TaskStats {
   total: number;
 }
 
+interface DayStats {
+  daily: TaskStats;
+  weekly: TaskStats;
+}
+
 export default function Dashboard() {
   const [clients, setClients] = useState<Client[]>([]);
   const [recentTasks, setRecentTasks] = useState<Task[]>([]);
   const [taskStats, setTaskStats] = useState<TaskStats>({ pending: 0, in_progress: 0, completed: 0, total: 0 });
+  const [dayStats, setDayStats] = useState<DayStats>({
+    daily: { pending: 0, in_progress: 0, completed: 0, total: 0 },
+    weekly: { pending: 0, in_progress: 0, completed: 0, total: 0 },
+  });
   const [isLoading, setIsLoading] = useState(true);
   const { profile } = useAuth();
   const navigate = useNavigate();
@@ -78,6 +90,32 @@ export default function Dashboard() {
         supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "completed"),
       ]);
 
+      // Get today's tasks
+      const today = new Date().toISOString().split("T")[0];
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+      const weekStartStr = weekStart.toISOString().split("T")[0];
+
+      // Daily tasks stats
+      const [dailyPending, dailyInProgress, dailyCompleted] = await Promise.all([
+        supabase.from("tasks").select("*", { count: "exact", head: true })
+          .eq("status", "pending").eq("frequency", "daily").eq("task_date", today),
+        supabase.from("tasks").select("*", { count: "exact", head: true })
+          .eq("status", "in_progress").eq("frequency", "daily").eq("task_date", today),
+        supabase.from("tasks").select("*", { count: "exact", head: true })
+          .eq("status", "completed").eq("frequency", "daily").eq("task_date", today),
+      ]);
+
+      // Weekly tasks stats for current week
+      const [weeklyPending, weeklyInProgress, weeklyCompleted] = await Promise.all([
+        supabase.from("tasks").select("*", { count: "exact", head: true })
+          .eq("status", "pending").eq("frequency", "weekly").eq("week_start", weekStartStr),
+        supabase.from("tasks").select("*", { count: "exact", head: true })
+          .eq("status", "in_progress").eq("frequency", "weekly").eq("week_start", weekStartStr),
+        supabase.from("tasks").select("*", { count: "exact", head: true })
+          .eq("status", "completed").eq("frequency", "weekly").eq("week_start", weekStartStr),
+      ]);
+
       if (clientsRes.data) setClients(clientsRes.data);
       if (recentTasksRes.data) setRecentTasks(recentTasksRes.data as Task[]);
       
@@ -90,6 +128,29 @@ export default function Dashboard() {
         in_progress: inProgress,
         completed,
         total: pending + inProgress + completed,
+      });
+
+      const dPending = dailyPending.count || 0;
+      const dInProgress = dailyInProgress.count || 0;
+      const dCompleted = dailyCompleted.count || 0;
+      
+      const wPending = weeklyPending.count || 0;
+      const wInProgress = weeklyInProgress.count || 0;
+      const wCompleted = weeklyCompleted.count || 0;
+
+      setDayStats({
+        daily: {
+          pending: dPending,
+          in_progress: dInProgress,
+          completed: dCompleted,
+          total: dPending + dInProgress + dCompleted,
+        },
+        weekly: {
+          pending: wPending,
+          in_progress: wInProgress,
+          completed: wCompleted,
+          total: wPending + wInProgress + wCompleted,
+        },
       });
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -159,6 +220,41 @@ export default function Dashboard() {
           ))}
         </motion.div>
 
+        {/* Progress Bars */}
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.15 }}
+        >
+          <div className="rounded-xl bg-card border border-border p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">Tarefas de Hoje</h3>
+            </div>
+            <ProgressBar
+              pending={dayStats.daily.pending}
+              inProgress={dayStats.daily.in_progress}
+              completed={dayStats.daily.completed}
+              total={dayStats.daily.total}
+              label="Diárias"
+            />
+          </div>
+          <div className="rounded-xl bg-card border border-border p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <CalendarDays className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">Tarefas da Semana</h3>
+            </div>
+            <ProgressBar
+              pending={dayStats.weekly.pending}
+              inProgress={dayStats.weekly.in_progress}
+              completed={dayStats.weekly.completed}
+              total={dayStats.weekly.total}
+              label="Semanais"
+            />
+          </div>
+        </motion.div>
+
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Clients List */}
           <motion.div 
@@ -191,8 +287,16 @@ export default function Dashboard() {
                   <div key={client.id} className="p-4 hover:bg-secondary/50 transition-colors">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-xl gradient-neon flex items-center justify-center text-primary-foreground font-bold text-lg">
-                          {client.name.charAt(0)}
+                        <div className="h-12 w-12 rounded-xl gradient-neon flex items-center justify-center text-primary-foreground font-bold text-lg overflow-hidden">
+                          {(client as any).avatar_url ? (
+                            <img 
+                              src={(client as any).avatar_url} 
+                              alt={client.name} 
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            client.name.charAt(0)
+                          )}
                         </div>
                         <div>
                           <h3 className="font-medium">{client.name}</h3>

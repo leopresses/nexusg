@@ -10,6 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2, GripVertical, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,6 +26,7 @@ import type { Database } from "@/integrations/supabase/types";
 import type { ChecklistItem } from "@/pages/AdminTemplates";
 
 type TaskTemplate = Database["public"]["Tables"]["task_templates"]["Row"];
+type BusinessType = Database["public"]["Enums"]["business_type"];
 
 interface TemplateDialogProps {
   open: boolean;
@@ -26,11 +35,22 @@ interface TemplateDialogProps {
   onSuccess: () => void;
 }
 
+const businessTypeLabels: Record<BusinessType, string> = {
+  restaurant: "Restaurante",
+  store: "Loja",
+  service: "Serviço",
+  other: "Outro",
+  cafe_service: "Café/Serviços",
+  barbershop_salon: "Barbearia/Salão",
+};
+
 export function TemplateDialog({ open, onOpenChange, template, onSuccess }: TemplateDialogProps) {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [frequency, setFrequency] = useState<"daily" | "weekly">("weekly");
+  const [targetClientTypes, setTargetClientTypes] = useState<BusinessType[]>([]);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [newItem, setNewItem] = useState("");
 
@@ -38,10 +58,14 @@ export function TemplateDialog({ open, onOpenChange, template, onSuccess }: Temp
     if (template) {
       setTitle(template.title);
       setDescription(template.description || "");
+      setFrequency(((template as any).frequency as "daily" | "weekly") || "weekly");
+      setTargetClientTypes(((template as any).target_client_types as BusinessType[]) || []);
       setChecklist((template.checklist as unknown as ChecklistItem[]) || []);
     } else {
       setTitle("");
       setDescription("");
+      setFrequency("weekly");
+      setTargetClientTypes([]);
       setChecklist([]);
     }
     setNewItem("");
@@ -72,6 +96,14 @@ export function TemplateDialog({ open, onOpenChange, template, onSuccess }: Temp
     }
   };
 
+  const handleToggleClientType = (type: BusinessType) => {
+    setTargetClientTypes((prev) =>
+      prev.includes(type)
+        ? prev.filter((t) => t !== type)
+        : [...prev, type]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -83,15 +115,19 @@ export function TemplateDialog({ open, onOpenChange, template, onSuccess }: Temp
     setIsLoading(true);
 
     try {
+      const templateData = {
+        title: title.trim(),
+        description: description.trim() || null,
+        checklist: JSON.parse(JSON.stringify(checklist)),
+        frequency,
+        target_client_types: targetClientTypes.length > 0 ? targetClientTypes : null,
+      };
+
       if (template) {
         // Update existing template
         const { error } = await supabase
           .from("task_templates")
-          .update({
-            title: title.trim(),
-            description: description.trim() || null,
-            checklist: JSON.parse(JSON.stringify(checklist)),
-          })
+          .update(templateData)
           .eq("id", template.id);
 
         if (error) throw error;
@@ -101,9 +137,7 @@ export function TemplateDialog({ open, onOpenChange, template, onSuccess }: Temp
         const { error } = await supabase
           .from("task_templates")
           .insert([{
-            title: title.trim(),
-            description: description.trim() || null,
-            checklist: JSON.parse(JSON.stringify(checklist)),
+            ...templateData,
             created_by: user?.id,
           }]);
 
@@ -154,12 +188,48 @@ export function TemplateDialog({ open, onOpenChange, template, onSuccess }: Temp
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="frequency">Frequência</Label>
+              <Select value={frequency} onValueChange={(v) => setFrequency(v as "daily" | "weekly")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Diária</SelectItem>
+                  <SelectItem value="weekly">Semanal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <Label>Tipos de Cliente (deixe vazio para todos)</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(Object.keys(businessTypeLabels) as BusinessType[]).map((type) => (
+                <div key={type} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`type-${type}`}
+                    checked={targetClientTypes.includes(type)}
+                    onCheckedChange={() => handleToggleClientType(type)}
+                  />
+                  <label
+                    htmlFor={`type-${type}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    {businessTypeLabels[type]}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-3">
             <Label>Checklist</Label>
             
             {checklist.length > 0 && (
               <div className="space-y-2 max-h-48 overflow-y-auto">
-                {checklist.map((item, index) => (
+                {checklist.map((item) => (
                   <div 
                     key={item.id}
                     className="flex items-center gap-2 p-2 rounded-lg bg-secondary/50 group"
