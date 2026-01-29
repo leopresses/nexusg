@@ -130,10 +130,12 @@ export default function AdminUsersPlans() {
         : newPlan === 'elite' ? 10 
         : 999999; // agency = unlimited
 
-      const { error } = await supabase
-        .from("profiles")
-        .update({ plan: newPlan, clients_limit: newLimit })
-        .eq("user_id", userId);
+      // Use the secure RPC function that restricts updates to plan fields only
+      const { error } = await supabase.rpc("admin_update_user_plan", {
+        _user_id: userId,
+        _plan: newPlan,
+        _clients_limit: newLimit,
+      });
 
       if (error) throw error;
       toast.success(`Plano alterado para ${planLabels[newPlan]}`);
@@ -153,11 +155,12 @@ export default function AdminUsersPlans() {
     if (!userToDelete) return;
 
     try {
-      // Soft delete: set clients_limit to 0 and plan to starter to effectively disable the account
-      const { error } = await supabase
-        .from("profiles")
-        .update({ clients_limit: 0, plan: 'starter' })
-        .eq("user_id", userToDelete.user_id);
+      // Soft delete: use the secure RPC function to set clients_limit to 0 and plan to starter
+      const { error } = await supabase.rpc("admin_update_user_plan", {
+        _user_id: userToDelete.user_id,
+        _plan: 'starter' as SubscriptionPlan,
+        _clients_limit: 0,
+      });
 
       if (error) throw error;
 

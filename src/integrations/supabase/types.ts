@@ -499,6 +499,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_update_user_plan: {
+        Args: {
+          _clients_limit: number
+          _plan: Database["public"]["Enums"]["subscription_plan"]
+          _user_id: string
+        }
+        Returns: undefined
+      }
       can_add_client: { Args: { _user_id: string }; Returns: boolean }
       generate_daily_tasks_for_all_clients: { Args: never; Returns: undefined }
       generate_daily_tasks_for_client: {
