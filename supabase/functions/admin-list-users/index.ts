@@ -12,7 +12,7 @@ function getCorsHeaders(req: Request) {
   
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
     "Access-Control-Allow-Credentials": "true",
   };
 }
@@ -90,9 +90,26 @@ Deno.serve(async (req) => {
       throw new Error("Database operation failed");
     }
 
-    // Combine profiles with roles
+    // Fetch all auth users to get emails
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+    
+    if (authError) {
+      console.error("Error fetching auth users:", authError);
+      // Continue without emails if this fails
+    }
+
+    // Create email lookup map
+    const emailMap = new Map<string, string>();
+    if (authData?.users) {
+      for (const authUser of authData.users) {
+        emailMap.set(authUser.id, authUser.email || "");
+      }
+    }
+
+    // Combine profiles with roles and emails
     const usersWithRoles = (profiles || []).map((profile) => ({
       ...profile,
+      email: emailMap.get(profile.user_id) || null,
       roles: (roles || [])
         .filter((r) => r.user_id === profile.user_id)
         .map((r) => r.role),

@@ -536,7 +536,7 @@ export type Database = {
         | "other"
         | "cafe_service"
         | "barbershop_salon"
-      subscription_plan: "starter" | "pro" | "elite" | "agency"
+      subscription_plan: "starter" | "pro" | "elite" | "agency" | "tatico"
       task_frequency: "daily" | "weekly"
       task_status: "pending" | "in_progress" | "completed"
     }
@@ -675,7 +675,7 @@ export const Constants = {
         "cafe_service",
         "barbershop_salon",
       ],
-      subscription_plan: ["starter", "pro", "elite", "agency"],
+      subscription_plan: ["starter", "pro", "elite", "agency", "tatico"],
       task_frequency: ["daily", "weekly"],
       task_status: ["pending", "in_progress", "completed"],
     },

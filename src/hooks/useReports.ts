@@ -74,18 +74,45 @@ export function useReports() {
           metrics: reportData.metrics,
           file_url: reportData.fileUrl || null,
         })
-        .select()
+        .select(`
+          *,
+          client:clients(name)
+        `)
         .single();
 
       if (error) throw error;
 
-      // Refresh the list
-      fetchReports();
+      // Immediately add the new report to the list at the top
+      if (data) {
+        setReports((prev) => [data as Report, ...prev]);
+      }
+      
       return data;
     } catch (error) {
       console.error("Error saving report:", error);
       toast.error("Erro ao salvar relatório");
       return null;
+    }
+  };
+
+  const updateReportFileUrl = async (reportId: string, fileUrl: string) => {
+    try {
+      const { error } = await supabase
+        .from("reports")
+        .update({ file_url: fileUrl })
+        .eq("id", reportId);
+
+      if (error) throw error;
+
+      // Update local state
+      setReports((prev) =>
+        prev.map((r) => (r.id === reportId ? { ...r, file_url: fileUrl } : r))
+      );
+      
+      return true;
+    } catch (error) {
+      console.error("Error updating report file URL:", error);
+      return false;
     }
   };
 
@@ -110,6 +137,7 @@ export function useReports() {
     reports,
     isLoading,
     saveReport,
+    updateReportFileUrl,
     deleteReport,
     refetch: fetchReports,
   };
