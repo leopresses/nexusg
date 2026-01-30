@@ -1,58 +1,10 @@
 import { motion } from "framer-motion";
-import { Check, Zap, Crown, Rocket, Building, MessageCircle } from "lucide-react";
+import { Check, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
-
-const WHATSAPP_NUMBER = "5535991553748";
-
-const plans = [
-  {
-    id: "starter",
-    name: "Starter",
-    icon: Zap,
-    price: "Grátis",
-    period: "",
-    description: "Perfeito para começar a gerenciar seu primeiro cliente.",
-    clientsLimit: "1 cliente",
-    features: ["1 cliente", "White-label (sua marca)", "Relatórios avançados", "API de integração"],
-    highlighted: false,
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    icon: Crown,
-    price: "R$ 49,90",
-    period: "/mês",
-    description: "Ideal para profissionais que gerenciam múltiplos clientes.",
-    clientsLimit: "Até 3 clientes",
-    features: ["Até 3 clientes", "Tudo do Starter", "Suporte por Whatsapp"],
-    highlighted: false,
-  },
-  {
-    id: "elite",
-    name: "Elite",
-    icon: Rocket,
-    price: "R$ 197,00",
-    period: "/mês",
-    description: "Para agências que precisam de recursos avançados.",
-    clientsLimit: "Até 10 clientes",
-    features: ["Até 10 clientes", "Tudo do Pro"],
-    highlighted: true,
-  },
-  {
-    id: "agency",
-    name: "Agency",
-    icon: Building,
-    price: "R$ 297,00",
-    period: "/mês",
-    description: "Solução completa para grandes operações.",
-    clientsLimit: "Clientes ilimitados",
-    features: ["Clientes ilimitados", "Tudo do Elite"],
-    highlighted: false,
-  },
-];
+import { PLANS, WHATSAPP_NUMBER, formatClientLimit } from "@/config/plans";
 
 export default function Pricing() {
   const { profile, user } = useAuth();
@@ -87,11 +39,7 @@ export default function Pricing() {
                 Você está no plano <span className="text-primary font-semibold uppercase">{currentPlan}</span>
                 {profile?.clients_limit && (
                   <span className="ml-2">
-                    (
-                    {profile.clients_limit >= 999999
-                      ? "Clientes ilimitados"
-                      : `Até ${profile.clients_limit} cliente(s)`}
-                    )
+                    ({formatClientLimit(profile.clients_limit)})
                   </span>
                 )}
               </p>
@@ -104,19 +52,19 @@ export default function Pricing() {
 
         {/* Plans Grid */}
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          {plans.map((plan, index) => {
+          {PLANS.map((plan, index) => {
             const isCurrentPlan = plan.id === currentPlan;
             const PlanIcon = plan.icon;
 
             return (
               <motion.div
                 key={plan.id}
-                className={`rounded-xl border p-6 flex flex-col ${
+                className={`rounded-xl border p-5 flex flex-col ${
                   plan.highlighted
                     ? "bg-card border-primary shadow-lg shadow-primary/10 relative"
                     : "bg-card border-border"
@@ -131,49 +79,50 @@ export default function Pricing() {
                   </div>
                 )}
 
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-2 mb-3">
                   <div
-                    className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                    className={`h-9 w-9 rounded-lg flex items-center justify-center ${
                       plan.highlighted ? "bg-primary/20" : "bg-muted"
                     }`}
                   >
-                    <PlanIcon className={`h-5 w-5 ${plan.highlighted ? "text-primary" : "text-muted-foreground"}`} />
+                    <PlanIcon className={`h-4 w-4 ${plan.highlighted ? "text-primary" : "text-muted-foreground"}`} />
                   </div>
-                  <h3 className="text-xl font-bold">{plan.name}</h3>
+                  <h3 className="text-lg font-bold">{plan.name}</h3>
                 </div>
 
-                <div className="mb-4">
-                  <span className="text-3xl font-bold">{plan.price}</span>
-                  <span className="text-muted-foreground">{plan.period}</span>
+                <div className="mb-3">
+                  <span className="text-2xl font-bold">{plan.price}</span>
+                  <span className="text-muted-foreground text-sm">{plan.period}</span>
                 </div>
 
-                <p className="text-sm text-muted-foreground mb-6">{plan.description}</p>
+                <p className="text-xs text-muted-foreground mb-4">{plan.description}</p>
 
-                <ul className="space-y-3 mb-6 flex-1">
+                <ul className="space-y-2 mb-4 flex-1">
                   {plan.features.map((feature, featureIndex) => (
-                    <li key={featureIndex} className="flex items-start gap-2 text-sm">
-                      <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                    <li key={featureIndex} className="flex items-start gap-2 text-xs">
+                      <Check className="h-3 w-3 text-primary mt-0.5 flex-shrink-0" />
                       <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
 
                 {isCurrentPlan ? (
-                  <Button variant="outline" className="w-full" disabled>
+                  <Button variant="outline" className="w-full" size="sm" disabled>
                     Plano Atual
                   </Button>
                 ) : plan.id === "starter" ? (
-                  <Button variant="outline" className="w-full" disabled>
+                  <Button variant="outline" className="w-full" size="sm" disabled>
                     Plano Gratuito
                   </Button>
                 ) : (
                   <Button
                     variant={plan.highlighted ? "default" : "outline"}
                     className="w-full gap-2"
+                    size="sm"
                     onClick={() => handleUpgrade(plan.id, plan.name, plan.price, plan.clientsLimit)}
                   >
-                    <MessageCircle className="h-4 w-4" />
-                    Fazer Upgrade
+                    <MessageCircle className="h-3 w-3" />
+                    Upgrade
                   </Button>
                 )}
               </motion.div>

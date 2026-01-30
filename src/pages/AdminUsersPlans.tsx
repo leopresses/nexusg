@@ -38,19 +38,17 @@ interface UserWithRole extends Profile {
   roles: AppRole[];
 }
 
-const planColors: Record<SubscriptionPlan, string> = {
+import { PLAN_LABELS, PLAN_LIMITS, formatClientLimit } from "@/config/plans";
+
+const planColors: Record<string, string> = {
   starter: "bg-muted text-muted-foreground",
+  tatico: "bg-blue-500/20 text-blue-500 border-blue-500/30",
   pro: "bg-primary/20 text-primary border-primary/30",
   elite: "bg-accent/20 text-accent border-accent/30",
   agency: "bg-success/20 text-success border-success/30",
 };
 
-const planLabels: Record<SubscriptionPlan, string> = {
-  starter: "Starter",
-  pro: "Pro",
-  elite: "Elite",
-  agency: "Agency",
-};
+const planLabels = PLAN_LABELS;
 
 export default function AdminUsersPlans() {
   const [users, setUsers] = useState<UserWithRole[]>([]);
@@ -124,11 +122,8 @@ export default function AdminUsersPlans() {
 
   const updateUserPlan = async (userId: string, newPlan: SubscriptionPlan) => {
     try {
-      // Get new clients_limit based on plan
-      const newLimit = newPlan === 'starter' ? 1 
-        : newPlan === 'pro' ? 3 
-        : newPlan === 'elite' ? 10 
-        : 999999; // agency = unlimited
+      // Get new clients_limit based on plan using centralized config
+      const newLimit = PLAN_LIMITS[newPlan] || 1;
 
       // Use the secure RPC function that restricts updates to plan fields only
       const { error } = await supabase.rpc("admin_update_user_plan", {
@@ -187,11 +182,13 @@ export default function AdminUsersPlans() {
 
   const filteredRegularUsers = regularUsers.filter((user) =>
     user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.user_id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredAdminUsers = adminUsers.filter((user) =>
     user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.user_id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -235,14 +232,16 @@ export default function AdminUsersPlans() {
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                         <span className="font-semibold text-primary">
-                          {user.full_name?.charAt(0).toUpperCase() || "U"}
+                          {(user.email?.charAt(0) || user.full_name?.charAt(0) || "U").toUpperCase()}
                         </span>
                       </div>
                       <div>
-                        <div className="font-medium">{user.full_name || "Sem nome"}</div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          <span className="truncate max-w-[200px]">{user.user_id}</span>
+                        <div className="font-medium flex items-center gap-1">
+                          <Mail className="h-3 w-3 text-muted-foreground" />
+                          <span className="truncate max-w-[200px]">{user.email || user.user_id}</span>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {user.full_name || "Sem nome"}
                         </div>
                       </div>
                     </div>
@@ -265,14 +264,14 @@ export default function AdminUsersPlans() {
                   <td className="px-6 py-4">
                     <Badge 
                       variant="outline"
-                      className={planColors[user.plan]}
+                      className={planColors[user.plan] || planColors.starter}
                     >
-                      {planLabels[user.plan]}
+                      {planLabels[user.plan] || user.plan}
                     </Badge>
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm text-muted-foreground">
-                      {user.clients_limit >= 999999 ? "Ilimitado" : `${user.clients_limit} clientes`}
+                      {formatClientLimit(user.clients_limit)}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -317,25 +316,31 @@ export default function AdminUsersPlans() {
                           onClick={() => updateUserPlan(user.user_id, "starter")}
                           disabled={user.plan === "starter"}
                         >
-                          Plano Starter
+                          Plano Starter (1 cliente)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => updateUserPlan(user.user_id, "tatico" as SubscriptionPlan)}
+                          disabled={user.plan === "tatico"}
+                        >
+                          Plano Tático (3 clientes)
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => updateUserPlan(user.user_id, "pro")}
                           disabled={user.plan === "pro"}
                         >
-                          Plano Pro
+                          Plano Pro (6 clientes)
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => updateUserPlan(user.user_id, "elite")}
                           disabled={user.plan === "elite"}
                         >
-                          Plano Elite
+                          Plano Elite (10 clientes)
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => updateUserPlan(user.user_id, "agency")}
                           disabled={user.plan === "agency"}
                         >
-                          Plano Agency
+                          Plano Agency (Ilimitado)
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 

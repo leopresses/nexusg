@@ -3,6 +3,7 @@ import { CheckCircle2, BarChart3, Users, Calendar, FileText, Zap, ArrowRight, St
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { Link } from "react-router-dom";
+import { SIMPLE_PLANS, WHATSAPP_NUMBER } from "@/config/plans";
 
 const features = [
   {
@@ -25,13 +26,6 @@ const features = [
     title: "Multi-clientes",
     description: "Gerencie múltiplos estabelecimentos de forma organizada e eficiente.",
   },
-];
-
-const plans = [
-  { name: "Starter", clients: "1 cliente", price: "Grátis", popular: false },
-  { name: "Pro", clients: "3 clientes", price: "R$ 49,90/mês", popular: false },
-  { name: "Elite", clients: "10 clientes", price: "R$ 197,00/mês", popular: true },
-  { name: "Agency", clients: "Ilimitado", price: "R$ 297,00/mês", popular: false },
 ];
 
 const fadeInUp = {
@@ -190,17 +184,17 @@ export default function Landing() {
           </motion.div>
 
           <motion.div
-            className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto"
+            className="grid md:grid-cols-2 lg:grid-cols-5 gap-4 max-w-6xl mx-auto"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
             variants={stagger}
           >
-            {plans.map((plan, index) => (
+            {SIMPLE_PLANS.map((plan, index) => (
               <motion.div
                 key={index}
                 variants={fadeInUp}
-                className={`relative p-6 rounded-2xl border transition-all duration-300 ${
+                className={`relative p-5 rounded-2xl border transition-all duration-300 ${
                   plan.popular
                     ? "bg-card border-primary shadow-gold scale-105"
                     : "bg-card border-border hover:border-primary/50"
@@ -214,10 +208,10 @@ export default function Landing() {
                 )}
                 <div className="text-center">
                   <h3 className="text-lg font-semibold mb-1">{plan.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">{plan.clients}</p>
-                  <div className="text-2xl font-bold mb-6">{plan.price}</div>
+                  <p className="text-sm text-muted-foreground mb-3">{plan.clients}</p>
+                  <div className="text-xl font-bold mb-4">{plan.price}</div>
                   <Link to="/register">
-                    <Button variant={plan.popular ? "default" : "outline"} className="w-full">
+                    <Button variant={plan.popular ? "default" : "outline"} className="w-full" size="sm">
                       Escolher Plano
                     </Button>
                   </Link>
@@ -258,7 +252,7 @@ export default function Landing() {
           <Logo size="sm" />
           <p className="text-sm text-muted-foreground">© 2026 Gestão Nexus. Todos os direitos reservados.</p>
           <a
-            href="https://wa.me/5535991553748"
+            href={`https://wa.me/${WHATSAPP_NUMBER}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-primary hover:underline"
