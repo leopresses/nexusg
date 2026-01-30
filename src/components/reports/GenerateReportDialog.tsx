@@ -43,7 +43,7 @@ type PeriodType = '7days' | '30days' | '90days' | 'custom';
 export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialogProps) {
   const { user } = useAuth();
   const { brandSettings } = useBrandSettings();
-  const { saveReport } = useReports();
+  const { saveReport, updateReportFileUrl } = useReports();
   const { getMetricsByClientForPeriod } = useGoogleMetrics();
   const { toast } = useToast();
   
@@ -108,6 +108,37 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
     }
     
     return { start, end };
+  };
+
+  const uploadPdfToStorage = async (pdf: any, filename: string): Promise<string | null> => {
+    try {
+      // Convert jsPDF to blob
+      const pdfBlob = pdf.output('blob');
+      
+      // Upload to Supabase Storage
+      const path = `reports/${user?.id}/${Date.now()}-${filename}`;
+      const { data, error } = await supabase.storage
+        .from('brand-logos') // Using existing bucket for now
+        .upload(path, pdfBlob, {
+          contentType: 'application/pdf',
+          cacheControl: '3600',
+        });
+
+      if (error) {
+        console.error('Error uploading PDF:', error);
+        return null;
+      }
+
+      // Get signed URL (valid for 7 days)
+      const { data: signedData } = await supabase.storage
+        .from('brand-logos')
+        .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days expiration
+
+      return signedData?.signedUrl || null;
+    } catch (error) {
+      console.error('Error uploading PDF:', error);
+      return null;
+    }
   };
 
   const handleGenerate = async () => {
@@ -211,8 +242,11 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
       const filename = `relatorio-${selectedClient.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
       downloadPdf(pdf, filename);
 
-      // Save report to database
-      await saveReport({
+      // Upload PDF to storage and get signed URL
+      const fileUrl = await uploadPdfToStorage(pdf, filename);
+
+      // Save report to database (this immediately updates the list)
+      const savedReport = await saveReport({
         clientId: selectedClientId,
         name: `Relatório - ${selectedClient.name}`,
         periodStart: periodDates.start,
@@ -225,11 +259,17 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
           completionRate,
           googleMetrics: googleMetrics || null,
         },
+        fileUrl: fileUrl || undefined,
       });
+
+      // If we couldn't upload initially but got a URL now, update the report
+      if (savedReport && fileUrl) {
+        await updateReportFileUrl(savedReport.id, fileUrl);
+      }
       
       toast({
         title: 'Relatório gerado!',
-        description: `O relatório de ${selectedClient.name} foi baixado com sucesso.`,
+        description: `O relatório de ${selectedClient.name} foi gerado e salvo com sucesso.`,
       });
 
       onOpenChange(false);

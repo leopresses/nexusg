@@ -360,7 +360,7 @@ export default function Settings() {
     accentColor: "#06b6d4",
     reportFooter: "",
   });
-  const [previewMode, setPreviewMode] = useState(false);
+  const [previewMode] = useState(true); // Always show preview mode
   const [isSaving, setIsSaving] = useState(false);
 
   // Sync local settings with fetched brand settings
@@ -677,17 +677,7 @@ export default function Settings() {
 
                 {/* Preview */}
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold">Pré-visualização do Relatório</h3>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setPreviewMode(!previewMode)}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      {previewMode ? "Modo Edição" : "Modo Preview"}
-                    </Button>
-                  </div>
+                  <h3 className="font-semibold">Pré-visualização do Relatório</h3>
 
                   <motion.div 
                     className="rounded-xl border border-border overflow-hidden shadow-elevated"

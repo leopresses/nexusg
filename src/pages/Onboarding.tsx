@@ -385,13 +385,13 @@ export default function Onboarding() {
               </Button>
             </div>
             
-            {/* Back to home link */}
+            {/* Back to dashboard link */}
             <button
               type="button"
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/dashboard")}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors text-center"
             >
-              ← Voltar para tela inicial
+              ← Voltar para o Painel
             </button>
           </div>
         </div>

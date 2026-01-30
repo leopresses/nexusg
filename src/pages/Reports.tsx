@@ -8,6 +8,7 @@ import {
   Trash2,
   Loader2,
   Share2,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/AppLayout";
@@ -15,6 +16,8 @@ import { GenerateReportDialog } from "@/components/reports/GenerateReportDialog"
 import { DeleteReportDialog } from "@/components/reports/DeleteReportDialog";
 import { useReports, type Report } from "@/hooks/useReports";
 import { useState } from "react";
+import { WHATSAPP_NUMBER } from "@/config/plans";
+import { toast } from "sonner";
 
 export default function Reports() {
   const { reports, isLoading, deleteReport } = useReports();
@@ -40,15 +43,27 @@ export default function Reports() {
     const periodStart = new Date(report.period_start).toLocaleDateString("pt-BR");
     const periodEnd = new Date(report.period_end).toLocaleDateString("pt-BR");
     
-    const message = encodeURIComponent(
-      `📊 *Relatório de Performance*\n\n` +
+    let message = `📊 *Relatório de Performance*\n\n` +
       `📌 Cliente: ${clientName}\n` +
       `📅 Período: ${periodStart} - ${periodEnd}\n` +
-      `✅ Tarefas concluídas: ${report.metrics?.completedTasks || 0}\n\n` +
-      `Relatório gerado por Gestão Nexus`
-    );
+      `✅ Tarefas concluídas: ${report.metrics?.completedTasks || 0}\n\n`;
     
-    window.open(`https://wa.me/?text=${message}`, "_blank");
+    // If we have a PDF URL, include it
+    if (report.file_url) {
+      message += `📄 Baixar relatório em PDF:\n${report.file_url}\n\n`;
+    }
+    
+    message += `Relatório gerado por Gestão Nexus`;
+    
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank");
+  };
+
+  const handleDownloadPdf = (report: Report) => {
+    if (report.file_url) {
+      window.open(report.file_url, "_blank");
+    } else {
+      toast.error("PDF não disponível. Gere um novo relatório para obter o PDF.");
+    }
   };
 
   if (isLoading) {
@@ -89,7 +104,7 @@ export default function Reports() {
                 Gere relatórios detalhados sobre o desempenho dos seus clientes. 
                 Os relatórios mostram apenas as <strong>tarefas concluídas</strong> e são 
                 exportados em PDF com a identidade visual personalizada da sua marca 
-                (configurável em Configurações).
+                (configurável em Configurações). Você pode compartilhar o PDF diretamente via WhatsApp.
               </p>
             </div>
           </div>
@@ -152,11 +167,17 @@ export default function Reports() {
                       variant="outline" 
                       size="sm"
                       onClick={() => handleShareWhatsApp(report)}
+                      className="gap-2"
                     >
-                      <Share2 className="h-4 w-4 mr-2" />
+                      <MessageCircle className="h-4 w-4" />
                       WhatsApp
                     </Button>
-                    <Button variant="outline" size="sm" disabled>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleDownloadPdf(report)}
+                      disabled={!report.file_url}
+                    >
                       <Download className="h-4 w-4 mr-2" />
                       PDF
                     </Button>
