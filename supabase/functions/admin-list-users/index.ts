@@ -1,129 +1,136 @@
+// supabase/functions/admin-list-users/index.ts
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Allowed origins for CORS
-const allowedOrigins = [
-  "https://nexusg.lovable.app",
-  "https://id-preview--a37866c6-77e2-4449-8805-ec48acb8f5b5.lovable.app",
-];
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get("Origin") || "";
-  const allowedOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
-  
-  return {
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-    "Access-Control-Allow-Credentials": "true",
-  };
-}
+type ProfileRow = {
+  user_id: string;
+  full_name: string | null;
+  plan: string | null;
+  clients_limit: number | null;
+  is_active: boolean | null;
+};
+
+type RoleRow = { user_id: string; role: string };
 
 Deno.serve(async (req) => {
-  const corsHeaders = getCorsHeaders(req);
-  
-  // Handle CORS
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Get the authorization header
-    const authHeader = req.headers.get("Authorization");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const authHeader = req.headers.get("authorization") || "";
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Create a client with the user's token to verify identity
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
+    // Client do usuário (para validar se é admin)
+    const supabaseUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false },
     });
 
-    // Get the current user
-    const { data: { user }, error: userError } = await supabaseWithAuth.auth.getUser();
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const { data: roleCheck, error: roleErr } = await supabaseUser.rpc("has_role", { _role: "admin" });
+    if (roleErr) throw roleErr;
+
+    if (!roleCheck) {
+      return new Response(JSON.stringify({ error: "Forbidden (not admin)" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Verify user is admin
-    const { data: isAdmin, error: roleError } = await supabaseWithAuth.rpc("has_role", {
-      _user_id: user.id,
-      _role: "admin",
+    // Client service-role (bypass RLS)
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false },
     });
 
-    if (roleError || !isAdmin) {
-      return new Response(
-        JSON.stringify({ error: "Admin access required" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // 1) Lista usuários do Auth (para pegar email)
+    // Paginação simples (geralmente você terá poucos no início)
+    const users: Array<{ id: string; email: string | null; user_metadata?: any }> = [];
+    let page = 1;
+    const perPage = 1000;
+
+    while (true) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+      if (error) throw error;
+
+      const batch = data?.users ?? [];
+      for (const u of batch) users.push({ id: u.id, email: u.email ?? null, user_metadata: u.user_metadata });
+
+      if (batch.length < perPage) break;
+      page += 1;
     }
 
-    // Use service role client to fetch all profiles and roles
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const userIds = users.map((u) => u.id);
 
-    // Fetch all profiles
-    const { data: profiles, error: profilesError } = await supabaseAdmin
+    // 2) Busca perfis
+    const { data: profiles, error: profErr } = await supabaseAdmin
       .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .select("user_id, full_name, plan, clients_limit, is_active")
+      .in("user_id", userIds);
 
-    if (profilesError) {
-      console.error("Error fetching profiles:", profilesError);
-      throw new Error("Database operation failed");
+    if (profErr) throw profErr;
+
+    const profileMap = new Map<string, ProfileRow>();
+    for (const p of (profiles ?? []) as ProfileRow[]) {
+      profileMap.set(p.user_id, p);
     }
 
-    // Fetch all user roles
-    const { data: roles, error: rolesError } = await supabaseAdmin
+    // 3) Busca roles
+    const { data: rolesData, error: rolesErr } = await supabaseAdmin
       .from("user_roles")
-      .select("*");
+      .select("user_id, role")
+      .in("user_id", userIds);
 
-    if (rolesError) {
-      console.error("Error fetching roles:", rolesError);
-      throw new Error("Database operation failed");
+    if (rolesErr) throw rolesErr;
+
+    const rolesMap = new Map<string, string[]>();
+    for (const r of (rolesData ?? []) as RoleRow[]) {
+      const arr = rolesMap.get(r.user_id) ?? [];
+      arr.push(r.role);
+      rolesMap.set(r.user_id, arr);
     }
 
-    // Fetch all auth users to get emails
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-    
-    if (authError) {
-      console.error("Error fetching auth users:", authError);
-      // Continue without emails if this fails
-    }
+    // 4) Monta resposta no formato esperado pelo AdminUsersPlans.tsx
+    const merged = users.map((u) => {
+      const p = profileMap.get(u.id);
 
-    // Create email lookup map
-    const emailMap = new Map<string, string>();
-    if (authData?.users) {
-      for (const authUser of authData.users) {
-        emailMap.set(authUser.id, authUser.email || "");
-      }
-    }
+      const fallbackName =
+        (u.user_metadata?.full_name as string | undefined) || (u.email ? u.email.split("@")[0] : "Usuário");
 
-    // Combine profiles with roles and emails
-    const usersWithRoles = (profiles || []).map((profile) => ({
-      ...profile,
-      email: emailMap.get(profile.user_id) || null,
-      roles: (roles || [])
-        .filter((r) => r.user_id === profile.user_id)
-        .map((r) => r.role),
-    }));
+      return {
+        user_id: u.id,
+        email: u.email,
+        full_name: p?.full_name ?? fallbackName,
+        plan: p?.plan ?? "starter",
+        clients_limit: p?.clients_limit ?? 1,
+        status: (p?.is_active ?? true) ? "active" : "inactive",
+        roles: rolesMap.get(u.id) ?? [],
+      };
+    });
 
-    return new Response(
-      JSON.stringify({ users: usersWithRoles }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (error: unknown) {
-    console.error("Error in admin-list-users:", error);
-    return new Response(
-      JSON.stringify({ error: "Operation failed" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ users: merged }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e: any) {
+    console.error("admin-list-users error:", e);
+    return new Response(JSON.stringify({ error: e?.message ?? "Unknown error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
