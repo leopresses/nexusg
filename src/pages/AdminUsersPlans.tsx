@@ -1,17 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { 
-  Shield, 
-  Users,
-  Crown,
-  UserCog,
-  Loader2,
-  Search,
-  MoreVertical,
-  Mail,
-  UserPlus,
-  Trash2,
-} from "lucide-react";
+import { Shield, Users, Crown, UserCog, Loader2, Search, MoreVertical, Mail, UserPlus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -28,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { DeleteUserDialog } from "@/components/admin/DeleteUserDialog";
+import { PLAN_LABELS, PLAN_LIMITS, formatClientLimit } from "@/config/plans";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type AppRole = Database["public"]["Enums"]["app_role"];
@@ -38,14 +28,12 @@ interface UserWithRole extends Profile {
   roles: AppRole[];
 }
 
-import { PLAN_LABELS, PLAN_LIMITS, formatClientLimit } from "@/config/plans";
-
 const planColors: Record<string, string> = {
   starter: "bg-muted text-muted-foreground",
   tatico: "bg-blue-500/20 text-blue-500 border-blue-500/30",
   pro: "bg-primary/20 text-primary border-primary/30",
   elite: "bg-accent/20 text-accent border-accent/30",
-  agency: "bg-success/20 text-success border-success/30",
+  agency: "bg-success/20 text-success border-success border-success/30",
 };
 
 const planLabels = PLAN_LABELS;
@@ -57,235 +45,297 @@ export default function AdminUsersPlans() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
+  const fetchUsers = async (token?: string) => {
     try {
-      // Use edge function to fetch all users (service role required for admin view)
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
+      setIsLoading(true);
 
-      if (!token) {
-        throw new Error("No authentication token");
+      // Se não veio token, tenta pegar de novo
+      let authToken = token;
+      if (!authToken) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        authToken = sessionData.session?.access_token || undefined;
       }
+
+      // Se ainda não tem token, não falha definitivo — só aguarda onAuthStateChange disparar
+      if (!authToken) return;
 
       const response = await supabase.functions.invoke("admin-list-users", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
 
-      if (response.error) {
-        throw response.error;
-      }
+      if (response.error) throw response.error;
 
-      const usersWithRoles: UserWithRole[] = response.data.users || [];
+      const usersWithRoles: UserWithRole[] = response.data?.users || [];
       setUsers(usersWithRoles);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching users:", error);
-      toast.error("Erro ao carregar usuários");
+
+      // Mensagens mais úteis
+      const msg =
+        error?.message?.includes("Unauthorized") || error?.status === 401
+          ? "Acesso negado (faça login novamente)."
+          : "Erro ao carregar usuários (verifique Edge Function / permissões).";
+
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // ✅ Ponto-chave: espera a sessão existir e refaz quando o auth muda
+  useEffect(() => {
+    let mounted = true;
+
+    const boot = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+
+      // tenta com a sessão atual
+      await fetchUsers(data.session?.access_token);
+
+      // se não tiver sessão ainda, o listener abaixo vai chamar quando tiver
+    };
+
+    boot();
+
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+      if (session?.access_token) {
+        await fetchUsers(session.access_token);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
   const toggleAdminRole = async (userId: string, currentlyAdmin: boolean) => {
     try {
       if (currentlyAdmin) {
-        // Remove admin role
-        const { error } = await supabase
-          .from("user_roles")
-          .delete()
-          .eq("user_id", userId)
-          .eq("role", "admin");
-
+        const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "admin");
         if (error) throw error;
         toast.success("Permissão de admin removida");
       } else {
-        // Add admin role
-        const { error } = await supabase
-          .from("user_roles")
-          .insert({ user_id: userId, role: "admin" });
-
+        const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: "admin" });
         if (error) throw error;
-        toast.success("Permissão de admin concedida");
+        toast.success("Permissão de admin adicionada");
       }
-
-      fetchUsers();
+      await fetchUsers(); // atualiza lista
     } catch (error) {
-      console.error("Error toggling admin:", error);
-      toast.error("Erro ao alterar permissões");
+      console.error("Error toggling admin role:", error);
+      toast.error("Erro ao atualizar permissão");
     }
   };
 
-  const updateUserPlan = async (userId: string, newPlan: SubscriptionPlan) => {
-    try {
-      // Get new clients_limit based on plan using centralized config
-      const newLimit = PLAN_LIMITS[newPlan] || 1;
-
-      // Use the secure RPC function that restricts updates to plan fields only
-      const { error } = await supabase.rpc("admin_update_user_plan", {
-        _user_id: userId,
-        _plan: newPlan,
-        _clients_limit: newLimit,
-      });
-
-      if (error) throw error;
-      toast.success(`Plano alterado para ${planLabels[newPlan]}`);
-      fetchUsers();
-    } catch (error) {
-      console.error("Error updating plan:", error);
-      toast.error("Erro ao alterar plano");
-    }
-  };
-
-  const handleDeleteUser = (user: UserWithRole) => {
+  const openDeleteDialog = (user: UserWithRole) => {
     setUserToDelete(user);
     setDeleteDialogOpen(true);
   };
 
-  const confirmDeleteUser = async () => {
-    if (!userToDelete) return;
-
-    try {
-      // Soft delete: use the secure RPC function to set clients_limit to 0 and plan to starter
-      const { error } = await supabase.rpc("admin_update_user_plan", {
-        _user_id: userToDelete.user_id,
-        _plan: 'starter' as SubscriptionPlan,
-        _clients_limit: 0,
-      });
-
-      if (error) throw error;
-
-      // Also remove any admin roles
-      await supabase
-        .from("user_roles")
-        .delete()
-        .eq("user_id", userToDelete.user_id)
-        .eq("role", "admin");
-
-      toast.success("Usuário desativado com sucesso");
-      fetchUsers();
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      toast.error("Erro ao excluir usuário");
-    } finally {
-      setDeleteDialogOpen(false);
-      setUserToDelete(null);
-    }
+  const handleUserDeleted = () => {
+    setDeleteDialogOpen(false);
+    setUserToDelete(null);
+    fetchUsers();
   };
 
-  const regularUsers = users.filter((u) => !u.roles.includes("admin"));
-  const adminUsers = users.filter((u) => u.roles.includes("admin"));
+  const filteredUsers = users.filter((user) => {
+    const q = searchQuery.toLowerCase();
+    const name = (user.full_name || "").toLowerCase();
+    const email = (user.email || "").toLowerCase();
+    return name.includes(q) || email.includes(q);
+  });
 
-  const filteredRegularUsers = regularUsers.filter((user) =>
-    user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.user_id.toLowerCase().includes(searchQuery.toLowerCase())
+  const adminUsers = filteredUsers.filter((u) => u.roles?.includes("admin"));
+  const normalUsers = filteredUsers.filter((u) => !u.roles?.includes("admin"));
+
+  const totalUsers = users.length;
+  const totalAdmins = users.filter((u) => u.roles?.includes("admin")).length;
+  const paidPlans = users.filter((u) => u.subscription_plan && u.subscription_plan !== "starter").length;
+
+  return (
+    <AppLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Usuários & Planos</h1>
+            <p className="text-muted-foreground">Gerencie usuários, administradores e planos</p>
+          </div>
+
+          <Button onClick={() => fetchUsers()} variant="outline" disabled={isLoading}>
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Atualizar
+          </Button>
+        </div>
+
+        {/* Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-xl border bg-card p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Users className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">Total de Usuários</div>
+              <div className="text-2xl font-bold">{totalUsers}</div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border bg-card p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
+              <Shield className="h-5 w-5 text-accent" />
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">Administradores</div>
+              <div className="text-2xl font-bold">{totalAdmins}</div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border bg-card p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
+              <Crown className="h-5 w-5 text-success" />
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">Planos Pagos</div>
+              <div className="text-2xl font-bold">{paidPlans}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-3" />
+          <Input
+            placeholder="Buscar usuários..."
+            className="pl-9"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        {/* Tabs */}
+        <Tabs defaultValue="users" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="users">Usuários ({normalUsers.length})</TabsTrigger>
+            <TabsTrigger value="admins">Administradores ({adminUsers.length})</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="users">
+            <UsersTable
+              users={normalUsers}
+              isLoading={isLoading}
+              onToggleAdmin={toggleAdminRole}
+              onDeleteUser={openDeleteDialog}
+            />
+          </TabsContent>
+
+          <TabsContent value="admins">
+            <UsersTable
+              users={adminUsers}
+              isLoading={isLoading}
+              onToggleAdmin={toggleAdminRole}
+              onDeleteUser={openDeleteDialog}
+            />
+          </TabsContent>
+        </Tabs>
+
+        <DeleteUserDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          user={userToDelete}
+          onSuccess={handleUserDeleted}
+        />
+      </div>
+    </AppLayout>
   );
+}
 
-  const filteredAdminUsers = adminUsers.filter((user) =>
-    user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.user_id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
+function UsersTable({
+  users,
+  isLoading,
+  onToggleAdmin,
+  onDeleteUser,
+}: {
+  users: UserWithRole[];
+  isLoading: boolean;
+  onToggleAdmin: (userId: string, currentlyAdmin: boolean) => void;
+  onDeleteUser: (user: UserWithRole) => void;
+}) {
   if (isLoading) {
     return (
-      <AppLayout title="Usuários & Planos" subtitle="Gerencie usuários, permissões e planos">
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </AppLayout>
+      <div className="rounded-xl border bg-card p-10 flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
     );
   }
 
-  const renderUserTable = (userList: UserWithRole[], showAdminActions: boolean) => (
-    <motion.div 
-      className="rounded-xl bg-card border border-border overflow-hidden"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.1 }}
-    >
+  if (!users.length) {
+    return (
+      <div className="rounded-xl border bg-card p-10 text-center">
+        <div className="text-lg font-semibold">Nenhum usuário encontrado</div>
+        <div className="text-sm text-muted-foreground">Tente ajustar sua busca</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border bg-card overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-muted/50">
-            <tr>
-              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Usuário</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Tipo</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Plano</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Limite</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Status</th>
-              <th className="text-right px-6 py-4 text-sm font-medium text-muted-foreground">Ações</th>
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40">
+            <tr className="text-left">
+              <th className="p-4">Usuário</th>
+              <th className="p-4">Tipo</th>
+              <th className="p-4">Plano</th>
+              <th className="p-4">Limite</th>
+              <th className="p-4">Status</th>
+              <th className="p-4 text-right">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
-            {userList.map((user) => {
-              const isAdmin = user.roles.includes("admin");
-              const isDisabled = user.clients_limit === 0;
+          <tbody>
+            {users.map((user) => {
+              const isAdmin = user.roles?.includes("admin");
+              const plan = (user.subscription_plan || "starter") as any;
+              const planLabel = planLabels?.[plan as keyof typeof planLabels] || plan;
+              const limit = PLAN_LIMITS?.[plan as keyof typeof PLAN_LIMITS] ?? 1;
 
               return (
-                <tr key={user.id} className="hover:bg-secondary/50 transition-colors">
-                  <td className="px-6 py-4">
+                <tr key={user.id} className="border-t border-border/60">
+                  <td className="p-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="font-semibold text-primary">
-                          {(user.email?.charAt(0) || user.full_name?.charAt(0) || "U").toUpperCase()}
-                        </span>
+                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center font-semibold">
+                        {(user.full_name || user.email || "U").slice(0, 1).toUpperCase()}
                       </div>
-                      <div>
-                        <div className="font-medium flex items-center gap-1">
-                          <Mail className="h-3 w-3 text-muted-foreground" />
-                          <span className="truncate max-w-[200px]">{user.email || user.user_id}</span>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {user.full_name || "Sem nome"}
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{user.full_name || "Sem nome"}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                          <Mail className="h-3 w-3" />
+                          {user.email || "sem email"}
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <Badge 
-                      variant="outline"
-                      className={isAdmin 
-                        ? "bg-accent/20 text-accent border-accent/30" 
-                        : "bg-muted text-muted-foreground"
-                      }
-                    >
-                      {isAdmin ? (
-                        <><Shield className="h-3 w-3 mr-1" /> Admin</>
-                      ) : (
-                        <><UserCog className="h-3 w-3 mr-1" /> Usuário</>
-                      )}
+
+                  <td className="p-4">
+                    <Badge variant="outline" className="gap-1">
+                      <UserCog className="h-3 w-3" />
+                      {isAdmin ? "Admin" : "Usuário"}
                     </Badge>
                   </td>
-                  <td className="px-6 py-4">
-                    <Badge 
-                      variant="outline"
-                      className={planColors[user.plan] || planColors.starter}
-                    >
-                      {planLabels[user.plan] || user.plan}
+
+                  <td className="p-4">
+                    <Badge className={`border ${planColors?.[plan] || "bg-muted"}`}>{planLabel}</Badge>
+                  </td>
+
+                  <td className="p-4">{formatClientLimit(limit)}</td>
+
+                  <td className="p-4">
+                    <Badge variant="outline" className="text-success border-success/30">
+                      Ativo
                     </Badge>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-muted-foreground">
-                      {formatClientLimit(user.clients_limit)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <Badge 
-                      variant="outline"
-                      className={isDisabled 
-                        ? "bg-destructive/20 text-destructive border-destructive/30"
-                        : "bg-success/20 text-success border-success/30"
-                      }
-                    >
-                      {isDisabled ? "Desativado" : "Ativo"}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-4 text-right">
+
+                  <td className="p-4 text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -293,62 +343,22 @@ export default function AdminUsersPlans() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {showAdminActions ? (
-                          <DropdownMenuItem 
-                            onClick={() => toggleAdminRole(user.user_id, true)}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Remover Admin
-                          </DropdownMenuItem>
-                        ) : (
-                          <>
-                            <DropdownMenuItem 
-                              onClick={() => toggleAdminRole(user.user_id, false)}
-                            >
-                              <UserPlus className="h-4 w-4 mr-2" />
-                              Tornar Admin
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                          </>
-                        )}
-                        <DropdownMenuItem 
-                          onClick={() => updateUserPlan(user.user_id, "starter")}
-                          disabled={user.plan === "starter"}
+                        <DropdownMenuItem
+                          onClick={() => onToggleAdmin(user.user_id || user.id, isAdmin)}
+                          className="gap-2"
                         >
-                          Plano Starter (1 cliente)
+                          {isAdmin ? <Shield className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
+                          {isAdmin ? "Remover Admin" : "Tornar Admin"}
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => updateUserPlan(user.user_id, "tatico" as SubscriptionPlan)}
-                          disabled={user.plan === "tatico"}
-                        >
-                          Plano Tático (3 clientes)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => updateUserPlan(user.user_id, "pro")}
-                          disabled={user.plan === "pro"}
-                        >
-                          Plano Pro (6 clientes)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => updateUserPlan(user.user_id, "elite")}
-                          disabled={user.plan === "elite"}
-                        >
-                          Plano Elite (10 clientes)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => updateUserPlan(user.user_id, "agency")}
-                          disabled={user.plan === "agency"}
-                        >
-                          Plano Agency (Ilimitado)
-                        </DropdownMenuItem>
+
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => handleDeleteUser(user)}
-                          className="text-destructive focus:text-destructive"
+
+                        <DropdownMenuItem
+                          onClick={() => onDeleteUser(user)}
+                          className="gap-2 text-destructive focus:text-destructive"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir Usuário
+                          <Trash2 className="h-4 w-4" />
+                          Excluir usuário
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -359,104 +369,6 @@ export default function AdminUsersPlans() {
           </tbody>
         </table>
       </div>
-
-      {userList.length === 0 && (
-        <div className="p-12 text-center">
-          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="font-medium mb-2">Nenhum usuário encontrado</h3>
-          <p className="text-sm text-muted-foreground">
-            Tente ajustar sua busca.
-          </p>
-        </div>
-      )}
-    </motion.div>
-  );
-
-  return (
-    <AppLayout 
-      title="Usuários & Planos" 
-      subtitle="Gerencie usuários, permissões e planos"
-    >
-      <div className="space-y-6">
-        {/* Stats Cards */}
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-3 gap-4"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="rounded-xl bg-card border border-border p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Users className="h-5 w-5 text-primary" />
-              </div>
-              <span className="text-muted-foreground">Total de Usuários</span>
-            </div>
-            <div className="text-3xl font-bold">{users.length}</div>
-          </div>
-
-          <div className="rounded-xl bg-card border border-border p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                <Shield className="h-5 w-5 text-accent" />
-              </div>
-              <span className="text-muted-foreground">Administradores</span>
-            </div>
-            <div className="text-3xl font-bold">{adminUsers.length}</div>
-          </div>
-
-          <div className="rounded-xl bg-card border border-border p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
-                <Crown className="h-5 w-5 text-success" />
-              </div>
-              <span className="text-muted-foreground">Planos Pagos</span>
-            </div>
-            <div className="text-3xl font-bold">
-              {users.filter((u) => u.plan !== "starter").length}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar usuários..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-
-        {/* Tabs for Users and Admins */}
-        <Tabs defaultValue="users" className="space-y-4">
-          <TabsList className="bg-secondary">
-            <TabsTrigger value="users" className="gap-2">
-              <UserCog className="h-4 w-4" />
-              Usuários ({regularUsers.length})
-            </TabsTrigger>
-            <TabsTrigger value="admins" className="gap-2">
-              <Shield className="h-4 w-4" />
-              Administradores ({adminUsers.length})
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="users">
-            {renderUserTable(filteredRegularUsers, false)}
-          </TabsContent>
-
-          <TabsContent value="admins">
-            {renderUserTable(filteredAdminUsers, true)}
-          </TabsContent>
-        </Tabs>
-      </div>
-
-      <DeleteUserDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        userName={userToDelete?.full_name || "Usuário"}
-        onConfirm={confirmDeleteUser}
-      />
-    </AppLayout>
+    </div>
   );
 }
