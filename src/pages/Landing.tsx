@@ -29,8 +29,8 @@ const features = [
 
 const plans = [
   { name: "Starter", clients: "1 cliente", price: "Grátis", popular: false },
-  { name: "Pro", clients: "3 clientes", price: "R$ 49,90/mês", popular: true },
-  { name: "Elite", clients: "10 clientes", price: "R$ 197,00/mês", popular: false },
+  { name: "Pro", clients: "3 clientes", price: "R$ 49,90/mês", popular: false },
+  { name: "Elite", clients: "10 clientes", price: "R$ 197,00/mês", popular: true },
   { name: "Agency", clients: "Ilimitado", price: "R$ 297,00/mês", popular: false },
 ];
 
