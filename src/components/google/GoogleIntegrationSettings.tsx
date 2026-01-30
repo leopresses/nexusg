@@ -30,6 +30,28 @@ export function GoogleIntegrationSettings() {
     syncMetrics,
   } = useGoogleConnection();
 
+  // Map error codes to user-friendly messages
+  const getErrorMessage = (code: string, details?: string): string => {
+    const messages: Record<string, string> = {
+      "access_denied": "Acesso negado. Você precisa permitir as permissões solicitadas.",
+      "redirect_uri_mismatch": "Erro de configuração OAuth. O URI de redirecionamento não está autorizado no Google Cloud Console.",
+      "invalid_client": "Credenciais OAuth inválidas. Verifique GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET.",
+      "invalid_grant": "Código de autorização expirado ou já utilizado. Tente novamente.",
+      "state_expired": "Sessão de autenticação expirada (limite: 10 min). Tente novamente.",
+      "invalid_state": "Erro de validação de segurança. Tente novamente.",
+      "missing_params": "Resposta incompleta do Google. Tente novamente.",
+      "token_exchange_failed": "Falha ao obter tokens do Google. Tente novamente.",
+      "no_access_token": "Google não retornou token de acesso. Tente novamente.",
+      "database_error": "Erro ao salvar conexão no banco de dados. Tente novamente.",
+      "config_error": `Erro de configuração do servidor${details ? ` (${details})` : ""}. Contate o suporte.`,
+      "internal_error": "Erro interno do servidor. Tente novamente ou contate o suporte.",
+      "google_error": "Erro retornado pelo Google. Tente novamente.",
+      "auth_failed": "Autenticação falhou. Tente novamente.",
+    };
+    
+    return messages[code] || details || "Erro desconhecido. Tente novamente.";
+  };
+
   // Handle OAuth callback
   useEffect(() => {
     const authResult = searchParams.get("google_auth");
@@ -38,8 +60,11 @@ export function GoogleIntegrationSettings() {
         toast.success("Google Business conectado com sucesso!");
         fetchConnection();
       } else if (authResult === "error") {
-        const message = searchParams.get("message");
-        toast.error(`Erro ao conectar: ${message || "Tente novamente"}`);
+        const code = searchParams.get("code") || searchParams.get("message") || "unknown";
+        const details = searchParams.get("details") || undefined;
+        const message = getErrorMessage(code, details);
+        console.error("Google OAuth error:", code, details);
+        toast.error(message, { duration: 8000 });
       }
       // Clear params
       setSearchParams({});

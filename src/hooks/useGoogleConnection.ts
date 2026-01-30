@@ -66,7 +66,10 @@ export function useGoogleConnection() {
   }, [fetchConnection]);
 
   const connect = async () => {
-    if (!user) return;
+    if (!user) {
+      toast.error("Você precisa estar logado para conectar o Google.");
+      return;
+    }
 
     setIsConnecting(true);
     try {
@@ -74,19 +77,76 @@ export function useGoogleConnection() {
         body: { redirectUrl: window.location.origin },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Try to extract meaningful error from response
+        const errorData = error as any;
+        const code = errorData?.code || errorData?.message || "unknown";
+        const message = errorData?.message || getErrorMessage(code);
+        console.error("Google connect error:", code, message);
+        toast.error(message);
+        setIsConnecting(false);
+        return;
+      }
+
+      if (data?.error) {
+        // Handle structured error response
+        const message = data.message || getErrorMessage(data.code);
+        console.error("Google connect returned error:", data.code, data.message);
+        toast.error(message);
+        setIsConnecting(false);
+        return;
+      }
 
       if (data?.authUrl) {
         // Redirect to Google OAuth
         window.location.href = data.authUrl;
       } else {
-        throw new Error("No auth URL returned");
+        toast.error("Erro ao gerar URL de autenticação. Tente novamente.");
+        setIsConnecting(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error connecting Google:", error);
       toast.error("Erro ao conectar com Google. Tente novamente.");
       setIsConnecting(false);
     }
+  };
+
+  // Map error codes to user-friendly messages
+  const getErrorMessage = (code: string): string => {
+    const messages: Record<string, string> = {
+      // Auth errors
+      "NO_AUTH_HEADER": "Sessão expirada. Faça login novamente.",
+      "INVALID_TOKEN": "Token inválido. Faça login novamente.",
+      "NO_USER_ID": "Usuário não identificado. Faça login novamente.",
+      
+      // Config errors
+      "MISSING_CLIENT_ID": "Configuração do Google não encontrada. Contate o suporte.",
+      "config_error": "Erro de configuração. Contate o suporte.",
+      
+      // Google OAuth errors
+      "access_denied": "Acesso negado. Você precisa permitir as permissões solicitadas.",
+      "redirect_uri_mismatch": "Erro de configuração OAuth (redirect_uri). Contate o suporte.",
+      "invalid_client": "Credenciais OAuth inválidas. Contate o suporte.",
+      "invalid_grant": "Código de autorização expirado. Tente novamente.",
+      
+      // State errors
+      "state_expired": "Sessão de autenticação expirada. Tente novamente.",
+      "invalid_state": "Erro de validação de segurança. Tente novamente.",
+      "missing_params": "Resposta incompleta do Google. Tente novamente.",
+      
+      // Token errors
+      "token_exchange_failed": "Falha ao obter tokens do Google. Tente novamente.",
+      "no_access_token": "Google não retornou token de acesso. Tente novamente.",
+      
+      // Database errors
+      "database_error": "Erro ao salvar conexão. Tente novamente.",
+      
+      // Generic
+      "internal_error": "Erro interno. Tente novamente ou contate o suporte.",
+      "google_error": "Erro do Google. Tente novamente.",
+    };
+    
+    return messages[code] || `Erro: ${code}. Tente novamente.`;
   };
 
   const disconnect = async () => {
