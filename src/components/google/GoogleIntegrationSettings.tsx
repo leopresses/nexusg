@@ -14,10 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useGoogleConnection } from "@/hooks/useGoogleConnection";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { GoogleOAuthTroubleshooting } from "./GoogleOAuthTroubleshooting";
 
 export function GoogleIntegrationSettings() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isAdmin } = useAuth();
   const {
     connection,
     isLoading,
@@ -108,6 +111,7 @@ export function GoogleIntegrationSettings() {
   };
 
   return (
+    <>
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -230,5 +234,9 @@ export function GoogleIntegrationSettings() {
         </p>
       </CardContent>
     </Card>
+    
+    {/* Admin-only troubleshooting guide */}
+    {isAdmin && <GoogleOAuthTroubleshooting />}
+    </>
   );
 }

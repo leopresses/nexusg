@@ -37,22 +37,55 @@ function errorRedirect(frontendUrl: string, code: string, details?: string): Res
   return Response.redirect(`${frontendUrl}/settings?${params.toString()}`);
 }
 
+// Parse query parameters from URL string - handles edge function URL formats
+function parseQueryParams(urlString: string): URLSearchParams {
+  // Try to find query string in various formats
+  const questionMarkIndex = urlString.indexOf("?");
+  if (questionMarkIndex !== -1) {
+    return new URLSearchParams(urlString.substring(questionMarkIndex + 1));
+  }
+  return new URLSearchParams();
+}
+
 serve(async (req) => {
   const frontendUrl = Deno.env.get("FRONTEND_URL") || "https://nexusg.lovable.app";
   
   try {
-    const url = new URL(req.url);
-    const code = url.searchParams.get("code");
-    const state = url.searchParams.get("state");
-    const error = url.searchParams.get("error");
-    const errorDescription = url.searchParams.get("error_description");
+    // Log raw request info for debugging
+    console.log("=== Google OAuth Callback ===");
+    console.log("Raw URL:", req.url);
+    console.log("Method:", req.method);
+    
+    // Parse URL - handle both standard URLs and edge function invocations
+    let params: URLSearchParams;
+    
+    try {
+      // First try standard URL parsing
+      const url = new URL(req.url);
+      params = url.searchParams;
+      console.log("Standard URL parsing - search:", url.search);
+    } catch {
+      // Fallback to manual parsing
+      console.log("Standard URL parsing failed, trying manual parse");
+      params = parseQueryParams(req.url);
+    }
+    
+    // If still no params, try parsing from the raw URL string directly
+    if (!params.has("code") && !params.has("state") && !params.has("error")) {
+      console.log("No params found via standard parsing, trying direct string parse");
+      params = parseQueryParams(req.url);
+    }
+    
+    let code = params.get("code");
+    let state = params.get("state");
+    const error = params.get("error");
+    const errorDescription = params.get("error_description");
 
-    console.log("Callback received - code:", !!code, "state:", !!state, "error:", error);
-
+    console.log("Parsed params - code:", !!code, "state:", !!state, "error:", error);
+    
     // Handle errors from Google
     if (error) {
       console.error("OAuth error from Google:", error, errorDescription);
-      // Map known Google errors to user-friendly codes
       let errorCode = "google_error";
       if (error === "access_denied") {
         errorCode = "access_denied";
@@ -65,12 +98,19 @@ serve(async (req) => {
     }
 
     if (!code || !state) {
+      // Log all available headers for debugging
+      const headers: Record<string, string> = {};
+      req.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
       console.error("Missing code or state in callback");
+      console.error("Raw URL:", req.url);
+      console.error("Headers:", JSON.stringify(headers));
       return errorRedirect(frontendUrl, "missing_params");
     }
 
     // Decode and validate state
-    let stateData;
+    let stateData: { userId: string; timestamp: number; nonce: string };
     try {
       stateData = JSON.parse(atob(state));
       
@@ -116,6 +156,7 @@ serve(async (req) => {
     }
 
     const callbackUrl = `${supabaseUrl}/functions/v1/google-auth-callback`;
+    console.log("Using callback URL for token exchange:", callbackUrl);
 
     // Exchange code for tokens
     console.log("Exchanging code for tokens...");
@@ -133,7 +174,7 @@ serve(async (req) => {
 
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.json().catch(() => ({}));
-      console.error("Token exchange failed:", tokenResponse.status, errorData);
+      console.error("Token exchange failed:", tokenResponse.status, JSON.stringify(errorData));
       
       // Map specific token errors
       const tokenError = errorData.error || "unknown";
@@ -148,7 +189,7 @@ serve(async (req) => {
     }
 
     const tokens = await tokenResponse.json();
-    console.log("Tokens received successfully, expires_in:", tokens.expires_in);
+    console.log("Tokens received successfully, expires_in:", tokens.expires_in, "has_refresh_token:", !!tokens.refresh_token);
 
     if (!tokens.access_token) {
       console.error("No access token in response");
