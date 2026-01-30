@@ -7,20 +7,19 @@ async function encryptToken(plaintext: string, key: string): Promise<string> {
   const encoder = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     "raw",
-    encoder.encode(key.padEnd(32, "0").slice(0, 32)), // Ensure 256-bit key
+    encoder.encode(key.padEnd(32, "0").slice(0, 32)),
     { name: "AES-GCM" },
     false,
     ["encrypt"]
   );
   
-  const iv = crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV for GCM
+  const iv = crypto.getRandomValues(new Uint8Array(12));
   const ciphertext = await crypto.subtle.encrypt(
     { name: "AES-GCM", iv },
     keyMaterial,
     encoder.encode(plaintext)
   );
   
-  // Combine IV + ciphertext and encode as base64
   const combined = new Uint8Array(iv.length + new Uint8Array(ciphertext).length);
   combined.set(iv);
   combined.set(new Uint8Array(ciphertext), iv.length);
@@ -28,58 +27,98 @@ async function encryptToken(plaintext: string, key: string): Promise<string> {
   return encodeBase64(combined.buffer);
 }
 
+// Helper to create error redirect URL with meaningful codes
+function errorRedirect(frontendUrl: string, code: string, details?: string): Response {
+  const params = new URLSearchParams({
+    google_auth: "error",
+    code,
+    ...(details ? { details } : {}),
+  });
+  return Response.redirect(`${frontendUrl}/settings?${params.toString()}`);
+}
+
 serve(async (req) => {
+  const frontendUrl = Deno.env.get("FRONTEND_URL") || "https://nexusg.lovable.app";
+  
   try {
     const url = new URL(req.url);
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
     const error = url.searchParams.get("error");
+    const errorDescription = url.searchParams.get("error_description");
 
-    // Get frontend URL for redirects
-    const frontendUrl = Deno.env.get("FRONTEND_URL") || "https://nexusg.lovable.app";
-    
+    console.log("Callback received - code:", !!code, "state:", !!state, "error:", error);
+
     // Handle errors from Google
     if (error) {
-      console.error("OAuth error from Google:", error);
-      return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=${encodeURIComponent(error)}`);
+      console.error("OAuth error from Google:", error, errorDescription);
+      // Map known Google errors to user-friendly codes
+      let errorCode = "google_error";
+      if (error === "access_denied") {
+        errorCode = "access_denied";
+      } else if (error === "redirect_uri_mismatch") {
+        errorCode = "redirect_uri_mismatch";
+      } else if (error === "invalid_client") {
+        errorCode = "invalid_client";
+      }
+      return errorRedirect(frontendUrl, errorCode, error);
     }
 
     if (!code || !state) {
-      console.error("Missing code or state");
-      return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=auth_failed`);
+      console.error("Missing code or state in callback");
+      return errorRedirect(frontendUrl, "missing_params");
     }
 
-    // Decode and validate state - use generic error message for all state validation failures
+    // Decode and validate state
     let stateData;
     try {
       stateData = JSON.parse(atob(state));
       
       const { userId, timestamp } = stateData;
       
-      // Validate required fields and check state age (10 minutes max)
-      if (!userId || !timestamp || Date.now() - timestamp > 10 * 60 * 1000) {
-        throw new Error("Invalid state data");
+      if (!userId || !timestamp) {
+        throw new Error("Missing required state fields");
+      }
+      
+      // Check state age (10 minutes max)
+      const stateAge = Date.now() - timestamp;
+      if (stateAge > 10 * 60 * 1000) {
+        console.error("State expired, age:", stateAge / 1000, "seconds");
+        return errorRedirect(frontendUrl, "state_expired");
       }
     } catch (stateError) {
-      // Use generic error message to prevent timing attacks
       console.error("State validation failed:", stateError);
-      return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=auth_failed`);
+      return errorRedirect(frontendUrl, "invalid_state");
     }
 
     const { userId } = stateData;
+    console.log("Processing OAuth for user:", userId);
 
-    // Exchange code for tokens
-    const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID")!;
-    const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    // Get environment variables
+    const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
+    const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const encryptionKey = Deno.env.get("TOKEN_ENCRYPTION_KEY");
-    const callbackUrl = `${supabaseUrl}/functions/v1/google-auth-callback`;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
+    // Validate configuration
+    if (!googleClientId || !googleClientSecret) {
+      console.error("Missing Google OAuth credentials");
+      return errorRedirect(frontendUrl, "config_error", "google_credentials");
+    }
     if (!encryptionKey) {
-      console.error("TOKEN_ENCRYPTION_KEY not configured");
-      return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=auth_failed`);
+      console.error("Missing TOKEN_ENCRYPTION_KEY");
+      return errorRedirect(frontendUrl, "config_error", "encryption_key");
+    }
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error("Missing Supabase credentials");
+      return errorRedirect(frontendUrl, "config_error", "supabase");
     }
 
+    const callbackUrl = `${supabaseUrl}/functions/v1/google-auth-callback`;
+
+    // Exchange code for tokens
+    console.log("Exchanging code for tokens...");
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -93,13 +132,28 @@ serve(async (req) => {
     });
 
     if (!tokenResponse.ok) {
-      const errorText = await tokenResponse.text();
-      console.error("Token exchange failed:", errorText);
-      return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=auth_failed`);
+      const errorData = await tokenResponse.json().catch(() => ({}));
+      console.error("Token exchange failed:", tokenResponse.status, errorData);
+      
+      // Map specific token errors
+      const tokenError = errorData.error || "unknown";
+      if (tokenError === "redirect_uri_mismatch") {
+        return errorRedirect(frontendUrl, "redirect_uri_mismatch");
+      } else if (tokenError === "invalid_grant") {
+        return errorRedirect(frontendUrl, "invalid_grant");
+      } else if (tokenError === "invalid_client") {
+        return errorRedirect(frontendUrl, "invalid_client");
+      }
+      return errorRedirect(frontendUrl, "token_exchange_failed", tokenError);
     }
 
     const tokens = await tokenResponse.json();
-    console.log("Tokens received, expires_in:", tokens.expires_in);
+    console.log("Tokens received successfully, expires_in:", tokens.expires_in);
+
+    if (!tokens.access_token) {
+      console.error("No access token in response");
+      return errorRedirect(frontendUrl, "no_access_token");
+    }
 
     // Encrypt tokens before storing
     const encryptedAccessToken = await encryptToken(tokens.access_token, encryptionKey);
@@ -119,13 +173,14 @@ serve(async (req) => {
       const userInfo = await userInfoResponse.json();
       googleEmail = userInfo.email;
       console.log("Google user email:", googleEmail);
+    } else {
+      console.warn("Could not fetch Google user info, continuing without email");
     }
 
     // Calculate token expiration
     const tokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
     // Save encrypted tokens to database using service role
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     // Upsert the connection with encrypted tokens
@@ -139,22 +194,22 @@ serve(async (req) => {
         token_expires_at: tokenExpiresAt,
         status: "connected",
         error_message: null,
+        updated_at: new Date().toISOString(),
       }, {
         onConflict: "user_id",
       });
 
     if (dbError) {
-      console.error("Database error:", dbError);
-      return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=auth_failed`);
+      console.error("Database error:", dbError.message, dbError.code);
+      return errorRedirect(frontendUrl, "database_error", dbError.code);
     }
 
-    console.log("Encrypted Google connection saved for user:", userId);
+    console.log("Google connection saved successfully for user:", userId);
     
     // Redirect back to settings with success
     return Response.redirect(`${frontendUrl}/settings?google_auth=success`);
   } catch (error) {
-    console.error("Error in google-auth-callback:", error);
-    const frontendUrl = Deno.env.get("FRONTEND_URL") || "https://nexusg.lovable.app";
-    return Response.redirect(`${frontendUrl}/settings?google_auth=error&message=auth_failed`);
+    console.error("Unexpected error in google-auth-callback:", error);
+    return errorRedirect(frontendUrl, "internal_error");
   }
 });

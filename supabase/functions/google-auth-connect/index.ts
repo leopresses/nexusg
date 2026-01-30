@@ -1,18 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Allowed origins for CORS
-const allowedOrigins = [
-  "https://nexusg.lovable.app",
-  "https://id-preview--a37866c6-77e2-4449-8805-ec48acb8f5b5.lovable.app",
-];
-
+// Dynamic CORS: allow any Lovable preview origin + production
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get("Origin") || "";
-  const allowedOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+  
+  const isAllowed = 
+    origin.endsWith(".lovableproject.com") ||
+    origin.endsWith(".lovable.app") ||
+    origin === "https://nexusg.lovable.app";
   
   return {
-    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Origin": isAllowed ? origin : "https://nexusg.lovable.app",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
     "Access-Control-Allow-Credentials": "true",
   };
@@ -29,7 +28,12 @@ serve(async (req) => {
     // Get user from JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      console.error("Missing or invalid Authorization header");
+      return new Response(JSON.stringify({ 
+        error: "Unauthorized",
+        code: "NO_AUTH_HEADER",
+        message: "Sessão expirada. Faça login novamente."
+      }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -46,7 +50,12 @@ serve(async (req) => {
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
     
     if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      console.error("Token validation failed:", claimsError?.message);
+      return new Response(JSON.stringify({ 
+        error: "Unauthorized",
+        code: "INVALID_TOKEN",
+        message: "Token inválido ou expirado. Faça login novamente."
+      }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -54,20 +63,35 @@ serve(async (req) => {
 
     const userId = claimsData.claims.sub;
     if (!userId) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      console.error("No user ID in token claims");
+      return new Response(JSON.stringify({ 
+        error: "Unauthorized",
+        code: "NO_USER_ID",
+        message: "Usuário não identificado. Faça login novamente."
+      }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // Get request body
-    const { redirectUrl } = await req.json();
+    let redirectUrl;
+    try {
+      const body = await req.json();
+      redirectUrl = body.redirectUrl;
+    } catch {
+      redirectUrl = "https://nexusg.lovable.app";
+    }
     
     // Build Google OAuth URL
     const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
     if (!googleClientId) {
       console.error("GOOGLE_CLIENT_ID not configured");
-      return new Response(JSON.stringify({ error: "Configuration error" }), {
+      return new Response(JSON.stringify({ 
+        error: "Configuration error",
+        code: "MISSING_CLIENT_ID",
+        message: "Configuração do Google não encontrada. Contate o suporte."
+      }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -100,7 +124,7 @@ serve(async (req) => {
     googleAuthUrl.searchParams.set("prompt", "consent");
     googleAuthUrl.searchParams.set("state", state);
 
-    console.log("Generated OAuth URL for user:", userId);
+    console.log("Generated OAuth URL for user:", userId, "callback:", callbackUrl);
 
     return new Response(
       JSON.stringify({ 
@@ -114,7 +138,11 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in google-auth-connect:", error);
     return new Response(
-      JSON.stringify({ error: "Operation failed" }),
+      JSON.stringify({ 
+        error: "Operation failed",
+        code: "INTERNAL_ERROR",
+        message: "Erro interno. Tente novamente ou contate o suporte."
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
