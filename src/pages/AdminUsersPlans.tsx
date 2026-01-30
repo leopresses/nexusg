@@ -50,14 +50,19 @@ export default function AdminUsersPlans() {
     fetchUsers();
   }, []);
 
+  const [error, setError] = useState<string | null>(null);
+
   const fetchUsers = async () => {
+    setError(null);
     try {
       // Use edge function to fetch all users (service role required for admin view)
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
 
       if (!token) {
-        throw new Error("No authentication token");
+        setError("Sessão expirada. Faça login novamente.");
+        toast.error("Sessão expirada. Faça login novamente.");
+        return;
       }
 
       const response = await supabase.functions.invoke("admin-list-users", {
@@ -67,13 +72,25 @@ export default function AdminUsersPlans() {
       });
 
       if (response.error) {
-        throw response.error;
+        // Handle specific error codes
+        const status = (response.error as any)?.status;
+        if (status === 401) {
+          setError("Sessão expirada. Faça login novamente.");
+          toast.error("Sessão expirada. Faça login novamente.");
+        } else if (status === 403) {
+          setError("Acesso restrito a administradores.");
+          toast.error("Acesso restrito a administradores.");
+        } else {
+          throw response.error;
+        }
+        return;
       }
 
-      const usersWithRoles: UserWithRole[] = response.data.users || [];
+      const usersWithRoles: UserWithRole[] = response.data?.users || [];
       setUsers(usersWithRoles);
-    } catch (error) {
-      console.error("Error fetching users:", error);
+    } catch (err: any) {
+      console.error("Error fetching users:", err);
+      setError("Erro ao carregar usuários. Tente novamente.");
       toast.error("Erro ao carregar usuários");
     } finally {
       setIsLoading(false);
@@ -173,11 +190,28 @@ export default function AdminUsersPlans() {
       user.user_id.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  // Error state
+  if (error && !isLoading) {
+    return (
+      <AppLayout title="Usuários & Planos" subtitle="Gerencie usuários, permissões e planos">
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <Shield className="h-16 w-16 text-destructive mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Erro ao carregar</h2>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={() => { setIsLoading(true); fetchUsers(); }}>
+            Tentar novamente
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
+
   if (isLoading) {
     return (
       <AppLayout title="Usuários & Planos" subtitle="Gerencie usuários, permissões e planos">
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-muted-foreground">Carregando usuários...</p>
         </div>
       </AppLayout>
     );
