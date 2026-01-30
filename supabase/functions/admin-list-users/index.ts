@@ -1,17 +1,17 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Allowed origins for CORS
-const allowedOrigins = [
-  "https://nexusg.lovable.app",
-  "https://id-preview--a37866c6-77e2-4449-8805-ec48acb8f5b5.lovable.app",
-];
-
+// Dynamic CORS: allow any Lovable preview origin + production
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get("Origin") || "";
-  const allowedOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
-
+  
+  // Allow lovableproject.com previews, lovable.app previews, and production domain
+  const isAllowed = 
+    origin.endsWith(".lovableproject.com") ||
+    origin.endsWith(".lovable.app") ||
+    origin === "https://nexusg.lovable.app";
+  
   return {
-    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Origin": isAllowed ? origin : "https://nexusg.lovable.app",
     "Access-Control-Allow-Headers":
       "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
     "Access-Control-Allow-Credentials": "true",
