@@ -31,6 +31,7 @@ import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { GoogleIntegrationSettings } from "@/components/google/GoogleIntegrationSettings";
+import { formatClientLimit, getPlanLabel } from "@/config/plans";
 
 // Account Settings Component
 function AccountSettings() {
@@ -812,11 +813,9 @@ export default function Settings() {
                 <CardContent>
                   <div className="flex items-center justify-between p-4 rounded-xl bg-primary/10 border border-primary/20 mb-4">
                     <div>
-                      <h3 className="font-semibold text-lg capitalize">{profile?.plan || "Starter"}</h3>
+                      <h3 className="font-semibold text-lg capitalize">{getPlanLabel(profile?.plan || "starter")}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {(profile?.clients_limit || 1) >= 999999 
-                          ? "Clientes ilimitados" 
-                          : `${profile?.clients_limit || 1} cliente${(profile?.clients_limit || 1) > 1 ? "s" : ""}`}
+                        {formatClientLimit(profile?.clients_limit || 1)}
                       </p>
                     </div>
                     <div className="text-right">

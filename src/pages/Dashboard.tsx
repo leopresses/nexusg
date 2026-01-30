@@ -21,6 +21,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { AppLayout } from "@/components/AppLayout";
 import { ProgressBar } from "@/components/dashboard/ProgressBar";
 import { ClientAvatar } from "@/components/clients/ClientAvatar";
+import { getBusinessTypeLabel, formatClientLimit, getPlanLabel } from "@/config/plans";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
@@ -165,9 +166,9 @@ export default function Dashboard() {
     : 0;
 
   const stats = [
-    { label: "Clientes Ativos", value: clients.length.toString(), icon: Users, change: `Limite: ${profile?.clients_limit || 1}` },
+    { label: "Clientes Ativos", value: clients.length.toString(), icon: Users, change: `Limite: ${formatClientLimit(profile?.clients_limit || 1)}` },
     { label: "Tarefas Pendentes", value: taskStats.pending.toString(), icon: CheckSquare, change: `${taskStats.completed} concluídas` },
-    { label: "Seu Plano", value: profile?.plan?.toUpperCase() || "STARTER", icon: Eye, change: "Plano atual" },
+    { label: "Seu Plano", value: getPlanLabel(profile?.plan || "starter").toUpperCase(), icon: Eye, change: "Plano atual" },
     { label: "Taxa de Conclusão", value: `${completionRate}%`, icon: Phone, change: "Total geral" },
   ];
 
@@ -296,7 +297,7 @@ export default function Dashboard() {
                         </div>
                         <div>
                           <h3 className="font-medium">{client.name}</h3>
-                          <p className="text-sm text-muted-foreground capitalize">{client.business_type}</p>
+                          <p className="text-sm text-muted-foreground capitalize">{getBusinessTypeLabel(client.business_type)}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-6">

@@ -41,14 +41,9 @@ import { toast } from "sonner";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 
-const businessTypeLabels: Record<string, string> = {
-  restaurant: "Restaurante",
-  store: "Loja",
-  service: "Serviço",
-  other: "Outro",
-  cafe_service: "Café/Serviços",
-  barbershop_salon: "Barbearia/Salão",
-};
+import { getBusinessTypeLabel } from "@/config/plans";
+
+// Use centralized business type labels
 
 export default function Clients() {
   const { user } = useAuth();
@@ -108,7 +103,7 @@ export default function Clients() {
 
   const filteredClients = clients.filter((client) =>
     client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    businessTypeLabels[client.business_type]?.toLowerCase().includes(searchQuery.toLowerCase())
+    getBusinessTypeLabel(client.business_type).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleClientClick = (clientId: string) => {
@@ -243,7 +238,7 @@ export default function Clients() {
                         </h3>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Building2 className="h-3 w-3" />
-                          <span>{businessTypeLabels[client.business_type]}</span>
+                          <span>{getBusinessTypeLabel(client.business_type)}</span>
                         </div>
                       </div>
                     </div>
