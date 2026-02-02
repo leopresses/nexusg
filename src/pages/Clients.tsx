@@ -27,7 +27,7 @@ import { useClientTasks } from "@/hooks/useClientTasks";
 import { EditClientDialog } from "@/components/clients/EditClientDialog";
 import { DeleteClientDialog } from "@/components/clients/DeleteClientDialog";
 import { LinkLocationDialog } from "@/components/google/LinkLocationDialog";
-import { useGoogleConnection, type ClientGoogleLocation } from "@/hooks/useGoogleConnection";
+import { useGoogleConnection, type ClientGBPInfo } from "@/hooks/useGoogleConnection";
 import { useAuth } from "@/hooks/useAuth";
 import { ClientAvatar } from "@/components/clients/ClientAvatar";
 import {
@@ -43,47 +43,38 @@ type Client = Database["public"]["Tables"]["clients"]["Row"];
 
 import { getBusinessTypeLabel } from "@/config/plans";
 
-// Use centralized business type labels
+// Extended client type with new GBP fields
+type ExtendedClient = Client & {
+  gbp_account_id?: string | null;
+  gbp_location_id?: string | null;
+  gbp_location_name?: string | null;
+  gbp_address?: string | null;
+  google_connected?: boolean;
+  last_gbp_sync_at?: string | null;
+  gbp_sync_status?: string | null;
+  gbp_sync_error?: string | null;
+};
 
 export default function Clients() {
   const { user } = useAuth();
-  const [clients, setClients] = useState<Client[]>([]);
+  const [clients, setClients] = useState<ExtendedClient[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [deletingClient, setDeletingClient] = useState<Client | null>(null);
-  const [linkingClient, setLinkingClient] = useState<Client | null>(null);
+  const [editingClient, setEditingClient] = useState<ExtendedClient | null>(null);
+  const [deletingClient, setDeletingClient] = useState<ExtendedClient | null>(null);
+  const [linkingClient, setLinkingClient] = useState<ExtendedClient | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
-  const [clientLocations, setClientLocations] = useState<Map<string, ClientGoogleLocation>>(new Map());
   const navigate = useNavigate();
 
-  const { connection, getClientLocation, unlinkLocationFromClient } = useGoogleConnection();
+  const { connection, getClientGBPInfo, unlinkLocationFromClient } = useGoogleConnection();
   const clientIds = clients.map(c => c.id);
   const { getStatsForClient, isLoading: isLoadingTasks } = useClientTasks(clientIds);
 
   useEffect(() => {
     fetchClients();
   }, []);
-
-  // Fetch Google locations for all clients
-  useEffect(() => {
-    const fetchLocations = async () => {
-      if (!user || clients.length === 0) return;
-      
-      const locMap = new Map<string, ClientGoogleLocation>();
-      for (const client of clients) {
-        const loc = await getClientLocation(client.id);
-        if (loc) {
-          locMap.set(client.id, loc);
-        }
-      }
-      setClientLocations(locMap);
-    };
-
-    fetchLocations();
-  }, [clients, user, getClientLocation]);
 
   const fetchClients = async () => {
     try {
@@ -93,7 +84,7 @@ export default function Clients() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      if (data) setClients(data);
+      if (data) setClients(data as ExtendedClient[]);
     } catch (error) {
       console.error("Error fetching clients:", error);
     } finally {
@@ -110,43 +101,55 @@ export default function Clients() {
     navigate(`/tasks?client=${clientId}`);
   };
 
-  const handleEdit = (client: Client, e: React.MouseEvent) => {
+  const handleEdit = (client: ExtendedClient, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingClient(client);
     setEditDialogOpen(true);
   };
 
-  const handleDelete = (client: Client, e: React.MouseEvent) => {
+  const handleDelete = (client: ExtendedClient, e: React.MouseEvent) => {
     e.stopPropagation();
     setDeletingClient(client);
     setDeleteDialogOpen(true);
   };
 
-  const handleIntegrateGoogle = (client: Client, e: React.MouseEvent) => {
+  const handleIntegrateGoogle = (client: ExtendedClient, e: React.MouseEvent) => {
     e.stopPropagation();
     setLinkingClient(client);
     setLinkDialogOpen(true);
   };
 
-  const handleUnlinkGoogle = async (client: Client, e: React.MouseEvent) => {
+  const handleUnlinkGoogle = async (client: ExtendedClient, e: React.MouseEvent) => {
     e.stopPropagation();
     const success = await unlinkLocationFromClient(client.id);
     if (success) {
-      setClientLocations((prev) => {
-        const updated = new Map(prev);
-        updated.delete(client.id);
-        return updated;
-      });
+      // Update the local state
+      setClients(prev => prev.map(c => 
+        c.id === client.id 
+          ? { ...c, google_connected: false, gbp_location_name: null, gbp_location_id: null } 
+          : c
+      ));
     }
   };
 
   const handleLinkSuccess = async () => {
-    if (linkingClient) {
-      const loc = await getClientLocation(linkingClient.id);
-      if (loc) {
-        setClientLocations((prev) => new Map(prev).set(linkingClient.id, loc));
-      }
-    }
+    // Refresh clients to get updated GBP info
+    await fetchClients();
+  };
+
+  // Get GBP info for a client directly from the client data (new architecture)
+  const getClientGBPInfoFromData = (client: ExtendedClient): ClientGBPInfo | null => {
+    if (!client.google_connected) return null;
+    return {
+      gbp_account_id: client.gbp_account_id || null,
+      gbp_location_id: client.gbp_location_id || null,
+      gbp_location_name: client.gbp_location_name || null,
+      gbp_address: client.gbp_address || null,
+      google_connected: client.google_connected || false,
+      last_gbp_sync_at: client.last_gbp_sync_at || null,
+      gbp_sync_status: client.gbp_sync_status || null,
+      gbp_sync_error: client.gbp_sync_error || null,
+    };
   };
 
   if (isLoading) {
@@ -214,6 +217,7 @@ export default function Clients() {
           >
             {filteredClients.map((client, index) => {
               const stats = getStatsForClient(client.id);
+              const isGoogleConnected = client.google_connected === true;
               
               return (
                 <motion.div
@@ -257,7 +261,7 @@ export default function Clients() {
                           <Pencil className="h-4 w-4 mr-2" />
                           Editar
                         </DropdownMenuItem>
-                        {clientLocations.has(client.id) ? (
+                        {isGoogleConnected ? (
                           <>
                             <DropdownMenuItem onClick={(e) => handleIntegrateGoogle(client, e as any)}>
                               <LinkIcon className="h-4 w-4 mr-2" />
@@ -294,11 +298,11 @@ export default function Clients() {
                   )}
 
                   {/* Google Business Badge */}
-                  {clientLocations.has(client.id) && (
+                  {isGoogleConnected && (
                     <div className="mb-4 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center gap-2">
                       <TrendingUp className="h-4 w-4 text-blue-500" />
-                      <span className="text-xs text-blue-500 font-medium">
-                        Google vinculado: {clientLocations.get(client.id)?.location_title}
+                      <span className="text-xs text-blue-500 font-medium truncate">
+                        Google vinculado: {client.gbp_address || client.gbp_location_id || "Localização"}
                       </span>
                     </div>
                   )}
@@ -357,7 +361,7 @@ export default function Clients() {
         onOpenChange={setLinkDialogOpen}
         clientId={linkingClient?.id || ""}
         clientName={linkingClient?.name || ""}
-        currentLocation={linkingClient ? clientLocations.get(linkingClient.id) : null}
+        currentGBPInfo={linkingClient ? getClientGBPInfoFromData(linkingClient) : null}
         onSuccess={handleLinkSuccess}
       />
     </AppLayout>
