@@ -55,24 +55,32 @@ export function GoogleIntegrationSettings() {
     return messages[code] || details || "Erro desconhecido. Tente novamente.";
   };
 
-  // Handle OAuth callback
+  // Handle OAuth callback - this runs when user returns from Google
   useEffect(() => {
     const authResult = searchParams.get("google_auth");
     if (authResult) {
       if (authResult === "success") {
-        toast.success("Google Business conectado com sucesso!");
+        toast.success("Google Business conectado com sucesso!", {
+          description: "Sua conta foi vinculada. Agora você pode sincronizar métricas.",
+          duration: 5000,
+        });
+        // Force refresh connection status
         fetchConnection();
       } else if (authResult === "error") {
         const code = searchParams.get("code") || searchParams.get("message") || "unknown";
         const details = searchParams.get("details") || undefined;
         const message = getErrorMessage(code, details);
-        console.error("Google OAuth error:", code, details);
-        toast.error(message, { duration: 8000 });
+        console.error("Google OAuth error:", { code, details });
+        toast.error(message, { 
+          description: `Código: ${code}`,
+          duration: 8000 
+        });
       }
-      // Clear params
-      setSearchParams({});
+      // Clear URL params without triggering navigation
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
     }
-  }, [searchParams, setSearchParams, fetchConnection]);
+  }, [searchParams, fetchConnection]);
 
   if (isLoading) {
     return (

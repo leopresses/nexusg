@@ -27,14 +27,112 @@ async function encryptToken(plaintext: string, key: string): Promise<string> {
   return encodeBase64(combined.buffer);
 }
 
-// Helper to create error redirect URL with meaningful codes
+// Helper to create error redirect using HTML page for better UX
 function errorRedirect(frontendUrl: string, code: string, details?: string): Response {
   const params = new URLSearchParams({
     google_auth: "error",
     code,
     ...(details ? { details } : {}),
   });
-  return Response.redirect(`${frontendUrl}/settings?${params.toString()}`);
+  const redirectUrl = `${frontendUrl}/settings?${params.toString()}`;
+  
+  // User-friendly error messages
+  const errorMessages: Record<string, string> = {
+    "access_denied": "Você negou o acesso. É necessário permitir as permissões para conectar.",
+    "redirect_uri_mismatch": "Erro de configuração OAuth. Contate o suporte técnico.",
+    "invalid_client": "Credenciais do Google inválidas. Contate o suporte técnico.",
+    "invalid_grant": "O código de autorização expirou. Tente novamente.",
+    "state_expired": "A sessão de autenticação expirou. Tente novamente.",
+    "invalid_state": "Erro de segurança na validação. Tente novamente.",
+    "missing_params": "Resposta incompleta do Google. Tente novamente.",
+    "token_exchange_failed": "Falha ao obter tokens. Tente novamente.",
+    "no_access_token": "Google não retornou token de acesso. Tente novamente.",
+    "database_error": "Erro ao salvar a conexão. Tente novamente.",
+    "config_error": "Erro de configuração do servidor. Contate o suporte.",
+    "internal_error": "Erro interno. Tente novamente ou contate o suporte.",
+    "google_error": "Erro do Google. Tente novamente.",
+  };
+  
+  const message = errorMessages[code] || "Ocorreu um erro. Tente novamente.";
+  
+  const errorHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Erro na conexão</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0a1628 0%, #1a2744 100%);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .container {
+      text-align: center;
+      max-width: 400px;
+    }
+    .icon {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 24px;
+    }
+    h1 { 
+      font-size: 24px; 
+      margin-bottom: 12px;
+      color: #ef4444;
+    }
+    p { 
+      color: #94a3b8; 
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .error-code {
+      font-size: 12px;
+      color: #64748b;
+      font-family: monospace;
+      background: rgba(255,255,255,0.1);
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-bottom: 24px;
+    }
+    .redirect-notice {
+      font-size: 14px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="15" y1="9" x2="9" y2="15"></line>
+      <line x1="9" y1="9" x2="15" y2="15"></line>
+    </svg>
+    <h1>Erro na Conexão</h1>
+    <p>${message}</p>
+    <div class="error-code">Código: ${code}${details ? ` (${details})` : ''}</div>
+    <p class="redirect-notice">Redirecionando...</p>
+  </div>
+  <script>
+    setTimeout(function() {
+      window.location.replace('${redirectUrl}');
+    }, 3000);
+  </script>
+</body>
+</html>`;
+
+  return new Response(errorHtml, {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
 }
 
 // Parse query parameters from URL string - handles edge function URL formats
@@ -247,8 +345,76 @@ serve(async (req) => {
 
     console.log("Google connection saved successfully for user:", userId);
     
-    // Redirect back to settings with success
-    return Response.redirect(`${frontendUrl}/settings?google_auth=success`);
+// Redirect back to settings with success using HTML page
+    // This ensures proper browser navigation and preserves existing session
+    const successHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Google conectado</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0a1628 0%, #1a2744 100%);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .container {
+      text-align: center;
+      max-width: 400px;
+    }
+    .icon {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 24px;
+    }
+    h1 { 
+      font-size: 24px; 
+      margin-bottom: 12px;
+      color: #22c55e;
+    }
+    p { 
+      color: #94a3b8; 
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .redirect-notice {
+      font-size: 14px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
+    <h1>Google Business Conectado!</h1>
+    <p>Sua conta foi vinculada com sucesso. Você será redirecionado automaticamente.</p>
+    <p class="redirect-notice">Redirecionando...</p>
+  </div>
+  <script>
+    // Use replace to avoid back-button issues
+    setTimeout(function() {
+      window.location.replace('${frontendUrl}/settings?google_auth=success');
+    }, 1500);
+  </script>
+</body>
+</html>`;
+
+    return new Response(successHtml, {
+      status: 200,
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
   } catch (error) {
     console.error("Unexpected error in google-auth-callback:", error);
     return errorRedirect(frontendUrl, "internal_error");
