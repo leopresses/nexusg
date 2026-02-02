@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useGoogleMetrics, type AggregatedMetrics } from "@/hooks/useGoogleMetrics";
-import { useGoogleConnection, type ClientGBPInfo } from "@/hooks/useGoogleConnection";
+import { useGoogleConnection, type ClientGoogleLocation } from "@/hooks/useGoogleConnection";
 
 interface GoogleMetricsCardProps {
   clientId: string;
@@ -26,33 +26,33 @@ export function GoogleMetricsCard({
   compact = false,
 }: GoogleMetricsCardProps) {
   const { fetchMetrics, getAggregatedMetrics, isLoading } = useGoogleMetrics(clientId);
-  const { getClientGBPInfo } = useGoogleConnection();
-  const [gbpInfo, setGbpInfo] = useState<ClientGBPInfo | null>(null);
+  const { getClientLocation } = useGoogleConnection();
+  const [location, setLocation] = useState<ClientGoogleLocation | null>(null);
   const [metrics, setMetrics] = useState<AggregatedMetrics | null>(null);
-  const [isLoadingInfo, setIsLoadingInfo] = useState(true);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
-      setIsLoadingInfo(true);
-      const info = await getClientGBPInfo(clientId);
-      setGbpInfo(info);
+      setIsLoadingLocation(true);
+      const loc = await getClientLocation(clientId);
+      setLocation(loc);
       
-      if (info?.google_connected) {
+      if (loc) {
         await fetchMetrics(startDate, endDate);
       }
-      setIsLoadingInfo(false);
+      setIsLoadingLocation(false);
     };
     
     loadData();
-  }, [clientId, startDate, endDate, getClientGBPInfo, fetchMetrics]);
+  }, [clientId, startDate, endDate, getClientLocation, fetchMetrics]);
 
   useEffect(() => {
-    if (gbpInfo?.google_connected) {
+    if (location) {
       setMetrics(getAggregatedMetrics(startDate, endDate));
     }
-  }, [gbpInfo, startDate, endDate, getAggregatedMetrics]);
+  }, [location, startDate, endDate, getAggregatedMetrics]);
 
-  if (isLoadingInfo || isLoading) {
+  if (isLoadingLocation || isLoading) {
     return (
       <Card className={compact ? "bg-secondary/30" : ""}>
         <CardContent className="flex items-center justify-center py-6">
@@ -62,7 +62,7 @@ export function GoogleMetricsCard({
     );
   }
 
-  if (!gbpInfo?.google_connected) {
+  if (!location) {
     return null; // No Google Business linked
   }
 
@@ -132,7 +132,7 @@ export function GoogleMetricsCard({
           </div>
         </div>
         <p className="text-xs text-muted-foreground text-center mt-3">
-          Vinculado: {gbpInfo.gbp_address || gbpInfo.gbp_location_id || "Localização Google"}
+          Vinculado: {location.location_title}
         </p>
       </CardContent>
     </Card>

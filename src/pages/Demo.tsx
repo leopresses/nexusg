@@ -1,16 +1,16 @@
 import { motion } from "framer-motion";
-import {
-  CheckCircle2,
-  Users,
-  Calendar,
-  FileText,
-  BarChart3,
+import { 
+  CheckCircle2, 
+  Users, 
+  Calendar, 
+  FileText, 
+  BarChart3, 
   ArrowRight,
   Clock,
   AlertCircle,
   CheckSquare,
   Star,
-  ArrowLeft,
+  ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
@@ -31,23 +31,23 @@ const stagger = {
 };
 
 const demoTasks = [
-  {
-    title: "Atualizar fotos do estabelecimento",
+  { 
+    title: "Atualizar fotos do estabelecimento", 
     status: "completed",
     client: "Pizzaria Roma",
-    progress: 100,
+    progress: 100 
   },
-  {
-    title: "Responder avaliações de clientes",
+  { 
+    title: "Responder avaliações de clientes", 
     status: "in_progress",
     client: "Café Central",
-    progress: 66,
+    progress: 66 
   },
-  {
-    title: "Verificar métricas semanais",
+  { 
+    title: "Verificar métricas semanais", 
     status: "pending",
     client: "Barbearia Style",
-    progress: 0,
+    progress: 0 
   },
 ];
 
@@ -81,13 +81,24 @@ export default function Demo() {
       {/* Hero Section */}
       <section className="pt-32 pb-16 px-6">
         <div className="container mx-auto">
-          <motion.div className="max-w-3xl mx-auto text-center" initial="hidden" animate="visible" variants={stagger}>
-            <motion.h1 variants={fadeInUp} className="text-4xl md:text-5xl font-bold mb-6">
+          <motion.div 
+            className="max-w-3xl mx-auto text-center"
+            initial="hidden" 
+            animate="visible" 
+            variants={stagger}
+          >
+            <motion.h1 
+              variants={fadeInUp} 
+              className="text-4xl md:text-5xl font-bold mb-6"
+            >
               Veja como o <span className="text-gradient-gold">Gestão Nexus</span> funciona
             </motion.h1>
-            <motion.p variants={fadeInUp} className="text-lg text-muted-foreground mb-8">
-              Uma plataforma completa para gerenciar múltiplos clientes de Google Business com tarefas automatizadas,
-              relatórios profissionais e métricas em tempo real.
+            <motion.p 
+              variants={fadeInUp} 
+              className="text-lg text-muted-foreground mb-8"
+            >
+              Uma plataforma completa para gerenciar múltiplos clientes de Google Business 
+              com tarefas automatizadas, relatórios profissionais e métricas em tempo real.
             </motion.p>
           </motion.div>
         </div>
@@ -111,10 +122,12 @@ export default function Demo() {
                   Passo 1
                 </Badge>
               </div>
-              <h2 className="text-3xl font-bold mb-4">Cadastre seus clientes</h2>
+              <h2 className="text-3xl font-bold mb-4">
+                Cadastre seus clientes
+              </h2>
               <p className="text-muted-foreground mb-6">
-                Adicione os estabelecimentos que você gerencia com informações básicas: nome, tipo de negócio, foto,
-                endereço e link do Google Business.
+                Adicione os estabelecimentos que você gerencia com informações básicas: 
+                nome, tipo de negócio, endereço e link do Google Business.
               </p>
               <ul className="space-y-3">
                 <li className="flex items-center gap-3">
@@ -170,31 +183,30 @@ export default function Demo() {
                   <div key={i} className="p-4 rounded-lg bg-secondary/50">
                     <div className="flex items-center gap-3 mb-2">
                       <h4 className="font-medium flex-1">{task.title}</h4>
-                      <Badge
-                        variant="outline"
+                      <Badge 
+                        variant="outline" 
                         className={
-                          task.status === "completed"
+                          task.status === "completed" 
                             ? "bg-success/20 text-success border-success/30"
                             : task.status === "in_progress"
-                              ? "bg-primary/20 text-primary border-primary/30"
-                              : "bg-warning/20 text-warning border-warning/30"
+                            ? "bg-primary/20 text-primary border-primary/30"
+                            : "bg-warning/20 text-warning border-warning/30"
                         }
                       >
                         {task.status === "completed" && <CheckCircle2 className="h-3 w-3 mr-1" />}
                         {task.status === "in_progress" && <AlertCircle className="h-3 w-3 mr-1" />}
                         {task.status === "pending" && <Clock className="h-3 w-3 mr-1" />}
-                        {task.status === "completed"
-                          ? "Concluída"
-                          : task.status === "in_progress"
-                            ? "Em progresso"
-                            : "Pendente"}
+                        {task.status === "completed" ? "Concluída" : task.status === "in_progress" ? "Em progresso" : "Pendente"}
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">{task.client}</span>
                       <div className="flex items-center gap-2">
                         <div className="w-20 h-2 bg-secondary rounded-full overflow-hidden">
-                          <div className="h-full gradient-neon" style={{ width: `${task.progress}%` }} />
+                          <div 
+                            className="h-full gradient-neon" 
+                            style={{ width: `${task.progress}%` }}
+                          />
                         </div>
                         <span className="text-xs text-muted-foreground">{task.progress}%</span>
                       </div>
@@ -212,10 +224,12 @@ export default function Demo() {
                   Passo 2
                 </Badge>
               </div>
-              <h2 className="text-3xl font-bold mb-4">Tarefas semanais e diárias automáticas</h2>
+              <h2 className="text-3xl font-bold mb-4">
+                Tarefas semanais automáticas
+              </h2>
               <p className="text-muted-foreground mb-6">
-                Toda semana, o sistema gera automaticamente tarefas para todos os seus clientes baseadas em templates
-                pré-configurados. Mais de 30 tipos de tarefas!
+                Toda semana, o sistema gera automaticamente tarefas para todos os seus clientes 
+                baseadas em templates pré-configurados. Mais de 30 tipos de tarefas!
               </p>
               <ul className="space-y-3">
                 <li className="flex items-center gap-3">
@@ -258,10 +272,12 @@ export default function Demo() {
                   Passo 3
                 </Badge>
               </div>
-              <h2 className="text-3xl font-bold mb-4">Atualize status facilmente</h2>
+              <h2 className="text-3xl font-bold mb-4">
+                Atualize status facilmente
+              </h2>
               <p className="text-muted-foreground mb-6">
-                Cada tarefa possui um checklist detalhado e controle de status. Marque itens como concluídos e acompanhe
-                o progresso em tempo real.
+                Cada tarefa possui um checklist detalhado e controle de status. 
+                Marque itens como concluídos e acompanhe o progresso em tempo real.
               </p>
               <div className="flex gap-3 flex-wrap">
                 <Badge className="bg-warning/20 text-warning border-warning/30 py-2 px-4">
@@ -288,14 +304,14 @@ export default function Demo() {
                   { text: "Remover fotos desatualizadas", done: true },
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-secondary/50">
-                    <div
-                      className={`h-5 w-5 rounded border-2 flex items-center justify-center ${
-                        item.done ? "bg-primary border-primary" : "border-muted-foreground"
-                      }`}
-                    >
+                    <div className={`h-5 w-5 rounded border-2 flex items-center justify-center ${
+                      item.done ? "bg-primary border-primary" : "border-muted-foreground"
+                    }`}>
                       {item.done && <CheckCircle2 className="h-3 w-3 text-primary-foreground" />}
                     </div>
-                    <span className={item.done ? "line-through text-muted-foreground" : ""}>{item.text}</span>
+                    <span className={item.done ? "line-through text-muted-foreground" : ""}>
+                      {item.text}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -346,10 +362,12 @@ export default function Demo() {
                   Passo 4
                 </Badge>
               </div>
-              <h2 className="text-3xl font-bold mb-4">Gere relatórios profissionais</h2>
+              <h2 className="text-3xl font-bold mb-4">
+                Gere relatórios profissionais
+              </h2>
               <p className="text-muted-foreground mb-6">
-                Crie relatórios em PDF com a sua marca para apresentar aos clientes. Inclua métricas, tarefas realizadas
-                e recomendações.
+                Crie relatórios em PDF com a sua marca para apresentar aos clientes. 
+                Inclua métricas, tarefas realizadas e recomendações.
               </p>
               <ul className="space-y-3">
                 <li className="flex items-center gap-3">
@@ -387,7 +405,9 @@ export default function Demo() {
                 Planos
               </Badge>
             </div>
-            <h2 className="text-3xl font-bold mb-4">Escolha o plano ideal</h2>
+            <h2 className="text-3xl font-bold mb-4">
+              Escolha o plano ideal
+            </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Comece grátis com 1 cliente e escale conforme sua agência cresce.
             </p>

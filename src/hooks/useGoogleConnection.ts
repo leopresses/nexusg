@@ -9,60 +9,28 @@ export interface GoogleConnection {
   status: "connected" | "error" | "disconnected";
   last_sync_at: string | null;
   error_message: string | null;
-  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
 
 export interface GoogleLocation {
-  name: string; // Full location name for API (e.g., "locations/12345")
+  name: string;
   title: string;
   address: string;
-  accountId: string;
   accountName: string;
 }
 
-export interface ClientGBPInfo {
-  gbp_account_id: string | null;
-  gbp_location_id: string | null;
-  gbp_location_name: string | null;
-  gbp_address: string | null;
-  google_connected: boolean;
-  last_gbp_sync_at: string | null;
-  gbp_sync_status: string | null;
-  gbp_sync_error: string | null;
+export interface ClientGoogleLocation {
+  id: string;
+  user_id: string;
+  client_id: string;
+  location_name: string;
+  location_title: string;
+  address: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
-
-// Map error codes to user-friendly messages
-const ERROR_MESSAGES: Record<string, string> = {
-  // Auth errors
-  "NO_AUTH": "Sessão expirada. Faça login novamente.",
-  "NO_AUTH_HEADER": "Sessão expirada. Faça login novamente.",
-  "INVALID_TOKEN": "Token inválido. Faça login novamente.",
-  "NO_USER_ID": "Usuário não identificado. Faça login novamente.",
-  
-  // Config errors
-  "CONFIG_ERROR": "Configuração do servidor incompleta. Contate o suporte.",
-  "MISSING_CLIENT_ID": "Configuração do Google não encontrada. Contate o suporte.",
-  
-  // Connection errors
-  "NOT_CONNECTED": "Você precisa conectar sua conta Google primeiro.",
-  "NOT_ACTIVE": "Sua conexão Google precisa ser reconectada.",
-  "NO_TOKEN": "Token não encontrado. Reconecte sua conta Google.",
-  "DECRYPT_ERROR": "Erro no token. Reconecte sua conta Google.",
-  
-  // Token errors
-  "NO_REFRESH_TOKEN": "Sessão expirada. Reconecte sua conta Google.",
-  "REFRESH_FAILED": "Não foi possível atualizar o token. Reconecte sua conta Google.",
-  
-  // Google API errors
-  "GOOGLE_ACCESS_DENIED": "Acesso negado pelo Google. Verifique suas permissões ou reconecte.",
-  "ACCOUNTS_FETCH_FAILED": "Erro ao buscar contas do Google Business.",
-  
-  // Generic
-  "INTERNAL_ERROR": "Erro interno. Tente novamente.",
-  "unknown": "Erro desconhecido. Tente novamente.",
-};
 
 export function useGoogleConnection() {
   const { user } = useAuth();
@@ -72,17 +40,13 @@ export function useGoogleConnection() {
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [locations, setLocations] = useState<GoogleLocation[]>([]);
-  const [locationsError, setLocationsError] = useState<string | null>(null);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   
   // Ref to prevent concurrent fetches
   const isLoadingLocationsRef = useRef(false);
 
   const fetchConnection = useCallback(async () => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
+    if (!user) return;
 
     try {
       const { data, error } = await supabase
@@ -94,7 +58,7 @@ export function useGoogleConnection() {
       if (error) throw error;
       setConnection(data as GoogleConnection | null);
     } catch (error) {
-      console.error("[useGoogleConnection] Error fetching connection:", error);
+      console.error("Error fetching Google connection:", error);
     } finally {
       setIsLoading(false);
     }
@@ -103,10 +67,6 @@ export function useGoogleConnection() {
   useEffect(() => {
     fetchConnection();
   }, [fetchConnection]);
-
-  const getErrorMessage = (code: string): string => {
-    return ERROR_MESSAGES[code] || ERROR_MESSAGES["unknown"];
-  };
 
   const connect = async () => {
     if (!user) {
@@ -121,30 +81,75 @@ export function useGoogleConnection() {
       });
 
       if (error) {
+        // Try to extract meaningful error from response
         const errorData = error as any;
         const code = errorData?.code || errorData?.message || "unknown";
-        toast.error(getErrorMessage(code));
+        const message = errorData?.message || getErrorMessage(code);
+        console.error("Google connect error:", code, message);
+        toast.error(message);
         setIsConnecting(false);
         return;
       }
 
       if (data?.error) {
-        toast.error(data.message || getErrorMessage(data.code));
+        // Handle structured error response
+        const message = data.message || getErrorMessage(data.code);
+        console.error("Google connect returned error:", data.code, data.message);
+        toast.error(message);
         setIsConnecting(false);
         return;
       }
 
       if (data?.authUrl) {
+        // Redirect to Google OAuth
         window.location.href = data.authUrl;
       } else {
         toast.error("Erro ao gerar URL de autenticação. Tente novamente.");
         setIsConnecting(false);
       }
     } catch (error: any) {
-      console.error("[useGoogleConnection] Error connecting Google:", error);
+      console.error("Error connecting Google:", error);
       toast.error("Erro ao conectar com Google. Tente novamente.");
       setIsConnecting(false);
     }
+  };
+
+  // Map error codes to user-friendly messages
+  const getErrorMessage = (code: string): string => {
+    const messages: Record<string, string> = {
+      // Auth errors
+      "NO_AUTH_HEADER": "Sessão expirada. Faça login novamente.",
+      "INVALID_TOKEN": "Token inválido. Faça login novamente.",
+      "NO_USER_ID": "Usuário não identificado. Faça login novamente.",
+      
+      // Config errors
+      "MISSING_CLIENT_ID": "Configuração do Google não encontrada. Contate o suporte.",
+      "config_error": "Erro de configuração. Contate o suporte.",
+      
+      // Google OAuth errors
+      "access_denied": "Acesso negado. Você precisa permitir as permissões solicitadas.",
+      "redirect_uri_mismatch": "Erro de configuração OAuth (redirect_uri). Contate o suporte.",
+      "invalid_client": "Credenciais OAuth inválidas. Contate o suporte.",
+      "invalid_grant": "Código de autorização expirado. Tente novamente.",
+      
+      // State errors
+      "state_expired": "Sessão de autenticação expirada. Tente novamente.",
+      "invalid_state": "Erro de validação de segurança. Tente novamente.",
+      "missing_params": "Resposta incompleta do Google. Tente novamente.",
+      
+      // Token errors
+      "token_exchange_failed": "Falha ao obter tokens do Google. Tente novamente.",
+      "no_access_token": "Google não retornou token de acesso. Tente novamente.",
+      
+      // Database errors
+      "database_error": "Erro ao salvar conexão. Tente novamente.",
+      
+      // Generic
+      "internal_error": "Erro interno. Tente novamente ou contate o suporte.",
+      "google_error": "Erro do Google. Tente novamente.",
+    };
+    
+    return messages[code] || `Erro: ${code}. Tente novamente.`;
   };
 
   const disconnect = async () => {
@@ -156,73 +161,44 @@ export function useGoogleConnection() {
 
       if (error) throw error;
 
-      // Also clear google_connected flag from all clients
-      await supabase
-        .from("clients")
-        .update({ 
-          google_connected: false,
-          gbp_account_id: null,
-          gbp_location_id: null,
-          gbp_location_name: null,
-          gbp_sync_status: "pending",
-        })
-        .eq("user_id", user.id);
-
       setConnection(null);
       setLocations([]);
       toast.success("Google desconectado com sucesso!");
     } catch (error) {
-      console.error("[useGoogleConnection] Error disconnecting Google:", error);
+      console.error("Error disconnecting Google:", error);
       toast.error("Erro ao desconectar do Google.");
     } finally {
       setIsDisconnecting(false);
     }
   };
 
-  const fetchLocations = useCallback(async (): Promise<GoogleLocation[]> => {
+  const fetchLocations = useCallback(async () => {
     if (!user) {
       console.log("[fetchLocations] No user, skipping");
       return [];
     }
     
     if (connection?.status !== "connected") {
-      console.log("[fetchLocations] Not connected, status:", connection?.status);
+      console.log("[fetchLocations] Connection status:", connection?.status);
       return [];
     }
 
-    // Prevent duplicate calls
+    // Prevent duplicate calls using ref (stable across renders)
     if (isLoadingLocationsRef.current) {
-      console.log("[fetchLocations] Already loading, returning cached locations");
-      return locations;
+      console.log("[fetchLocations] Already loading, skipping");
+      return locations; // Return current locations
     }
 
     console.log("[fetchLocations] Starting fetch for user:", user.id);
     isLoadingLocationsRef.current = true;
     setIsLoadingLocations(true);
-    setLocationsError(null);
     
     try {
       const { data, error } = await supabase.functions.invoke("google-list-locations");
 
       if (error) {
         console.error("[fetchLocations] Edge function error:", error);
-        const message = "Erro ao buscar localizações do Google Business.";
-        setLocationsError(message);
-        throw new Error(message);
-      }
-
-      // Check for structured error response
-      if (data?.error && data?.code) {
-        const message = data.message || getErrorMessage(data.code);
-        console.log("[fetchLocations] API returned error:", data.code, message);
-        
-        // Only set error if not just "no locations found"
-        if (data.code !== "NOT_CONNECTED" && data.locations?.length === 0) {
-          setLocationsError(message);
-        }
-        
-        setLocations(data.locations || []);
-        return data.locations || [];
+        throw error;
       }
 
       const fetchedLocations = data?.locations || [];
@@ -231,34 +207,28 @@ export function useGoogleConnection() {
       return fetchedLocations;
     } catch (error: any) {
       console.error("[fetchLocations] Error:", error);
-      const message = error?.message || "Erro ao buscar localizações.";
-      setLocationsError(message);
+      // Don't show toast here - let the component handle it to avoid loops
       setLocations([]);
-      throw error;
+      throw error; // Re-throw so component can handle
     } finally {
       isLoadingLocationsRef.current = false;
       setIsLoadingLocations(false);
     }
-  }, [user, connection?.status, locations]);
+  }, [user, connection?.status]);
 
-  const syncMetrics = async (clientId?: string) => {
+  const syncMetrics = async () => {
     if (!user) return;
 
     setIsSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("google-sync-metrics", {
-        body: clientId ? { client_id: clientId } : {},
-      });
+      const { data, error } = await supabase.functions.invoke("google-sync-metrics");
 
       if (error) throw error;
 
-      const message = clientId 
-        ? `Métricas sincronizadas!`
-        : `Métricas sincronizadas! ${data?.synced || 0} clientes atualizados.`;
-      toast.success(message);
+      toast.success(`Métricas sincronizadas! ${data?.synced || 0} registros atualizados.`);
       await fetchConnection();
     } catch (error) {
-      console.error("[useGoogleConnection] Error syncing metrics:", error);
+      console.error("Error syncing metrics:", error);
       toast.error("Erro ao sincronizar métricas.");
     } finally {
       setIsSyncing(false);
@@ -272,27 +242,24 @@ export function useGoogleConnection() {
     if (!user) return false;
 
     try {
-      // Update the client with GBP info (new architecture)
-      const { error } = await supabase
-        .from("clients")
-        .update({
-          gbp_account_id: location.accountId,
-          gbp_location_id: location.name.split("/").pop() || location.name, // Extract ID from full name
-          gbp_location_name: location.name, // Full name for API calls
-          gbp_address: location.address,
-          google_connected: true,
-          gbp_sync_status: "pending",
-          gbp_sync_error: null,
-        })
-        .eq("id", clientId)
-        .eq("user_id", user.id);
+      const { error } = await supabase.from("client_google_locations").upsert(
+        {
+          user_id: user.id,
+          client_id: clientId,
+          location_name: location.name,
+          location_title: location.title,
+          address: location.address,
+          is_active: true,
+        },
+        { onConflict: "client_id" }
+      );
 
       if (error) throw error;
 
-      toast.success("Google Business vinculado com sucesso!");
+      toast.success("Localização vinculada com sucesso!");
       return true;
     } catch (error) {
-      console.error("[useGoogleConnection] Error linking location:", error);
+      console.error("Error linking location:", error);
       toast.error("Erro ao vincular localização.");
       return false;
     }
@@ -303,17 +270,9 @@ export function useGoogleConnection() {
 
     try {
       const { error } = await supabase
-        .from("clients")
-        .update({
-          gbp_account_id: null,
-          gbp_location_id: null,
-          gbp_location_name: null,
-          gbp_address: null,
-          google_connected: false,
-          gbp_sync_status: "pending",
-          gbp_sync_error: null,
-        })
-        .eq("id", clientId)
+        .from("client_google_locations")
+        .update({ is_active: false })
+        .eq("client_id", clientId)
         .eq("user_id", user.id);
 
       if (error) throw error;
@@ -321,27 +280,28 @@ export function useGoogleConnection() {
       toast.success("Vínculo removido com sucesso!");
       return true;
     } catch (error) {
-      console.error("[useGoogleConnection] Error unlinking location:", error);
+      console.error("Error unlinking location:", error);
       toast.error("Erro ao remover vínculo.");
       return false;
     }
   };
 
-  const getClientGBPInfo = async (clientId: string): Promise<ClientGBPInfo | null> => {
+  const getClientLocation = async (clientId: string): Promise<ClientGoogleLocation | null> => {
     if (!user) return null;
 
     try {
       const { data, error } = await supabase
-        .from("clients")
-        .select("gbp_account_id, gbp_location_id, gbp_location_name, gbp_address, google_connected, last_gbp_sync_at, gbp_sync_status, gbp_sync_error")
-        .eq("id", clientId)
+        .from("client_google_locations")
+        .select("*")
+        .eq("client_id", clientId)
         .eq("user_id", user.id)
-        .single();
+        .eq("is_active", true)
+        .maybeSingle();
 
       if (error) throw error;
-      return data as ClientGBPInfo;
+      return data as ClientGoogleLocation | null;
     } catch (error) {
-      console.error("[useGoogleConnection] Error fetching client GBP info:", error);
+      console.error("Error fetching client location:", error);
       return null;
     }
   };
@@ -353,7 +313,6 @@ export function useGoogleConnection() {
     isDisconnecting,
     isSyncing,
     locations,
-    locationsError,
     isLoadingLocations,
     connect,
     disconnect,
@@ -362,6 +321,6 @@ export function useGoogleConnection() {
     syncMetrics,
     linkLocationToClient,
     unlinkLocationFromClient,
-    getClientGBPInfo,
+    getClientLocation,
   };
 }

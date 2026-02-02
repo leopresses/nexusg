@@ -2,17 +2,18 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encode as encodeBase64, decode as decodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
-// Dynamic CORS
+// Allowed origins for CORS
+const allowedOrigins = [
+  "https://nexusg.lovable.app",
+  "https://id-preview--a37866c6-77e2-4449-8805-ec48acb8f5b5.lovable.app",
+];
+
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get("Origin") || "";
-  
-  const isAllowed = 
-    origin.endsWith(".lovableproject.com") ||
-    origin.endsWith(".lovable.app") ||
-    origin === "https://nexusg.lovable.app";
+  const allowedOrigin = allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
   
   return {
-    "Access-Control-Allow-Origin": isAllowed ? origin : "https://nexusg.lovable.app",
+    "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
     "Access-Control-Allow-Credentials": "true",
   };
@@ -23,14 +24,14 @@ async function decryptToken(ciphertext: string, key: string): Promise<string> {
   const decoder = new TextDecoder();
   const keyMaterial = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(key.padEnd(32, "0").slice(0, 32)),
+    new TextEncoder().encode(key.padEnd(32, "0").slice(0, 32)), // Ensure 256-bit key
     { name: "AES-GCM" },
     false,
     ["decrypt"]
   );
   
   const combined = new Uint8Array(decodeBase64(ciphertext));
-  const iv = combined.slice(0, 12);
+  const iv = combined.slice(0, 12); // First 12 bytes are IV
   const encrypted = combined.slice(12);
   
   const plaintext = await crypto.subtle.decrypt(
@@ -42,7 +43,7 @@ async function decryptToken(ciphertext: string, key: string): Promise<string> {
   return decoder.decode(plaintext);
 }
 
-// AES-GCM encryption for tokens
+// AES-GCM encryption for tokens (for re-encrypting refreshed tokens)
 async function encryptToken(plaintext: string, key: string): Promise<string> {
   const encoder = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
@@ -77,6 +78,7 @@ async function refreshAccessToken(encryptedRefreshToken: string, encryptionKey: 
   const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID")!;
   const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
 
+  // Decrypt the refresh token
   let refreshToken: string;
   try {
     refreshToken = await decryptToken(encryptedRefreshToken, encryptionKey);
@@ -102,11 +104,13 @@ async function refreshAccessToken(encryptedRefreshToken: string, encryptionKey: 
   }
 
   const tokens = await response.json();
+  
+  // Encrypt the new access token
   const encryptedAccessToken = await encryptToken(tokens.access_token, encryptionKey);
   
   return {
-    accessToken: tokens.access_token,
-    encryptedAccessToken,
+    accessToken: tokens.access_token, // Plain for immediate use
+    encryptedAccessToken, // Encrypted for storage
     expiresAt: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
   };
 }
@@ -118,11 +122,9 @@ async function fetchMetricsForLocation(
   endDate: string
 ): Promise<{ views: number; calls: number; directions: number; websiteClicks: number } | null> {
   try {
-    const [startYear, startMonth, startDay] = startDate.split("-");
-    const [endYear, endMonth, endDay] = endDate.split("-");
-    
+    // Use the Performance API for metrics
     const response = await fetch(
-      `https://businessprofileperformance.googleapis.com/v1/${locationName}:getDailyMetricsTimeSeries?dailyMetric=BUSINESS_IMPRESSIONS_DESKTOP_MAPS&dailyMetric=BUSINESS_IMPRESSIONS_MOBILE_MAPS&dailyMetric=CALL_CLICKS&dailyMetric=WEBSITE_CLICKS&dailyMetric=BUSINESS_DIRECTION_REQUESTS&dailyRange.start_date.year=${startYear}&dailyRange.start_date.month=${parseInt(startMonth)}&dailyRange.start_date.day=${parseInt(startDay)}&dailyRange.end_date.year=${endYear}&dailyRange.end_date.month=${parseInt(endMonth)}&dailyRange.end_date.day=${parseInt(endDay)}`,
+      `https://businessprofileperformance.googleapis.com/v1/${locationName}:getDailyMetricsTimeSeries?dailyMetric=BUSINESS_IMPRESSIONS_DESKTOP_MAPS&dailyMetric=BUSINESS_IMPRESSIONS_MOBILE_MAPS&dailyMetric=CALL_CLICKS&dailyMetric=WEBSITE_CLICKS&dailyMetric=BUSINESS_DIRECTION_REQUESTS&dailyRange.start_date.year=${startDate.split("-")[0]}&dailyRange.start_date.month=${startDate.split("-")[1]}&dailyRange.start_date.day=${startDate.split("-")[2]}&dailyRange.end_date.year=${endDate.split("-")[0]}&dailyRange.end_date.month=${endDate.split("-")[1]}&dailyRange.end_date.day=${endDate.split("-")[2]}`,
       {
         headers: { Authorization: `Bearer ${accessToken}` },
       }
@@ -176,47 +178,41 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const encryptionKey = Deno.env.get("TOKEN_ENCRYPTION_KEY");
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
     if (!encryptionKey) {
-      console.error("[google-sync-metrics] TOKEN_ENCRYPTION_KEY not configured");
+      console.error("TOKEN_ENCRYPTION_KEY not configured");
       return new Response(
         JSON.stringify({ error: "Configuration error" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Authentication handling
+    // Authentication is REQUIRED - either user JWT or service role key
     const authHeader = req.headers.get("Authorization");
     let specificUserId: string | null = null;
     let isServiceRoleAuth = false;
-    let specificClientId: string | null = null;
-
-    // Parse request body for optional client_id
-    try {
-      const body = await req.json();
-      specificClientId = body.client_id || null;
-    } catch {
-      // No body or invalid JSON, proceed without client_id filter
-    }
 
     if (!authHeader) {
-      console.error("[google-sync-metrics] Missing authorization header");
+      console.error("Missing authorization header");
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
       );
     }
 
-    // Check for service role key (cron jobs)
+    // Check if this is a service role key (for cron jobs)
     if (authHeader === `Bearer ${serviceRoleKey}`) {
-      console.log("[google-sync-metrics] Authenticated via service role key (cron job)");
+      console.log("Authenticated via service role key (cron job)");
       isServiceRoleAuth = true;
     } else if (authHeader.startsWith("Bearer ")) {
       // Validate user JWT
+      const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
       const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         global: { headers: { Authorization: authHeader } },
       });
@@ -225,19 +221,25 @@ serve(async (req) => {
       const { data: userData, error: userError } = await supabase.auth.getUser(token);
       
       if (userError || !userData?.user) {
-        console.error("[google-sync-metrics] Invalid token:", userError?.message);
+        console.error("Invalid token:", userError?.message);
         return new Response(
           JSON.stringify({ error: "Unauthorized" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          }
         );
       }
       
       specificUserId = userData.user.id;
-      console.log("[google-sync-metrics] Authenticated user:", specificUserId);
+      console.log("Authenticated user:", specificUserId);
     } else {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
       );
     }
 
@@ -246,14 +248,15 @@ serve(async (req) => {
     yesterday.setDate(yesterday.getDate() - 1);
     const dateStr = yesterday.toISOString().split("T")[0];
 
-    console.log(`[google-sync-metrics] Syncing metrics for date: ${dateStr}`);
+    console.log(`Syncing metrics for date: ${dateStr}`);
 
-    // Get connected users (respecting privacy: only user's own data unless service role)
+    // Get all connected users (or specific user if authenticated with JWT)
     let connectionQuery = supabaseAdmin
       .from("google_user_connections")
       .select("*")
       .eq("status", "connected");
 
+    // If user JWT auth (not service role), only sync their own data
     if (specificUserId && !isServiceRoleAuth) {
       connectionQuery = connectionQuery.eq("user_id", specificUserId);
     }
@@ -261,7 +264,7 @@ serve(async (req) => {
     const { data: connections, error: connError } = await connectionQuery;
 
     if (connError) {
-      console.error("[google-sync-metrics] Error fetching connections:", connError);
+      console.error("Error fetching connections:", connError);
       return new Response(JSON.stringify({ error: "Operation failed" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -269,28 +272,23 @@ serve(async (req) => {
     }
 
     if (!connections || connections.length === 0) {
-      return new Response(JSON.stringify({ 
-        message: "No connected users",
-        synced: 0,
-        errors: 0
-      }), {
+      return new Response(JSON.stringify({ message: "No connected users" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     let totalSynced = 0;
     let totalErrors = 0;
-    const syncResults: Array<{ clientId: string; status: string; error?: string }> = [];
 
     for (const connection of connections) {
       try {
         let accessToken: string;
 
-        // Decrypt access token
+        // Decrypt the access token
         try {
           accessToken = await decryptToken(connection.access_token, encryptionKey);
         } catch (decryptError) {
-          console.error(`[google-sync-metrics] Failed to decrypt access token for user ${connection.user_id}`);
+          console.error(`Failed to decrypt access token for user ${connection.user_id}:`, decryptError);
           await supabaseAdmin
             .from("google_user_connections")
             .update({ status: "error", error_message: "Token decryption failed" })
@@ -302,14 +300,11 @@ serve(async (req) => {
         // Check if token needs refresh
         const tokenExpires = new Date(connection.token_expires_at);
         if (tokenExpires <= new Date()) {
-          console.log(`[google-sync-metrics] Token expired for user ${connection.user_id}, refreshing...`);
-          
           if (!connection.refresh_token) {
             await supabaseAdmin
               .from("google_user_connections")
               .update({ status: "error", error_message: "Refresh token missing" })
               .eq("user_id", connection.user_id);
-            totalErrors++;
             continue;
           }
 
@@ -320,10 +315,10 @@ serve(async (req) => {
               .from("google_user_connections")
               .update({ status: "error", error_message: "Token refresh failed" })
               .eq("user_id", connection.user_id);
-            totalErrors++;
             continue;
           }
 
+          // Save the new encrypted access token
           await supabaseAdmin
             .from("google_user_connections")
             .update({
@@ -336,54 +331,32 @@ serve(async (req) => {
           accessToken = refreshResult.accessToken;
         }
 
-        // Get all clients with google_connected=true for this user (new architecture)
-        let clientsQuery = supabaseAdmin
-          .from("clients")
-          .select("id, gbp_location_name, gbp_account_id, gbp_location_id")
+        // Get all active locations for this user
+        const { data: locations } = await supabaseAdmin
+          .from("client_google_locations")
+          .select("*")
           .eq("user_id", connection.user_id)
-          .eq("google_connected", true)
-          .not("gbp_location_name", "is", null);
+          .eq("is_active", true);
 
-        // If specific client requested, filter to just that one
-        if (specificClientId) {
-          clientsQuery = clientsQuery.eq("id", specificClientId);
-        }
-
-        const { data: clients, error: clientsError } = await clientsQuery;
-
-        if (clientsError) {
-          console.error(`[google-sync-metrics] Error fetching clients for user ${connection.user_id}:`, clientsError);
+        if (!locations || locations.length === 0) {
           continue;
         }
 
-        if (!clients || clients.length === 0) {
-          console.log(`[google-sync-metrics] No connected clients for user ${connection.user_id}`);
-          continue;
-        }
-
-        console.log(`[google-sync-metrics] Found ${clients.length} connected clients for user ${connection.user_id}`);
-
-        for (const client of clients) {
-          // Update sync status to "syncing"
-          await supabaseAdmin
-            .from("clients")
-            .update({ gbp_sync_status: "syncing" })
-            .eq("id", client.id);
-
+        for (const location of locations) {
           const metrics = await fetchMetricsForLocation(
             accessToken,
-            client.gbp_location_name,
+            location.location_name,
             dateStr,
             dateStr
           );
 
           if (metrics) {
-            // Upsert metrics to google_metrics_daily
+            // Upsert metrics
             const { error: upsertError } = await supabaseAdmin
               .from("google_metrics_daily")
               .upsert({
                 user_id: connection.user_id,
-                client_id: client.id,
+                client_id: location.client_id,
                 date: dateStr,
                 views: metrics.views,
                 calls: metrics.calls,
@@ -395,55 +368,29 @@ serve(async (req) => {
               });
 
             if (upsertError) {
-              console.error(`[google-sync-metrics] Error saving metrics for client ${client.id}:`, upsertError);
-              await supabaseAdmin
-                .from("clients")
-                .update({ 
-                  gbp_sync_status: "error",
-                  gbp_sync_error: "Failed to save metrics"
-                })
-                .eq("id", client.id);
+              console.error(`Error saving metrics for ${location.client_id}:`, upsertError);
               totalErrors++;
-              syncResults.push({ clientId: client.id, status: "error", error: "Save failed" });
             } else {
-              // Update client with success status
-              await supabaseAdmin
-                .from("clients")
-                .update({ 
-                  last_gbp_sync_at: new Date().toISOString(),
-                  gbp_sync_status: "success",
-                  gbp_sync_error: null
-                })
-                .eq("id", client.id);
               totalSynced++;
-              syncResults.push({ clientId: client.id, status: "success" });
             }
           } else {
-            await supabaseAdmin
-              .from("clients")
-              .update({ 
-                gbp_sync_status: "error",
-                gbp_sync_error: "Failed to fetch metrics from Google"
-              })
-              .eq("id", client.id);
             totalErrors++;
-            syncResults.push({ clientId: client.id, status: "error", error: "Fetch failed" });
           }
         }
 
-        // Update connection last sync time
+        // Update last sync time
         await supabaseAdmin
           .from("google_user_connections")
           .update({ last_sync_at: new Date().toISOString() })
           .eq("user_id", connection.user_id);
 
       } catch (userError) {
-        console.error(`[google-sync-metrics] Error processing user ${connection.user_id}:`, userError);
+        console.error(`Error processing user ${connection.user_id}:`, userError);
         totalErrors++;
       }
     }
 
-    console.log(`[google-sync-metrics] Sync complete: ${totalSynced} synced, ${totalErrors} errors`);
+    console.log(`Sync complete: ${totalSynced} synced, ${totalErrors} errors`);
 
     return new Response(
       JSON.stringify({ 
@@ -451,19 +398,18 @@ serve(async (req) => {
         synced: totalSynced, 
         errors: totalErrors,
         date: dateStr,
-        results: syncResults,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
   } catch (error) {
-    console.error("[google-sync-metrics] Unexpected error:", error);
+    console.error("Error in google-sync-metrics:", error);
     return new Response(
       JSON.stringify({ error: "Operation failed" }),
       {
         status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
       }
     );
   }

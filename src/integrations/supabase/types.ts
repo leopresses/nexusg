@@ -103,17 +103,9 @@ export type Database = {
           avatar_url: string | null
           business_type: Database["public"]["Enums"]["business_type"]
           created_at: string
-          gbp_account_id: string | null
-          gbp_address: string | null
-          gbp_location_id: string | null
-          gbp_location_name: string | null
-          gbp_sync_error: string | null
-          gbp_sync_status: string | null
           google_business_id: string | null
-          google_connected: boolean | null
           id: string
           is_active: boolean
-          last_gbp_sync_at: string | null
           logo_url: string | null
           monthly_revenue: number | null
           name: string
@@ -125,17 +117,9 @@ export type Database = {
           avatar_url?: string | null
           business_type?: Database["public"]["Enums"]["business_type"]
           created_at?: string
-          gbp_account_id?: string | null
-          gbp_address?: string | null
-          gbp_location_id?: string | null
-          gbp_location_name?: string | null
-          gbp_sync_error?: string | null
-          gbp_sync_status?: string | null
           google_business_id?: string | null
-          google_connected?: boolean | null
           id?: string
           is_active?: boolean
-          last_gbp_sync_at?: string | null
           logo_url?: string | null
           monthly_revenue?: number | null
           name: string
@@ -147,17 +131,9 @@ export type Database = {
           avatar_url?: string | null
           business_type?: Database["public"]["Enums"]["business_type"]
           created_at?: string
-          gbp_account_id?: string | null
-          gbp_address?: string | null
-          gbp_location_id?: string | null
-          gbp_location_name?: string | null
-          gbp_sync_error?: string | null
-          gbp_sync_status?: string | null
           google_business_id?: string | null
-          google_connected?: boolean | null
           id?: string
           is_active?: boolean
-          last_gbp_sync_at?: string | null
           logo_url?: string | null
           monthly_revenue?: number | null
           name?: string
@@ -219,10 +195,8 @@ export type Database = {
           created_at: string
           error_message: string | null
           google_email: string | null
-          is_active: boolean | null
           last_sync_at: string | null
           refresh_token: string | null
-          scopes: string | null
           status: string
           token_expires_at: string | null
           updated_at: string
@@ -233,10 +207,8 @@ export type Database = {
           created_at?: string
           error_message?: string | null
           google_email?: string | null
-          is_active?: boolean | null
           last_sync_at?: string | null
           refresh_token?: string | null
-          scopes?: string | null
           status?: string
           token_expires_at?: string | null
           updated_at?: string
@@ -247,10 +219,8 @@ export type Database = {
           created_at?: string
           error_message?: string | null
           google_email?: string | null
-          is_active?: boolean | null
           last_sync_at?: string | null
           refresh_token?: string | null
-          scopes?: string | null
           status?: string
           token_expires_at?: string | null
           updated_at?: string

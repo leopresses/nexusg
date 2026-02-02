@@ -12,14 +12,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useGoogleConnection, type GoogleLocation, type ClientGBPInfo } from "@/hooks/useGoogleConnection";
+import { useGoogleConnection, type GoogleLocation, type ClientGoogleLocation } from "@/hooks/useGoogleConnection";
 
 interface LinkLocationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clientId: string;
   clientName: string;
-  currentGBPInfo?: ClientGBPInfo | null;
+  currentLocation?: ClientGoogleLocation | null;
   onSuccess: () => void;
 }
 
@@ -28,13 +28,12 @@ export function LinkLocationDialog({
   onOpenChange,
   clientId,
   clientName,
-  currentGBPInfo,
+  currentLocation,
   onSuccess,
 }: LinkLocationDialogProps) {
   const {
     connection,
     locations,
-    locationsError,
     isLoadingLocations,
     fetchLocations,
     linkLocationToClient,
@@ -44,42 +43,44 @@ export function LinkLocationDialog({
   const [searchQuery, setSearchQuery] = useState("");
   const [isLinking, setIsLinking] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   
-  // Track fetch state to prevent infinite loops
+  // Track if we've already fetched to prevent infinite loops
   const hasFetchedRef = useRef(false);
   const isFetchingRef = useRef(false);
 
-  // Fetch locations when dialog opens
+  // Stable fetch function that only runs once per modal open
   const doFetchLocations = useCallback(async () => {
     if (isFetchingRef.current) {
+      console.log("[LinkLocationDialog] Already fetching, skip");
       return;
     }
     
     isFetchingRef.current = true;
-    setLocalError(null);
+    setFetchError(null);
     
     try {
+      console.log("[LinkLocationDialog] Fetching locations...");
       await fetchLocations();
       hasFetchedRef.current = true;
     } catch (error: any) {
       console.error("[LinkLocationDialog] Fetch error:", error);
-      const errorMessage = error?.message || "Erro ao buscar localizações.";
-      setLocalError(errorMessage);
-      // Show toast only once per fetch attempt
+      const errorMessage = error?.message || "Erro ao buscar localizações do Google Business.";
+      setFetchError(errorMessage);
+      // Show toast only once
       toast.error(errorMessage);
     } finally {
       isFetchingRef.current = false;
     }
   }, [fetchLocations]);
 
-  // Effect to handle dialog open/close
+  // Effect to fetch locations when modal opens
   useEffect(() => {
+    // Reset state when dialog closes
     if (!open) {
-      // Reset state when dialog closes
       hasFetchedRef.current = false;
       isFetchingRef.current = false;
-      setLocalError(null);
+      setFetchError(null);
       setSearchQuery("");
       return;
     }
@@ -93,8 +94,7 @@ export function LinkLocationDialog({
   const filteredLocations = locations.filter(
     (loc) =>
       loc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      loc.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      loc.accountName.toLowerCase().includes(searchQuery.toLowerCase())
+      loc.address.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleSelectLocation = async (location: GoogleLocation) => {
@@ -119,13 +119,6 @@ export function LinkLocationDialog({
     }
   };
 
-  const handleRetry = () => {
-    hasFetchedRef.current = false;
-    setLocalError(null);
-    doFetchLocations();
-  };
-
-  // Not connected state
   if (connection?.status !== "connected") {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -152,8 +145,6 @@ export function LinkLocationDialog({
     );
   }
 
-  const displayError = localError || locationsError;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -164,8 +155,7 @@ export function LinkLocationDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Current linked location */}
-        {currentGBPInfo?.google_connected && currentGBPInfo.gbp_location_name && (
+        {currentLocation && (
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 mb-4">
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-3">
@@ -173,13 +163,8 @@ export function LinkLocationDialog({
                   <Check className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium">{currentGBPInfo.gbp_location_id}</p>
-                  <p className="text-sm text-muted-foreground">{currentGBPInfo.gbp_address || "Endereço não disponível"}</p>
-                  {currentGBPInfo.last_gbp_sync_at && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Última sincronização: {new Date(currentGBPInfo.last_gbp_sync_at).toLocaleString("pt-BR")}
-                    </p>
-                  )}
+                  <p className="font-medium">{currentLocation.location_title}</p>
+                  <p className="text-sm text-muted-foreground">{currentLocation.address}</p>
                 </div>
               </div>
               <Button
@@ -200,40 +185,39 @@ export function LinkLocationDialog({
         )}
 
         <div className="space-y-4">
-          {/* Search input */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome, endereço ou conta..."
+              placeholder="Buscar por nome ou endereço..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
             />
           </div>
 
-          {/* Loading state */}
           {isLoadingLocations ? (
             <div className="flex flex-col items-center justify-center py-10 gap-2">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">Buscando localizações...</p>
             </div>
-          ) : displayError ? (
-            /* Error state */
+          ) : fetchError ? (
             <div className="flex flex-col items-center justify-center py-10 gap-4">
               <AlertCircle className="h-12 w-12 text-destructive" />
               <div className="text-center">
                 <p className="text-sm font-medium text-destructive mb-1">Erro ao carregar localizações</p>
                 <p className="text-xs text-muted-foreground max-w-xs">
-                  {displayError.includes("reconect") || displayError.includes("token")
+                  {fetchError.includes("reconnect") 
                     ? "Sua sessão expirou. Reconecte o Google em Configurações → Integrações."
-                    : "Verifique se sua conta Google tem um Perfil de Empresa ativo."}
+                    : "Verifique se sua conta tem um Perfil de Empresa ativo."}
                 </p>
               </div>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleRetry}
-                disabled={isFetchingRef.current}
+                onClick={() => {
+                  hasFetchedRef.current = false;
+                  doFetchLocations();
+                }}
                 className="gap-2"
               >
                 <RefreshCw className="h-4 w-4" />
@@ -241,22 +225,15 @@ export function LinkLocationDialog({
               </Button>
             </div>
           ) : filteredLocations.length === 0 ? (
-            /* Empty state */
             <div className="text-center py-10">
               <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground mb-2">
+              <p className="text-muted-foreground">
                 {searchQuery
                   ? "Nenhuma localização encontrada com esse termo."
-                  : "Nenhuma localização disponível."}
+                  : "Nenhuma localização disponível na sua conta Google Business."}
               </p>
-              {!searchQuery && (
-                <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                  Verifique se você tem acesso a um Perfil de Empresa ativo na sua conta Google.
-                </p>
-              )}
             </div>
           ) : (
-            /* Locations list */
             <ScrollArea className="h-[300px]">
               <div className="space-y-2">
                 {filteredLocations.map((location) => (
@@ -276,7 +253,7 @@ export function LinkLocationDialog({
                           {location.address}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Conta: {location.accountName}
+                          {location.accountName}
                         </p>
                       </div>
                     </div>

@@ -163,7 +163,7 @@ export function GoogleIntegrationSettings() {
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
-                onClick={() => syncMetrics()} 
+                onClick={syncMetrics} 
                 disabled={isSyncing}
                 className="flex-1"
               >
