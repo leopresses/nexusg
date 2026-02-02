@@ -12,8 +12,8 @@ import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicato
 
 const benefits = [
   "1 cliente grátis para sempre",
-  "Tarefas semanais e diarias automatizadas",
-  "Relatórios em completos em PDF",
+  "Tarefas semanais e diárias automatizadas",
+  "Relatórios completos em PDF(compartilháveis)",
 ];
 
 export default function Register() {
