@@ -1,4 +1,4 @@
-project_id = "nnzhffvfeibfippnayyq"
+project_id = "Gestão Nexus"
 
 [functions.generate-weekly-tasks]
 verify_jwt = false
