@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -41,6 +41,9 @@ export function useGoogleConnection() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [locations, setLocations] = useState<GoogleLocation[]>([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  
+  // Ref to prevent concurrent fetches
+  const isLoadingLocationsRef = useRef(false);
 
   const fetchConnection = useCallback(async () => {
     if (!user) return;
@@ -169,25 +172,49 @@ export function useGoogleConnection() {
     }
   };
 
-  const fetchLocations = async () => {
-    if (!user || connection?.status !== "connected") return;
+  const fetchLocations = useCallback(async () => {
+    if (!user) {
+      console.log("[fetchLocations] No user, skipping");
+      return [];
+    }
+    
+    if (connection?.status !== "connected") {
+      console.log("[fetchLocations] Connection status:", connection?.status);
+      return [];
+    }
 
+    // Prevent duplicate calls using ref (stable across renders)
+    if (isLoadingLocationsRef.current) {
+      console.log("[fetchLocations] Already loading, skipping");
+      return locations; // Return current locations
+    }
+
+    console.log("[fetchLocations] Starting fetch for user:", user.id);
+    isLoadingLocationsRef.current = true;
     setIsLoadingLocations(true);
+    
     try {
       const { data, error } = await supabase.functions.invoke("google-list-locations");
 
-      if (error) throw error;
+      if (error) {
+        console.error("[fetchLocations] Edge function error:", error);
+        throw error;
+      }
 
-      setLocations(data?.locations || []);
-      return data?.locations || [];
-    } catch (error) {
-      console.error("Error fetching locations:", error);
-      toast.error("Erro ao buscar localizações do Google Business.");
-      return [];
+      const fetchedLocations = data?.locations || [];
+      console.log("[fetchLocations] Found locations:", fetchedLocations.length);
+      setLocations(fetchedLocations);
+      return fetchedLocations;
+    } catch (error: any) {
+      console.error("[fetchLocations] Error:", error);
+      // Don't show toast here - let the component handle it to avoid loops
+      setLocations([]);
+      throw error; // Re-throw so component can handle
     } finally {
+      isLoadingLocationsRef.current = false;
       setIsLoadingLocations(false);
     }
-  };
+  }, [user, connection?.status]);
 
   const syncMetrics = async () => {
     if (!user) return;

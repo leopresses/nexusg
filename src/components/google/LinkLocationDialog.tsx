@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { Loader2, Search, MapPin, Building2, Check, X, Unlink } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Loader2, Search, MapPin, Building2, Check, Unlink, AlertCircle, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -42,12 +43,53 @@ export function LinkLocationDialog({
   const [searchQuery, setSearchQuery] = useState("");
   const [isLinking, setIsLinking] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  
+  // Track if we've already fetched to prevent infinite loops
+  const hasFetchedRef = useRef(false);
+  const isFetchingRef = useRef(false);
 
-  useEffect(() => {
-    if (open && connection?.status === "connected") {
-      fetchLocations();
+  // Stable fetch function that only runs once per modal open
+  const doFetchLocations = useCallback(async () => {
+    if (isFetchingRef.current) {
+      console.log("[LinkLocationDialog] Already fetching, skip");
+      return;
     }
-  }, [open, connection?.status, fetchLocations]);
+    
+    isFetchingRef.current = true;
+    setFetchError(null);
+    
+    try {
+      console.log("[LinkLocationDialog] Fetching locations...");
+      await fetchLocations();
+      hasFetchedRef.current = true;
+    } catch (error: any) {
+      console.error("[LinkLocationDialog] Fetch error:", error);
+      const errorMessage = error?.message || "Erro ao buscar localizações do Google Business.";
+      setFetchError(errorMessage);
+      // Show toast only once
+      toast.error(errorMessage);
+    } finally {
+      isFetchingRef.current = false;
+    }
+  }, [fetchLocations]);
+
+  // Effect to fetch locations when modal opens
+  useEffect(() => {
+    // Reset state when dialog closes
+    if (!open) {
+      hasFetchedRef.current = false;
+      isFetchingRef.current = false;
+      setFetchError(null);
+      setSearchQuery("");
+      return;
+    }
+    
+    // Only fetch if dialog is open, connected, and haven't fetched yet
+    if (open && connection?.status === "connected" && !hasFetchedRef.current && !isFetchingRef.current) {
+      doFetchLocations();
+    }
+  }, [open, connection?.status, doFetchLocations]);
 
   const filteredLocations = locations.filter(
     (loc) =>
@@ -154,8 +196,33 @@ export function LinkLocationDialog({
           </div>
 
           {isLoadingLocations ? (
-            <div className="flex items-center justify-center py-10">
+            <div className="flex flex-col items-center justify-center py-10 gap-2">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Buscando localizações...</p>
+            </div>
+          ) : fetchError ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-4">
+              <AlertCircle className="h-12 w-12 text-destructive" />
+              <div className="text-center">
+                <p className="text-sm font-medium text-destructive mb-1">Erro ao carregar localizações</p>
+                <p className="text-xs text-muted-foreground max-w-xs">
+                  {fetchError.includes("reconnect") 
+                    ? "Sua sessão expirou. Reconecte o Google em Configurações → Integrações."
+                    : "Verifique se sua conta tem um Perfil de Empresa ativo."}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  hasFetchedRef.current = false;
+                  doFetchLocations();
+                }}
+                className="gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Tentar novamente
+              </Button>
             </div>
           ) : filteredLocations.length === 0 ? (
             <div className="text-center py-10">
