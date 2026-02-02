@@ -10,7 +10,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
 
-const benefits = ["1 cliente grátis para sempre", "Tarefas semanais automatizadas", "Relatórios em PDF"];
+const benefits = [
+  "1 cliente grátis para sempre",
+  "Tarefas semanais e diarias automatizadas",
+  "Relatórios em completos em PDF",
+];
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -220,10 +224,7 @@ export default function Register() {
                 Fazer login
               </Link>
             </p>
-            <Link 
-              to="/" 
-              className="inline-block text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
+            <Link to="/" className="inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">
               ← Voltar para tela inicial
             </Link>
           </div>
