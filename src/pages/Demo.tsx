@@ -113,7 +113,7 @@ export default function Demo() {
               </div>
               <h2 className="text-3xl font-bold mb-4">Cadastre seus clientes</h2>
               <p className="text-muted-foreground mb-6">
-                Adicione os estabelecimentos que você gerencia com informações básicas: nome, tipo de negócio, Foto,
+                Adicione os estabelecimentos que você gerencia com informações básicas: nome, tipo de negócio, foto,
                 endereço e link do Google Business.
               </p>
               <ul className="space-y-3">
