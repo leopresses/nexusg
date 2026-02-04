@@ -6,17 +6,8 @@ verify_jwt = false
 [functions.admin-list-users]
 verify_jwt = false
 
-[functions.google-auth-connect]
+[functions.places-search]
 verify_jwt = false
 
-[functions.google-auth-callback]
-verify_jwt = false
-
-[functions.google-auth-disconnect]
-verify_jwt = false
-
-[functions.google-list-locations]
-verify_jwt = false
-
-[functions.google-sync-metrics]
+[functions.places-details]
 verify_jwt = false
