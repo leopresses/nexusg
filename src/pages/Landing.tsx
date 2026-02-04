@@ -9,12 +9,13 @@ const features = [
   {
     icon: Calendar,
     title: "Tarefas Automatizadas",
-    description: "Templates semanais que geram tarefas automaticamente para todos os seus clientes.",
+    description: "Templates semanais e diários que geram tarefas automaticamente para todos os seus clientes.",
   },
   {
     icon: BarChart3,
-    title: "Métricas do Google",
-    description: "Acompanhe visualizações, chamadas e rotas do Google Business em tempo real.",
+    title: "Google Places ID",
+    description:
+      "Localize e vincule perfis comerciais de forma única e precisa através do identificador oficial do Google Maps para automações.",
   },
   {
     icon: FileText,
