@@ -13,7 +13,7 @@ import {
   Trash2,
   Link as LinkIcon,
   Unlink,
-  TrendingUp,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,8 +26,7 @@ import { ClientTaskProgress } from "@/components/clients/ClientTaskProgress";
 import { useClientTasks } from "@/hooks/useClientTasks";
 import { EditClientDialog } from "@/components/clients/EditClientDialog";
 import { DeleteClientDialog } from "@/components/clients/DeleteClientDialog";
-import { LinkLocationDialog } from "@/components/google/LinkLocationDialog";
-import { useGoogleConnection, type ClientGoogleLocation } from "@/hooks/useGoogleConnection";
+import { PlaceSearchDialog } from "@/components/places/PlaceSearchDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { ClientAvatar } from "@/components/clients/ClientAvatar";
 import {
@@ -38,12 +37,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-
-type Client = Database["public"]["Tables"]["clients"]["Row"];
-
 import { getBusinessTypeLabel } from "@/config/plans";
 
-// Use centralized business type labels
+type Client = Database["public"]["Tables"]["clients"]["Row"];
 
 export default function Clients() {
   const { user } = useAuth();
@@ -55,35 +51,15 @@ export default function Clients() {
   const [linkingClient, setLinkingClient] = useState<Client | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
-  const [clientLocations, setClientLocations] = useState<Map<string, ClientGoogleLocation>>(new Map());
+  const [placeDialogOpen, setPlaceDialogOpen] = useState(false);
   const navigate = useNavigate();
 
-  const { connection, getClientLocation, unlinkLocationFromClient } = useGoogleConnection();
   const clientIds = clients.map(c => c.id);
   const { getStatsForClient, isLoading: isLoadingTasks } = useClientTasks(clientIds);
 
   useEffect(() => {
     fetchClients();
   }, []);
-
-  // Fetch Google locations for all clients
-  useEffect(() => {
-    const fetchLocations = async () => {
-      if (!user || clients.length === 0) return;
-      
-      const locMap = new Map<string, ClientGoogleLocation>();
-      for (const client of clients) {
-        const loc = await getClientLocation(client.id);
-        if (loc) {
-          locMap.set(client.id, loc);
-        }
-      }
-      setClientLocations(locMap);
-    };
-
-    fetchLocations();
-  }, [clients, user, getClientLocation]);
 
   const fetchClients = async () => {
     try {
@@ -122,31 +98,37 @@ export default function Clients() {
     setDeleteDialogOpen(true);
   };
 
-  const handleIntegrateGoogle = (client: Client, e: React.MouseEvent) => {
+  const handleLinkPlace = (client: Client, e: React.MouseEvent) => {
     e.stopPropagation();
     setLinkingClient(client);
-    setLinkDialogOpen(true);
+    setPlaceDialogOpen(true);
   };
 
-  const handleUnlinkGoogle = async (client: Client, e: React.MouseEvent) => {
+  const handleUnlinkPlace = async (client: Client, e: React.MouseEvent) => {
     e.stopPropagation();
-    const success = await unlinkLocationFromClient(client.id);
-    if (success) {
-      setClientLocations((prev) => {
-        const updated = new Map(prev);
-        updated.delete(client.id);
-        return updated;
-      });
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .update({
+          place_id: null,
+          google_maps_url: null,
+          place_snapshot: null,
+          place_last_sync_at: null,
+        })
+        .eq("id", client.id);
+
+      if (error) throw error;
+
+      toast.success("Place ID removido com sucesso!");
+      fetchClients();
+    } catch (error) {
+      console.error("Error unlinking place:", error);
+      toast.error("Erro ao remover Place ID");
     }
   };
 
-  const handleLinkSuccess = async () => {
-    if (linkingClient) {
-      const loc = await getClientLocation(linkingClient.id);
-      if (loc) {
-        setClientLocations((prev) => new Map(prev).set(linkingClient.id, loc));
-      }
-    }
+  const getPlaceSnapshot = (client: Client): any => {
+    return (client as any).place_snapshot || null;
   };
 
   if (isLoading) {
@@ -214,6 +196,8 @@ export default function Clients() {
           >
             {filteredClients.map((client, index) => {
               const stats = getStatsForClient(client.id);
+              const placeSnapshot = getPlaceSnapshot(client);
+              const hasPlaceId = !!(client as any).place_id;
               
               return (
                 <motion.div
@@ -224,7 +208,7 @@ export default function Clients() {
                   transition={{ delay: index * 0.05 }}
                   onClick={() => handleClientClick(client.id)}
                 >
-                    <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="h-12 w-12 rounded-xl gradient-neon flex items-center justify-center text-primary-foreground font-bold text-lg overflow-hidden">
                         <ClientAvatar
@@ -252,26 +236,26 @@ export default function Clients() {
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={(e) => handleEdit(client, e as any)}>
                           <Pencil className="h-4 w-4 mr-2" />
                           Editar
                         </DropdownMenuItem>
-                        {clientLocations.has(client.id) ? (
+                        {hasPlaceId ? (
                           <>
-                            <DropdownMenuItem onClick={(e) => handleIntegrateGoogle(client, e as any)}>
+                            <DropdownMenuItem onClick={(e) => handleLinkPlace(client, e as any)}>
                               <LinkIcon className="h-4 w-4 mr-2" />
-                              Trocar Location
+                              Trocar Place ID
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => handleUnlinkGoogle(client, e as any)}>
+                            <DropdownMenuItem onClick={(e) => handleUnlinkPlace(client, e as any)}>
                               <Unlink className="h-4 w-4 mr-2" />
-                              Remover Vínculo Google
+                              Remover Place ID
                             </DropdownMenuItem>
                           </>
                         ) : (
-                          <DropdownMenuItem onClick={(e) => handleIntegrateGoogle(client, e as any)}>
+                          <DropdownMenuItem onClick={(e) => handleLinkPlace(client, e as any)}>
                             <LinkIcon className="h-4 w-4 mr-2" />
-                            Vincular Google Business
+                            Vincular Google Place ID
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
@@ -293,13 +277,19 @@ export default function Clients() {
                     </div>
                   )}
 
-                  {/* Google Business Badge */}
-                  {clientLocations.has(client.id) && (
-                    <div className="mb-4 p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-blue-500" />
-                      <span className="text-xs text-blue-500 font-medium">
-                        Google vinculado: {clientLocations.get(client.id)?.location_title}
+                  {/* Google Place Badge */}
+                  {hasPlaceId && placeSnapshot && (
+                    <div className="mb-4 p-2 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      <span className="text-xs text-primary font-medium flex-1 truncate">
+                        {placeSnapshot.name || "Google vinculado"}
                       </span>
+                      {placeSnapshot.rating && (
+                        <span className="flex items-center gap-0.5 text-xs text-primary">
+                          <Star className="h-3 w-3 fill-current" />
+                          {placeSnapshot.rating}
+                        </span>
+                      )}
                     </div>
                   )}
 
@@ -352,13 +342,14 @@ export default function Clients() {
         onSuccess={fetchClients}
       />
 
-      <LinkLocationDialog
-        open={linkDialogOpen}
-        onOpenChange={setLinkDialogOpen}
+      <PlaceSearchDialog
+        open={placeDialogOpen}
+        onOpenChange={setPlaceDialogOpen}
         clientId={linkingClient?.id || ""}
         clientName={linkingClient?.name || ""}
-        currentLocation={linkingClient ? clientLocations.get(linkingClient.id) : null}
-        onSuccess={handleLinkSuccess}
+        clientAddress={linkingClient?.address || ""}
+        currentPlaceId={(linkingClient as any)?.place_id}
+        onSuccess={fetchClients}
       />
     </AppLayout>
   );

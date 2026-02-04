@@ -30,7 +30,7 @@ import { useBrandSettings } from "@/hooks/useBrandSettings";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { GoogleIntegrationSettings } from "@/components/google/GoogleIntegrationSettings";
+import { PlaceIdSettings } from "@/components/places/PlaceIdSettings";
 import { formatClientLimit, getPlanLabel } from "@/config/plans";
 
 // Account Settings Component
@@ -783,7 +783,7 @@ export default function Settings() {
             </TabsContent>
 
             <TabsContent value="integrations" className="space-y-6">
-              <GoogleIntegrationSettings />
+              <PlaceIdSettings />
             </TabsContent>
 
             <TabsContent value="preferences">

@@ -111,12 +111,16 @@ export type Database = {
           gbp_sync_status: string | null
           google_business_id: string | null
           google_connected: boolean | null
+          google_maps_url: string | null
           id: string
           is_active: boolean
           last_gbp_sync_at: string | null
           logo_url: string | null
           monthly_revenue: number | null
           name: string
+          place_id: string | null
+          place_last_sync_at: string | null
+          place_snapshot: Json | null
           updated_at: string
           user_id: string
         }
@@ -133,12 +137,16 @@ export type Database = {
           gbp_sync_status?: string | null
           google_business_id?: string | null
           google_connected?: boolean | null
+          google_maps_url?: string | null
           id?: string
           is_active?: boolean
           last_gbp_sync_at?: string | null
           logo_url?: string | null
           monthly_revenue?: number | null
           name: string
+          place_id?: string | null
+          place_last_sync_at?: string | null
+          place_snapshot?: Json | null
           updated_at?: string
           user_id: string
         }
@@ -155,12 +163,16 @@ export type Database = {
           gbp_sync_status?: string | null
           google_business_id?: string | null
           google_connected?: boolean | null
+          google_maps_url?: string | null
           id?: string
           is_active?: boolean
           last_gbp_sync_at?: string | null
           logo_url?: string | null
           monthly_revenue?: number | null
           name?: string
+          place_id?: string | null
+          place_last_sync_at?: string | null
+          place_snapshot?: Json | null
           updated_at?: string
           user_id?: string
         }
