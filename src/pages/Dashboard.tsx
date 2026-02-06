@@ -1,342 +1,383 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { BarChart3, CheckCircle2, CheckSquare, ChevronRight, Plus, Star, Users } from "lucide-react";
-
-import { AppLayout } from "@/components/AppLayout";
-import { ClientAvatar } from "@/components/clients/ClientAvatar";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Link, useNavigate } from "react-router-dom";
+import { 
+  Users, 
+  CheckSquare, 
+  Plus,
+  TrendingUp,
+  Eye,
+  Phone,
+  ChevronRight,
+  Loader2,
+  Calendar,
+  CalendarDays,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { useAuth } from "@/hooks/useAuth";
-import { useReports } from "@/hooks/useReports";
+import { AppLayout } from "@/components/AppLayout";
+import { ProgressBar } from "@/components/dashboard/ProgressBar";
+import { ClientAvatar } from "@/components/clients/ClientAvatar";
+import { getBusinessTypeLabel, formatClientLimit, getPlanLabel } from "@/config/plans";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
-  clients?: { name: string; avatar_url?: string | null } | null;
+  clients?: { name: string } | null;
 };
 
-const statusLabel: Record<string, string> = {
+const statusColors = {
+  pending: "bg-warning/20 text-warning border-warning/30",
+  in_progress: "bg-primary/20 text-primary border-primary/30",
+  completed: "bg-success/20 text-success border-success/30",
+};
+
+const statusLabels = {
   pending: "Pendente",
-  in_progress: "Em andamento",
-  completed: "Concluído",
+  in_progress: "Em progresso",
+  completed: "Concluída",
 };
 
-const statusPillClass: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700 border-amber-100",
-  in_progress: "bg-blue-50 text-blue-700 border-blue-100",
-  completed: "bg-emerald-50 text-emerald-700 border-emerald-100",
-};
+// Task stats for the total count across all tasks
+interface TaskStats {
+  pending: number;
+  in_progress: number;
+  completed: number;
+  total: number;
+}
 
-function formatPtDate(d: Date) {
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+interface DayStats {
+  daily: TaskStats;
+  weekly: TaskStats;
 }
 
 export default function Dashboard() {
-  const navigate = useNavigate();
-  const { profile } = useAuth();
-  const { reports } = useReports();
-
   const [clients, setClients] = useState<Client[]>([]);
-  const [todayTasks, setTodayTasks] = useState<Task[]>([]);
-  const [pendingCount, setPendingCount] = useState(0);
+  const [recentTasks, setRecentTasks] = useState<Task[]>([]);
+  const [taskStats, setTaskStats] = useState<TaskStats>({ pending: 0, in_progress: 0, completed: 0, total: 0 });
+  const [dayStats, setDayStats] = useState<DayStats>({
+    daily: { pending: 0, in_progress: 0, completed: 0, total: 0 },
+    weekly: { pending: 0, in_progress: 0, completed: 0, total: 0 },
+  });
   const [isLoading, setIsLoading] = useState(true);
+  const { profile } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    void fetchDashboard();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchData();
   }, []);
 
-  const fetchDashboard = async () => {
-    setIsLoading(true);
+  const fetchData = async () => {
     try {
-      const today = new Date();
-      const todayStr = today.toISOString().slice(0, 10);
+      // Get all clients
+      const clientsRes = await supabase
+        .from("clients")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
 
-      const [clientsRes, todayTasksRes, pendingRes] = await Promise.all([
-        supabase.from("clients").select("*").eq("is_active", true).order("created_at", { ascending: false }),
+      // Get recent tasks for display (limited)
+      const recentTasksRes = await supabase
+        .from("tasks")
+        .select("*, clients(name)")
+        .order("created_at", { ascending: false })
+        .limit(10);
 
-        supabase
-          .from("tasks")
-          .select("*, clients(name, avatar_url)")
-          .eq("frequency", "daily")
-          .eq("task_date", todayStr)
-          .order("created_at", { ascending: false })
-          .limit(6),
+      // Get total task counts by status (no limit)
+      const [pendingCount, inProgressCount, completedCount] = await Promise.all([
+        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "pending"),
+        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "in_progress"),
+        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "completed"),
+      ]);
 
-        supabase.from("tasks").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      // Get today's tasks
+      const today = new Date().toISOString().split("T")[0];
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+      const weekStartStr = weekStart.toISOString().split("T")[0];
+
+      // Daily tasks stats
+      const [dailyPending, dailyInProgress, dailyCompleted] = await Promise.all([
+        supabase.from("tasks").select("*", { count: "exact", head: true })
+          .eq("status", "pending").eq("frequency", "daily").eq("task_date", today),
+        supabase.from("tasks").select("*", { count: "exact", head: true })
+          .eq("status", "in_progress").eq("frequency", "daily").eq("task_date", today),
+        supabase.from("tasks").select("*", { count: "exact", head: true })
+          .eq("status", "completed").eq("frequency", "daily").eq("task_date", today),
+      ]);
+
+      // Weekly tasks stats for current week
+      const [weeklyPending, weeklyInProgress, weeklyCompleted] = await Promise.all([
+        supabase.from("tasks").select("*", { count: "exact", head: true })
+          .eq("status", "pending").eq("frequency", "weekly").eq("week_start", weekStartStr),
+        supabase.from("tasks").select("*", { count: "exact", head: true })
+          .eq("status", "in_progress").eq("frequency", "weekly").eq("week_start", weekStartStr),
+        supabase.from("tasks").select("*", { count: "exact", head: true })
+          .eq("status", "completed").eq("frequency", "weekly").eq("week_start", weekStartStr),
       ]);
 
       if (clientsRes.data) setClients(clientsRes.data);
-      if (todayTasksRes.data) setTodayTasks(todayTasksRes.data as Task[]);
-      setPendingCount(pendingRes.count || 0);
-    } catch (e) {
-      console.error(e);
+      if (recentTasksRes.data) setRecentTasks(recentTasksRes.data as Task[]);
+      
+      const pending = pendingCount.count || 0;
+      const inProgress = inProgressCount.count || 0;
+      const completed = completedCount.count || 0;
+      
+      setTaskStats({
+        pending,
+        in_progress: inProgress,
+        completed,
+        total: pending + inProgress + completed,
+      });
+
+      const dPending = dailyPending.count || 0;
+      const dInProgress = dailyInProgress.count || 0;
+      const dCompleted = dailyCompleted.count || 0;
+      
+      const wPending = weeklyPending.count || 0;
+      const wInProgress = weeklyInProgress.count || 0;
+      const wCompleted = weeklyCompleted.count || 0;
+
+      setDayStats({
+        daily: {
+          pending: dPending,
+          in_progress: dInProgress,
+          completed: dCompleted,
+          total: dPending + dInProgress + dCompleted,
+        },
+        weekly: {
+          pending: wPending,
+          in_progress: wInProgress,
+          completed: wCompleted,
+          total: wPending + wInProgress + wCompleted,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching data:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const metrics = useMemo(() => {
-    const activeClients = clients.length;
+  const completionRate = taskStats.total > 0 
+    ? Math.round((taskStats.completed / taskStats.total) * 100) 
+    : 0;
 
-    // Se você já salva snapshot do Google, pode existir:
-    // place_snapshot.rating, place_snapshot.user_ratings_total
-    const ratings: number[] = [];
-    let reviewsTotal = 0;
+  const stats = [
+    { label: "Clientes Ativos", value: clients.length.toString(), icon: Users, change: `Limite: ${formatClientLimit(profile?.clients_limit || 1)}` },
+    { label: "Tarefas Pendentes", value: taskStats.pending.toString(), icon: CheckSquare, change: `${taskStats.completed} concluídas` },
+    { label: "Seu Plano", value: getPlanLabel(profile?.plan || "starter").toUpperCase(), icon: Eye, change: "Plano atual" },
+    { label: "Taxa de Conclusão", value: `${completionRate}%`, icon: Phone, change: "Total geral" },
+  ];
 
-    for (const c of clients) {
-      const snap: any = (c as any).place_snapshot || (c as any).google_place_snapshot;
-      const r = Number(snap?.rating);
-      const t = Number(snap?.user_ratings_total);
-      if (!Number.isNaN(r) && r > 0) ratings.push(r);
-      if (!Number.isNaN(t) && t > 0) reviewsTotal += t;
-    }
-
-    const avgRating = ratings.length
-      ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10
-      : 4.5;
-
-    return { activeClients, reviewsTotal: reviewsTotal || 235, avgRating };
-  }, [clients]);
-
-  const welcomeName = profile?.full_name?.split(" ")?.[0] || "João";
-  const latestReport = reports?.[0];
+  if (isLoading) {
+    return (
+      <AppLayout title="Carregando..." subtitle="">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
-    <AppLayout
+    <AppLayout 
+      title={`Olá, ${profile?.full_name || "Usuário"}! 👋`}
+      subtitle={`Semana de ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - Visão geral`}
       headerActions={
-        <Button
-          className="rounded-xl bg-[#2D62F1] hover:bg-[#2457E6] text-white"
-          onClick={() => navigate("/onboarding")}
-        >
+        <Button onClick={() => navigate("/onboarding")}>
           <Plus className="h-4 w-4 mr-2" />
           Novo Cliente
         </Button>
       }
     >
-      <div className="flex items-center justify-between gap-4 mb-6">
-        <div className="min-w-0">
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Bem-vindo, {welcomeName}!</h1>
-          <p className="text-sm text-slate-500 mt-1">{formatPtDate(new Date())} • Visão geral</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        <div className="xl:col-span-8 space-y-6">
-          {/* cards métricas */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="rounded-2xl bg-white border border-black/5 shadow-sm p-4">
-              <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-                <Users className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div className="mt-3">
-                <div className="text-xs text-slate-500">Clientes Ativos</div>
-                <div className="text-2xl font-bold text-slate-900">{isLoading ? "—" : metrics.activeClients}</div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-white border border-black/5 shadow-sm p-4">
-              <div className="h-10 w-10 rounded-xl bg-orange-50 flex items-center justify-center">
-                <CheckSquare className="h-5 w-5 text-orange-600" />
-              </div>
-              <div className="mt-3">
-                <div className="text-xs text-slate-500">Tarefas Pendentes</div>
-                <div className="text-2xl font-bold text-slate-900">{isLoading ? "—" : pendingCount}</div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-white border border-black/5 shadow-sm p-4">
-              <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                <BarChart3 className="h-5 w-5 text-blue-600" />
-              </div>
-              <div className="mt-3">
-                <div className="text-xs text-slate-500">Avaliações Totais</div>
-                <div className="text-2xl font-bold text-slate-900">{isLoading ? "—" : metrics.reviewsTotal}</div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-white border border-black/5 shadow-sm p-4">
-              <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center">
-                <Star className="h-5 w-5 text-slate-700" />
-              </div>
-              <div className="mt-3">
-                <div className="text-xs text-slate-500">Nota Média</div>
-                <div className="flex items-center gap-2">
-                  <div className="text-2xl font-bold text-slate-900">
-                    {isLoading ? "—" : metrics.avgRating.toFixed(1).replace(".", ",")}
-                  </div>
-                  <div className="flex items-center gap-0.5">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-4 w-4 ${i < Math.round(metrics.avgRating) ? "text-amber-400" : "text-slate-200"}`}
-                        fill={i < Math.round(metrics.avgRating) ? "currentColor" : "none"}
-                      />
-                    ))}
-                  </div>
+      <div className="space-y-6">
+        {/* Stats Grid */}
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          {stats.map((stat, index) => (
+            <motion.div
+              key={index}
+              className="p-5 rounded-xl bg-card border border-border hover:border-primary/30 transition-colors"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.1 }}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <stat.icon className="h-5 w-5 text-primary" />
                 </div>
+                <TrendingUp className="h-4 w-4 text-success" />
               </div>
+              <div className="text-2xl font-bold mb-1">{stat.value}</div>
+              <div className="text-sm text-muted-foreground">{stat.label}</div>
+              <div className="text-xs text-success mt-2">{stat.change}</div>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Progress Bars */}
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.15 }}
+        >
+          <div className="rounded-xl bg-card border border-border p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">Tarefas de Hoje</h3>
             </div>
+            <ProgressBar
+              pending={dayStats.daily.pending}
+              inProgress={dayStats.daily.in_progress}
+              completed={dayStats.daily.completed}
+              total={dayStats.daily.total}
+              label="Diárias"
+            />
           </div>
-
-          {/* tarefas de hoje */}
-          <div className="rounded-2xl bg-white border border-black/5 shadow-sm">
-            <div className="px-5 py-4 border-b border-black/5 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-slate-900">Tarefas de Hoje</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Suas tarefas diárias para hoje</p>
-              </div>
-              <Button variant="outline" className="rounded-xl border-black/10" onClick={() => navigate("/tasks")}>
-                Ver todas <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
+          <div className="rounded-xl bg-card border border-border p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <CalendarDays className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">Tarefas da Semana</h3>
             </div>
+            <ProgressBar
+              pending={dayStats.weekly.pending}
+              inProgress={dayStats.weekly.in_progress}
+              completed={dayStats.weekly.completed}
+              total={dayStats.weekly.total}
+              label="Semanais"
+            />
+          </div>
+        </motion.div>
 
-            <div className="divide-y divide-black/5">
-              {isLoading ? (
-                <div className="p-6 text-sm text-slate-500">Carregando…</div>
-              ) : todayTasks.length === 0 ? (
-                <div className="p-6 text-sm text-slate-500">Nenhuma tarefa diária para hoje.</div>
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Clients List */}
+          <motion.div 
+            className="lg:col-span-2 rounded-xl bg-card border border-border"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
+            <div className="p-5 border-b border-border flex items-center justify-between">
+              <h2 className="font-semibold text-lg">Clientes</h2>
+              <Link to="/clients" className="text-sm text-primary hover:underline flex items-center gap-1">
+                Ver todos <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+            <div className="divide-y divide-border">
+              {clients.length === 0 ? (
+                <div className="p-8 text-center">
+                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="font-medium mb-2">Nenhum cliente ainda</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Adicione seu primeiro cliente para começar
+                  </p>
+                  <Button onClick={() => navigate("/onboarding")}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar Cliente
+                  </Button>
+                </div>
               ) : (
-                todayTasks.map((t) => (
-                  <div
-                    key={t.id}
-                    className="px-5 py-4 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-12 w-12 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center">
-                        <ClientAvatar
-                          avatarUrl={(t.clients as any)?.avatar_url}
-                          clientName={t.clients?.name || "Cliente"}
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-medium text-slate-900 truncate">{t.title}</div>
-                        <div className="text-xs text-slate-500 truncate">
-                          {t.clients?.name || "Cliente"} • {formatPtDate(new Date())}
+                clients.slice(0, 5).map((client) => (
+                  <div key={client.id} className="p-4 hover:bg-secondary/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-xl gradient-neon flex items-center justify-center text-primary-foreground font-bold text-lg overflow-hidden">
+                          <ClientAvatar
+                            avatarUrl={(client as any).avatar_url}
+                            clientName={client.name}
+                          />
+                        </div>
+                        <div>
+                          <h3 className="font-medium">{client.name}</h3>
+                          <p className="text-sm text-muted-foreground capitalize">{getBusinessTypeLabel(client.business_type)}</p>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <Badge
-                        variant="outline"
-                        className={`rounded-full px-3 py-1 text-xs border ${
-                          statusPillClass[String(t.status)] || "bg-slate-50 text-slate-700 border-slate-200"
-                        }`}
-                      >
-                        {statusLabel[String(t.status)] || "Status"}
-                      </Badge>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-xl"
-                        title="Ir para tarefas"
-                        onClick={() => navigate("/tasks")}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-6">
+                        <div className="text-center">
+                          <div className="text-sm font-medium">{client.address ? "✓" : "—"}</div>
+                          <div className="text-xs text-muted-foreground">Endereço</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-sm font-medium flex items-center gap-1">
+                            {client.google_business_id ? "✓" : "—"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Google</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))
               )}
             </div>
-          </div>
+          </motion.div>
 
-          {/* mini lista de clientes (parecido com a referência) */}
-          <div className="rounded-2xl bg-white border border-black/5 shadow-sm">
-            <div className="px-5 py-4 border-b border-black/5 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-slate-900">Clientes</h2>
-              <Button variant="outline" className="rounded-xl border-black/10" onClick={() => navigate("/clients")}>
-                Ver todos <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
+          {/* Recent Tasks */}
+          <motion.div 
+            className="rounded-xl bg-card border border-border"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+          >
+            <div className="p-5 border-b border-border flex items-center justify-between">
+              <h2 className="font-semibold text-lg">Tarefas Recentes</h2>
+              <Link to="/tasks" className="text-sm text-primary hover:underline flex items-center gap-1">
+                Ver todas <ChevronRight className="h-4 w-4" />
+              </Link>
             </div>
-
-            <div className="divide-y divide-black/5">
-              {clients.slice(0, 4).map((c) => (
-                <button
-                  key={c.id}
-                  className="w-full text-left px-5 py-4 hover:bg-slate-50 transition-colors"
-                  onClick={() => navigate(`/clients?selected=${c.id}`)}
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-12 w-12 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center">
-                        <ClientAvatar avatarUrl={(c as any).avatar_url} clientName={c.name} />
+            <div className="p-4 space-y-3">
+              {recentTasks.length === 0 ? (
+                <div className="text-center py-8">
+                  <CheckSquare className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma tarefa ainda
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {recentTasks.slice(0, 5).map((task) => (
+                    <div 
+                      key={task.id} 
+                      className="p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer"
+                      onClick={() => navigate("/tasks")}
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <h4 className="text-sm font-medium leading-tight">{task.title}</h4>
                       </div>
-                      <div className="min-w-0">
-                        <div className="font-medium text-slate-900 truncate">{c.name}</div>
-                        <div className="text-xs text-slate-500 truncate">{(c as any).address || "—"}</div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">
+                          {task.clients?.name || "Cliente"}
+                        </span>
+                        <Badge 
+                          variant="outline" 
+                          className={`text-xs ${statusColors[task.status as keyof typeof statusColors]}`}
+                        >
+                          {statusLabels[task.status as keyof typeof statusLabels]}
+                        </Badge>
                       </div>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
-                  </div>
-                </button>
-              ))}
-
-              {clients.length === 0 && !isLoading && (
-                <div className="p-6 text-sm text-slate-500">
-                  Nenhum cliente ainda. Clique em <span className="font-medium">Novo Cliente</span> para começar.
-                </div>
+                  ))}
+                  {taskStats.total > 5 && (
+                    <Button 
+                      variant="outline" 
+                      className="w-full mt-2"
+                      onClick={() => navigate("/tasks")}
+                    >
+                      Ver todas ({taskStats.total} tarefas)
+                      <ChevronRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  )}
+                </>
               )}
             </div>
-          </div>
-        </div>
-
-        {/* painel direito: últimos relatórios */}
-        <div className="xl:col-span-4">
-          <div className="rounded-2xl bg-white border border-black/5 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-black/5 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-slate-900">Últimos Relatórios</h2>
-              <Button variant="ghost" className="rounded-xl" onClick={() => navigate("/reports")}>
-                Ver <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-
-            <div className="p-5">
-              <div className="h-40 rounded-2xl bg-gradient-to-br from-slate-200 to-slate-100 overflow-hidden flex items-center justify-center">
-                <CheckCircle2 className="h-10 w-10 text-slate-400" />
-              </div>
-
-              <div className="flex items-center gap-3 -mt-6 px-2">
-                <div className="h-12 w-12 rounded-full bg-white shadow-sm border border-black/5 flex items-center justify-center">
-                  <div className="h-10 w-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center">
-                    <ClientAvatar avatarUrl={undefined} clientName={latestReport?.client?.name || "Cliente"} />
-                  </div>
-                </div>
-
-                <div className="min-w-0">
-                  <div className="font-semibold text-slate-900 truncate">{latestReport?.name || "Relatório"}</div>
-                  <div className="text-xs text-slate-500 truncate">
-                    {latestReport?.client?.name || "Sem relatórios ainda"}
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 rounded-2xl border border-black/5 bg-[#F4F6FB] p-4">
-                <div className="text-sm text-slate-700">
-                  {latestReport
-                    ? `Período: ${new Date(latestReport.period_start).toLocaleDateString("pt-BR")} — ${new Date(
-                        latestReport.period_end,
-                      ).toLocaleDateString("pt-BR")}`
-                    : "Gere seu primeiro relatório para ver um resumo aqui."}
-                </div>
-
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    className="rounded-xl bg-[#2D62F1] hover:bg-[#2457E6] text-white"
-                    onClick={() => navigate("/reports")}
-                  >
-                    Gerar relatório
-                  </Button>
-                  <Button variant="outline" className="rounded-xl border-black/10" onClick={() => navigate("/clients")}>
-                    Ver clientes
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </AppLayout>
