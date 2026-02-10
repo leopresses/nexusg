@@ -1,65 +1,112 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { 
-  Plus, 
-  Users, 
-  MoreVertical,
-  MapPin,
-  Building2,
-  Loader2,
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  Users,
+  CheckSquare,
+  Plus,
   Search,
-  ListTodo,
+  Bell,
+  Settings,
+  LayoutDashboard,
+  FileText,
+  CreditCard,
+  Shield,
+  LogOut,
+  Menu,
+  X,
+  Star,
+  MapPin,
+  Phone,
+  Globe,
+  LinkIcon,
+  ChevronDown,
+  Loader2,
+  MoreVertical,
+  Building2,
   Pencil,
   Trash2,
-  Link as LinkIcon,
   Unlink,
-  Star,
+  ListTodo,
+  ExternalLink,
+  Filter,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { AppLayout } from "@/components/AppLayout";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { ClientTaskProgress } from "@/components/clients/ClientTaskProgress";
+import { ClientAvatar } from "@/components/clients/ClientAvatar";
+import { getBusinessTypeLabel } from "@/config/plans";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useClientTasks } from "@/hooks/useClientTasks";
 import { EditClientDialog } from "@/components/clients/EditClientDialog";
 import { DeleteClientDialog } from "@/components/clients/DeleteClientDialog";
 import { PlaceSearchDialog } from "@/components/places/PlaceSearchDialog";
-import { useAuth } from "@/hooks/useAuth";
-import { ClientAvatar } from "@/components/clients/ClientAvatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { getBusinessTypeLabel } from "@/config/plans";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
+type Task = Database["public"]["Tables"]["tasks"]["Row"];
+
+// --- Sidebar Nav Items ---
+const baseNavItems = [
+  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+  { icon: Users, label: "Clientes", href: "/clients" },
+  { icon: CheckSquare, label: "Tarefas", href: "/tasks" },
+  { icon: FileText, label: "Relatórios", href: "/reports" },
+  { icon: Settings, label: "Configurações", href: "/settings" },
+];
+
+const adminNavItems = [
+  { icon: Shield, label: "Usuários & Planos", href: "/admin/users-plans" },
+  { icon: FileText, label: "Templates de Tarefas", href: "/admin/templates" },
+];
+
+const statusColors: Record<string, string> = {
+  pending: "bg-blue-50 text-blue-700 border border-blue-200",
+  in_progress: "bg-amber-50 text-amber-700 border border-amber-200",
+  completed: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+};
+
+const statusLabels: Record<string, string> = {
+  pending: "Pendente",
+  in_progress: "Em progresso",
+  completed: "Concluído",
+};
 
 export default function Clients() {
-  const { user } = useAuth();
+  const { profile, signOut, isAdmin, user } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [clientTasks, setClientTasks] = useState<Task[]>([]);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
   const [linkingClient, setLinkingClient] = useState<Client | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [placeDialogOpen, setPlaceDialogOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isMobile = useIsMobile();
 
-  const clientIds = clients.map(c => c.id);
-  const { getStatsForClient, isLoading: isLoadingTasks } = useClientTasks(clientIds);
+  const clientIds = clients.map((c) => c.id);
+  const { getStatsForClient } = useClientTasks(clientIds);
 
   useEffect(() => {
     fetchClients();
   }, []);
+
+  useEffect(() => {
+    if (isMobile) setSidebarOpen(false);
+  }, [location.pathname, isMobile]);
+
+  // Fetch tasks for selected client
+  useEffect(() => {
+    if (selectedClient) {
+      fetchClientTasks(selectedClient.id);
+    }
+  }, [selectedClient?.id]);
 
   const fetchClients = async () => {
     try {
@@ -67,9 +114,11 @@ export default function Clients() {
         .from("clients")
         .select("*")
         .order("created_at", { ascending: false });
-
       if (error) throw error;
-      if (data) setClients(data);
+      if (data) {
+        setClients(data);
+        if (!selectedClient && data.length > 0) setSelectedClient(data[0]);
+      }
     } catch (error) {
       console.error("Error fetching clients:", error);
     } finally {
@@ -77,280 +126,510 @@ export default function Clients() {
     }
   };
 
-  const filteredClients = clients.filter((client) =>
-    client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    getBusinessTypeLabel(client.business_type).toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const handleClientClick = (clientId: string) => {
-    navigate(`/tasks?client=${clientId}`);
+  const fetchClientTasks = async (clientId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      setClientTasks(data || []);
+    } catch {
+      setClientTasks([]);
+    }
   };
 
-  const handleEdit = (client: Client, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingClient(client);
-    setEditDialogOpen(true);
-  };
-
-  const handleDelete = (client: Client, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setDeletingClient(client);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleLinkPlace = (client: Client, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setLinkingClient(client);
-    setPlaceDialogOpen(true);
-  };
-
-  const handleUnlinkPlace = async (client: Client, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleUnlinkPlace = async (client: Client) => {
     try {
       const { error } = await supabase
         .from("clients")
-        .update({
-          place_id: null,
-          google_maps_url: null,
-          place_snapshot: null,
-          place_last_sync_at: null,
-        })
+        .update({ place_id: null, google_maps_url: null, place_snapshot: null, place_last_sync_at: null })
         .eq("id", client.id);
-
       if (error) throw error;
-
       toast.success("Place ID removido com sucesso!");
       fetchClients();
-    } catch (error) {
-      console.error("Error unlinking place:", error);
+    } catch {
       toast.error("Erro ao remover Place ID");
     }
   };
 
-  const getPlaceSnapshot = (client: Client): any => {
-    return (client as any).place_snapshot || null;
-  };
+  const filteredClients = clients.filter((c) => {
+    const matchesSearch =
+      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      getBusinessTypeLabel(c.business_type).toLowerCase().includes(searchQuery.toLowerCase());
+    if (filter === "active") return matchesSearch && c.is_active;
+    if (filter === "inactive") return matchesSearch && !c.is_active;
+    return matchesSearch;
+  });
+
+  const navItems = isAdmin ? [...baseNavItems, ...adminNavItems] : baseNavItems;
+  const isActive = (href: string) =>
+    location.pathname === href || (href !== "/dashboard" && location.pathname.startsWith(href));
+  const userName = profile?.full_name || "Usuário";
+
+  const getPlaceSnapshot = (client: Client): any => (client as any).place_snapshot || null;
 
   if (isLoading) {
     return (
-      <AppLayout title="Meus Clientes" subtitle="Gerencie todos os seus clientes em um só lugar">
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </AppLayout>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
     );
   }
 
-  return (
-    <AppLayout 
-      title="Meus Clientes" 
-      subtitle="Gerencie todos os seus clientes em um só lugar"
-      headerActions={
-        <Button onClick={() => navigate("/onboarding")}>
-          <Plus className="h-4 w-4 mr-2" />
-          Adicionar Cliente
-        </Button>
-      }
-    >
-      <div className="space-y-6">
-        {/* Search Bar */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar clientes..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+  const placeSnapshot = selectedClient ? getPlaceSnapshot(selectedClient) : null;
 
-        {/* Clients Grid */}
-        {filteredClients.length === 0 ? (
-          <motion.div 
-            className="rounded-xl bg-card border border-border p-12 text-center"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+  return (
+    <div className="min-h-screen bg-slate-50 flex">
+      {/* Mobile overlay */}
+      {isMobile && sidebarOpen && (
+        <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* ===== SIDEBAR ===== */}
+      <aside
+        className={`
+          ${isMobile
+            ? `fixed inset-y-0 left-0 z-50 w-[260px] transform transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`
+            : "hidden lg:flex lg:w-[260px]"
+          }
+          flex-col bg-gradient-to-b from-[#1E3A8A] via-[#1D4ED8] to-[#2563EB] text-white
+        `}
+      >
+        <div className="flex items-center gap-3 px-5 py-5">
+          <div className="h-9 w-9 rounded-lg bg-white/20 flex items-center justify-center">
+            <LayoutDashboard className="h-5 w-5 text-white" />
+          </div>
+          <span className="text-lg font-bold tracking-tight">Gestão Nexus</span>
+          {isMobile && (
+            <button onClick={() => setSidebarOpen(false)} className="ml-auto">
+              <X className="h-5 w-5 text-white/70" />
+            </button>
+          )}
+        </div>
+        <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              to={item.href}
+              onClick={() => isMobile && setSidebarOpen(false)}
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                isActive(item.href)
+                  ? "bg-white/15 ring-1 ring-white/20 text-white"
+                  : "text-white/80 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <item.icon className="h-5 w-5 flex-shrink-0" />
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+        <div className="px-3 pb-5">
+          <button
+            onClick={async () => { await signOut(); navigate("/"); }}
+            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/70 hover:bg-white/10 hover:text-white text-sm w-full transition-all"
           >
-            <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">
-              {searchQuery ? "Nenhum cliente encontrado" : "Nenhum cliente ainda"}
-            </h3>
-            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              {searchQuery 
-                ? "Tente ajustar sua busca para encontrar o cliente desejado."
-                : "Adicione seu primeiro cliente para começar a gerenciar seus negócios de forma eficiente."
-              }
-            </p>
-            {!searchQuery && (
-              <Button onClick={() => navigate("/onboarding")}>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar Primeiro Cliente
-              </Button>
-            )}
-          </motion.div>
-        ) : (
-          <motion.div 
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            {filteredClients.map((client, index) => {
-              const stats = getStatsForClient(client.id);
-              const placeSnapshot = getPlaceSnapshot(client);
-              const hasPlaceId = !!(client as any).place_id;
-              
-              return (
-                <motion.div
-                  key={client.id}
-                  className="rounded-xl bg-card border border-border p-5 hover:border-primary/30 transition-all duration-200 cursor-pointer group"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  onClick={() => handleClientClick(client.id)}
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 rounded-xl gradient-neon flex items-center justify-center text-primary-foreground font-bold text-lg overflow-hidden">
-                        <ClientAvatar
-                          avatarUrl={(client as any).avatar_url}
-                          clientName={client.name}
-                        />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold group-hover:text-primary transition-colors">
-                          {client.name}
-                        </h3>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Building2 className="h-3 w-3" />
-                          <span>{getBusinessTypeLabel(client.business_type)}</span>
+            <LogOut className="h-5 w-5" />
+            <span>Sair</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* ===== MAIN CONTENT ===== */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* TOPBAR */}
+        <header className="flex items-center justify-between gap-4 px-4 md:px-6 py-3 bg-white border-b border-slate-200">
+          <div className="flex items-center gap-3">
+            <button className="lg:hidden p-2 rounded-lg hover:bg-slate-100" onClick={() => setSidebarOpen(true)}>
+              <Menu className="h-5 w-5 text-slate-600" />
+            </button>
+            <div className="h-10 w-[320px] md:w-[420px] max-w-full rounded-full bg-white border border-slate-200 shadow-sm px-4 flex items-center gap-2">
+              <Search className="h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Pesquisar clientes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 bg-transparent text-sm text-slate-700 placeholder:text-slate-400 outline-none"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="p-2 rounded-lg hover:bg-slate-100 relative">
+              <Bell className="h-5 w-5 text-slate-500" />
+            </button>
+            <button className="p-2 rounded-lg hover:bg-slate-100" onClick={() => navigate("/settings")}>
+              <Settings className="h-5 w-5 text-slate-500" />
+            </button>
+            <div className="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-semibold ml-1">
+              {userName.charAt(0).toUpperCase()}
+            </div>
+          </div>
+        </header>
+
+        {/* PAGE CONTENT */}
+        <div className="flex-1 overflow-auto p-4 md:p-6">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-5">
+            <h1 className="text-2xl font-semibold text-slate-900">Clientes</h1>
+            <button
+              onClick={() => navigate("/onboarding")}
+              className="h-10 px-5 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
+            >
+              <Plus className="h-4 w-4" />
+              Novo Cliente
+            </button>
+          </div>
+
+          {/* Main Grid: List + Detail */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            {/* LEFT — Client List */}
+            <div className="xl:col-span-5">
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+                {/* Filters header */}
+                <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center gap-3 justify-between">
+                  <div className="flex items-center gap-2">
+                    {(["all", "active", "inactive"] as const).map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => setFilter(f)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                          filter === f
+                            ? "bg-blue-600 text-white shadow-sm"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {f === "all" ? "Todos" : f === "active" ? "Ativos" : "Inativos"}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-xs text-slate-500">
+                    {filteredClients.length} cliente{filteredClients.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+
+                {/* Client rows */}
+                <div className="divide-y divide-slate-100 max-h-[calc(100vh-280px)] overflow-y-auto">
+                  {filteredClients.length === 0 ? (
+                    <div className="p-10 text-center">
+                      <Users className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                      <p className="text-sm text-slate-500">
+                        {searchQuery ? "Nenhum cliente encontrado" : "Nenhum cliente ainda"}
+                      </p>
+                    </div>
+                  ) : (
+                    filteredClients.map((client) => {
+                      const snapshot = getPlaceSnapshot(client);
+                      const isSelected = selectedClient?.id === client.id;
+
+                      return (
+                        <div
+                          key={client.id}
+                          className={`flex items-center gap-4 py-3.5 px-5 cursor-pointer transition-all ${
+                            isSelected
+                              ? "bg-blue-50/60 ring-1 ring-inset ring-blue-200"
+                              : "hover:bg-slate-50"
+                          }`}
+                          onClick={() => setSelectedClient(client)}
+                        >
+                          {/* Avatar */}
+                          <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden flex items-center justify-center text-lg font-bold text-slate-400 flex-shrink-0">
+                            <ClientAvatar
+                              avatarUrl={client.avatar_url}
+                              clientName={client.name}
+                            />
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-900 truncate">{client.name}</p>
+                            <p className="text-xs text-slate-500 truncate">
+                              {getBusinessTypeLabel(client.business_type)}
+                            </p>
+                          </div>
+
+                          {/* Rating */}
+                          {snapshot?.rating && (
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
+                              <span className="text-xs font-medium text-slate-700">{snapshot.rating}</span>
+                            </div>
+                          )}
+
+                          {/* Status badge */}
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap flex-shrink-0 ${
+                              client.is_active
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                : "bg-slate-100 text-slate-600 border border-slate-200"
+                            }`}
+                          >
+                            {client.is_active ? "Ativo" : "Inativo"}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* RIGHT — Client Detail */}
+            <div className="xl:col-span-7">
+              {selectedClient ? (
+                <div className="space-y-6">
+                  {/* Detail card */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    {/* Cover */}
+                    <div className="relative h-40 bg-gradient-to-r from-slate-200 to-slate-100">
+                      {placeSnapshot?.photos?.[0] && (
+                        <img src={placeSnapshot.photos[0]} alt="" className="w-full h-full object-cover" />
+                      )}
+                      {/* Avatar overlay */}
+                      <div className="absolute -bottom-10 left-6">
+                        <div className="w-20 h-20 rounded-full border-4 border-white bg-slate-200 overflow-hidden flex items-center justify-center text-2xl font-bold text-slate-500 shadow-sm">
+                          <ClientAvatar
+                            avatarUrl={selectedClient.avatar_url}
+                            clientName={selectedClient.name}
+                          />
                         </div>
                       </div>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={(e) => handleEdit(client, e as any)}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Editar
-                        </DropdownMenuItem>
-                        {hasPlaceId ? (
+
+                    {/* Info */}
+                    <div className="pt-14 px-6 pb-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h2 className="text-xl font-semibold text-slate-900">{selectedClient.name}</h2>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-sm text-slate-500">
+                              <Building2 className="h-3.5 w-3.5 inline mr-1" />
+                              {getBusinessTypeLabel(selectedClient.business_type)}
+                            </span>
+                            <span
+                              className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                selectedClient.is_active
+                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  : "bg-slate-100 text-slate-600 border border-slate-200"
+                              }`}
+                            >
+                              {selectedClient.is_active ? "Ativo" : "Inativo"}
+                            </span>
+                          </div>
+                        </div>
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => { setEditingClient(selectedClient); setEditDialogOpen(true); }}
+                            className="p-2 rounded-lg hover:bg-slate-100 text-slate-500"
+                            title="Editar"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => { setDeletingClient(selectedClient); setDeleteDialogOpen(true); }}
+                            className="p-2 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600"
+                            title="Excluir"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Rating */}
+                      {placeSnapshot?.rating && (
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className="flex items-center gap-0.5">
+                            {[1, 2, 3, 4, 5].map((i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${
+                                  i <= Math.round(placeSnapshot.rating)
+                                    ? "text-amber-400 fill-amber-400"
+                                    : "text-slate-300"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-sm font-semibold text-slate-800">{placeSnapshot.rating}</span>
+                          {placeSnapshot.user_ratings_total && (
+                            <span className="text-xs text-slate-500">
+                              ({placeSnapshot.user_ratings_total} avaliações)
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Details list */}
+                      <div className="space-y-3 text-sm">
+                        {selectedClient.address && (
+                          <div className="flex items-start gap-3 text-slate-600">
+                            <MapPin className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                            <span>{selectedClient.address}</span>
+                          </div>
+                        )}
+                        {placeSnapshot?.formatted_phone_number && (
+                          <div className="flex items-center gap-3 text-slate-600">
+                            <Phone className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                            <span>{placeSnapshot.formatted_phone_number}</span>
+                          </div>
+                        )}
+                        {placeSnapshot?.website && (
+                          <div className="flex items-center gap-3 text-slate-600">
+                            <Globe className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                            <a
+                              href={placeSnapshot.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline truncate"
+                            >
+                              {placeSnapshot.website}
+                            </a>
+                          </div>
+                        )}
+                        {selectedClient.google_maps_url && (
+                          <div className="flex items-center gap-3 text-slate-600">
+                            <LinkIcon className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                            <a
+                              href={selectedClient.google_maps_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline truncate"
+                            >
+                              Ver no Google Maps
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Place ID actions */}
+                      <div className="flex flex-wrap items-center gap-2 mt-5 pt-4 border-t border-slate-100">
+                        {selectedClient.place_id ? (
                           <>
-                            <DropdownMenuItem onClick={(e) => handleLinkPlace(client, e as any)}>
-                              <LinkIcon className="h-4 w-4 mr-2" />
+                            <button
+                              onClick={() => { setLinkingClient(selectedClient); setPlaceDialogOpen(true); }}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors font-medium"
+                            >
+                              <LinkIcon className="h-3 w-3 inline mr-1" />
                               Trocar Place ID
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => handleUnlinkPlace(client, e as any)}>
-                              <Unlink className="h-4 w-4 mr-2" />
+                            </button>
+                            <button
+                              onClick={() => handleUnlinkPlace(selectedClient)}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors font-medium"
+                            >
+                              <Unlink className="h-3 w-3 inline mr-1" />
                               Remover Place ID
-                            </DropdownMenuItem>
+                            </button>
                           </>
                         ) : (
-                          <DropdownMenuItem onClick={(e) => handleLinkPlace(client, e as any)}>
-                            <LinkIcon className="h-4 w-4 mr-2" />
+                          <button
+                            onClick={() => { setLinkingClient(selectedClient); setPlaceDialogOpen(true); }}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors font-medium"
+                          >
+                            <LinkIcon className="h-3 w-3 inline mr-1" />
                             Vincular Google Place ID
-                          </DropdownMenuItem>
+                          </button>
                         )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={(e) => handleDelete(client, e as any)}
-                          className="text-destructive focus:text-destructive"
+                        <button
+                          onClick={() => navigate(`/tasks?client=${selectedClient.id}`)}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors font-medium"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          <ListTodo className="h-3 w-3 inline mr-1" />
+                          Ver Tarefas
+                        </button>
+                        <button
+                          onClick={() => navigate("/reports")}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors font-medium"
+                        >
+                          <FileText className="h-3 w-3 inline mr-1" />
+                          Gerar Relatório
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
-                  {client.address && (
-                    <div className="flex items-start gap-2 text-sm text-muted-foreground mb-4">
-                      <MapPin className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                      <span className="line-clamp-2">{client.address}</span>
+                  {/* Recent Tasks card */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+                      <h3 className="text-base font-semibold text-slate-900">Tarefas Recentes</h3>
+                      <button
+                        onClick={() => navigate(`/tasks?client=${selectedClient.id}`)}
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        Ver todas →
+                      </button>
                     </div>
-                  )}
-
-                  {/* Google Place Badge */}
-                  {hasPlaceId && placeSnapshot && (
-                    <div className="mb-4 p-2 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-primary" />
-                      <span className="text-xs text-primary font-medium flex-1 truncate">
-                        {placeSnapshot.name || "Google vinculado"}
-                      </span>
-                      {placeSnapshot.rating && (
-                        <span className="flex items-center gap-0.5 text-xs text-primary">
-                          <Star className="h-3 w-3 fill-current" />
-                          {placeSnapshot.rating}
-                        </span>
+                    <div className="divide-y divide-slate-100">
+                      {clientTasks.length === 0 ? (
+                        <div className="p-8 text-center">
+                          <CheckSquare className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                          <p className="text-sm text-slate-500">Nenhuma tarefa encontrada</p>
+                        </div>
+                      ) : (
+                        clientTasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="flex items-center gap-4 px-5 py-3 hover:bg-slate-50 transition-colors"
+                          >
+                            <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                              <CheckSquare className="h-4 w-4 text-slate-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900 truncate">{task.title}</p>
+                              <p className="text-xs text-slate-500">
+                                {task.task_date
+                                  ? new Date(task.task_date + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+                                  : "—"}
+                              </p>
+                            </div>
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap ${
+                                statusColors[task.status] || statusColors.pending
+                              }`}
+                            >
+                              {statusLabels[task.status] || task.status}
+                            </span>
+                          </div>
+                        ))
                       )}
                     </div>
-                  )}
-
-                  {/* Task Progress Section */}
-                  <div className="mb-4 p-3 rounded-lg bg-secondary/30">
-                    <div className="flex items-center gap-2 mb-2">
-                      <ListTodo className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">Tarefas da Semana</span>
-                    </div>
-                    <ClientTaskProgress
-                      pending={stats.pending}
-                      inProgress={stats.in_progress}
-                      completed={stats.completed}
-                      total={stats.total}
-                    />
                   </div>
-
-                  <div className="flex items-center justify-between pt-4 border-t border-border">
-                    <Badge 
-                      variant="outline"
-                      className={client.is_active 
-                        ? "bg-success/20 text-success border-success/30" 
-                        : "bg-muted text-muted-foreground"
-                      }
-                    >
-                      {client.is_active ? "Ativo" : "Inativo"}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(client.created_at).toLocaleDateString('pt-BR')}
-                    </span>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        )}
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center py-20">
+                  <Users className="h-12 w-12 text-slate-300 mb-4" />
+                  <p className="text-slate-500 text-sm">Selecione um cliente para ver detalhes</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
+      {/* Dialogs */}
       <EditClientDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         client={editingClient}
-        onSuccess={fetchClients}
+        onSuccess={() => { fetchClients(); if (editingClient?.id === selectedClient?.id) fetchClients(); }}
       />
-
       <DeleteClientDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         client={deletingClient}
-        onSuccess={fetchClients}
+        onSuccess={() => { fetchClients(); if (deletingClient?.id === selectedClient?.id) setSelectedClient(null); }}
       />
-
       <PlaceSearchDialog
         open={placeDialogOpen}
         onOpenChange={setPlaceDialogOpen}
         clientId={linkingClient?.id || ""}
         clientName={linkingClient?.name || ""}
         clientAddress={linkingClient?.address || ""}
-        currentPlaceId={(linkingClient as any)?.place_id}
+        currentPlaceId={linkingClient?.place_id}
         onSuccess={fetchClients}
       />
-    </AppLayout>
+    </div>
   );
 }
