@@ -176,7 +176,14 @@ export default function Landing() {
                 variants={fadeInUp}
                 whileHover={{ y: -4 }}
                 transition={{ type: "spring", stiffness: 260, damping: 22 }}
-                className="p-6 rounded-2xl bg-white border border-slate-200 hover:border-blue-200 transition-all duration-300 shadow-sm"
+                className="p-6 rounded-2xl 
+                bg-white 
+                border border-slate-200 
+                shadow-[0_4px_20px_rgba(0,0,0,0.05)] 
+                hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] 
+                hover:-translate-y-1 
+                transition-all duration-300 
+                group"
               >
                 <div className="h-12 w-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-4">
                   <feature.icon className="h-6 w-6 text-blue-600" />
