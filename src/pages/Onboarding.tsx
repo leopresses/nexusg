@@ -141,48 +141,42 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F7FB] flex">
+    <div className="min-h-screen bg-background flex">
       {/* Left side - Progress */}
-      <div className="hidden lg:flex w-80 flex-col p-8 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#1E3A8A] to-[#2563EB]" />
-        <div className="absolute top-1/3 -right-16 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 -left-8 w-48 h-48 bg-white/5 rounded-full blur-3xl" />
+      <div className="hidden lg:flex w-80 bg-sidebar border-r border-sidebar-border flex-col p-8">
+        <Logo size="md" />
         
-        <div className="relative z-10">
-          <Logo size="md" />
-        </div>
-        
-        <div className="relative z-10 mt-16 space-y-6">
+        <div className="mt-16 space-y-6">
           {steps.map((step, index) => (
             <div key={step.id} className="flex items-start gap-4">
               <div className={`
                 h-10 w-10 rounded-xl flex items-center justify-center font-semibold text-sm transition-all
                 ${currentStep > step.id 
-                  ? "bg-white text-[#2563EB]" 
+                  ? "gradient-gold text-primary-foreground" 
                   : currentStep === step.id 
-                    ? "bg-white/20 text-white border-2 border-white/50 backdrop-blur-sm" 
-                    : "bg-white/10 text-white/50"
+                    ? "bg-primary/20 text-primary border-2 border-primary" 
+                    : "bg-secondary text-muted-foreground"
                 }
               `}>
                 {currentStep > step.id ? <Check className="h-5 w-5" /> : step.id}
               </div>
               <div>
-                <h3 className={`font-medium ${currentStep >= step.id ? "text-white" : "text-white/50"}`}>
+                <h3 className={`font-medium ${currentStep >= step.id ? "text-foreground" : "text-muted-foreground"}`}>
                   {step.title}
                 </h3>
-                <p className="text-sm text-white/60">{step.description}</p>
+                <p className="text-sm text-muted-foreground">{step.description}</p>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="relative z-10 mt-auto">
-          <div className="p-4 rounded-xl bg-white/10 border border-white/20 backdrop-blur-sm">
-            <div className="flex items-center gap-2 text-white mb-2">
+        <div className="mt-auto">
+          <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
+            <div className="flex items-center gap-2 text-primary mb-2">
               <Sparkles className="h-4 w-4" />
               <span className="text-sm font-medium">Dica</span>
             </div>
-            <p className="text-sm text-white/70">
+            <p className="text-sm text-muted-foreground">
               Seu plano atual permite {profile?.clients_limit && profile.clients_limit >= 999999 
                 ? "clientes ilimitados" 
                 : `${profile?.clients_limit || 1} cliente(s)`}.
@@ -202,7 +196,7 @@ export default function Onboarding() {
                 <div 
                   key={step.id}
                   className={`h-2 flex-1 rounded-full transition-all ${
-                    currentStep >= step.id ? "bg-[#2563EB]" : "bg-[#E6EAF2]"
+                    currentStep >= step.id ? "gradient-gold" : "bg-secondary"
                   }`}
                 />
               ))}
@@ -219,10 +213,10 @@ export default function Onboarding() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <h1 className="text-3xl font-bold mb-2 text-[#0F172A]">
-                  Qual é o tipo do seu <span className="text-[#2563EB]">cliente</span>?
+                <h1 className="text-3xl font-bold mb-2">
+                  Qual é o tipo do seu <span className="text-gradient-gold">cliente</span>?
                 </h1>
-                <p className="text-[#64748B] mb-8">
+                <p className="text-muted-foreground mb-8">
                   Isso nos ajuda a personalizar as tarefas semanais
                 </p>
 
@@ -232,15 +226,15 @@ export default function Onboarding() {
                       key={type.key}
                       onClick={() => setSelectedKey(type.key)}
                       className={`
-                        p-6 rounded-2xl border-2 transition-all duration-200 text-left
+                        p-6 rounded-xl border-2 transition-all duration-200 text-left
                         ${selectedKey === type.key 
-                          ? "border-[#2563EB] bg-[#EFF6FF] shadow-md" 
-                          : "border-[#E6EAF2] hover:border-[#2563EB]/50 bg-white"
+                          ? "border-primary bg-primary/10 shadow-gold" 
+                          : "border-border hover:border-primary/50 bg-card"
                         }
                       `}
                     >
-                      <type.icon className={`h-8 w-8 mb-3 ${selectedKey === type.key ? "text-[#2563EB]" : "text-[#64748B]"}`} />
-                      <span className="font-medium text-[#0F172A]">{type.label}</span>
+                      <type.icon className={`h-8 w-8 mb-3 ${selectedKey === type.key ? "text-primary" : "text-muted-foreground"}`} />
+                      <span className="font-medium">{type.label}</span>
                     </button>
                   ))}
                 </div>
@@ -256,38 +250,38 @@ export default function Onboarding() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <h1 className="text-3xl font-bold mb-2 text-[#0F172A]">
-                  Informações do <span className="text-[#2563EB]">estabelecimento</span>
+                <h1 className="text-3xl font-bold mb-2">
+                  Informações do <span className="text-gradient-gold">estabelecimento</span>
                 </h1>
-                <p className="text-[#64748B] mb-8">
+                <p className="text-muted-foreground mb-8">
                   Dados básicos para identificar seu cliente
                 </p>
 
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="name" className="text-[#0F172A]">Nome do estabelecimento</Label>
+                    <Label htmlFor="name">Nome do estabelecimento</Label>
                     <div className="relative">
-                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#64748B]" />
+                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                       <Input
                         id="name"
                         placeholder="Ex: Pizzaria Roma"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="pl-10 h-12 bg-white border-[#E6EAF2] focus-visible:ring-[#2563EB]"
+                        className="pl-10 h-12 bg-secondary border-border"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="address" className="text-[#0F172A]">Endereço (opcional)</Label>
+                    <Label htmlFor="address">Endereço (opcional)</Label>
                     <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#64748B]" />
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                       <Input
                         id="address"
                         placeholder="Rua, número, cidade"
                         value={formData.address}
                         onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        className="pl-10 h-12 bg-white border-[#E6EAF2] focus-visible:ring-[#2563EB]"
+                        className="pl-10 h-12 bg-secondary border-border"
                       />
                     </div>
                   </div>
@@ -304,40 +298,40 @@ export default function Onboarding() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <h1 className="text-3xl font-bold mb-2 text-[#0F172A]">
-                  Vincular <span className="text-[#2563EB]">Google Business</span>
+                <h1 className="text-3xl font-bold mb-2">
+                  Vincular <span className="text-gradient-gold">Google Business</span>
                 </h1>
-                <p className="text-[#64748B] mb-8">
+                <p className="text-muted-foreground mb-8">
                   Opcional: conecte para acompanhar métricas automaticamente
                 </p>
 
                 <div className="space-y-6">
-                  <div className="p-6 rounded-2xl bg-white border border-[#E6EAF2] shadow-sm">
+                  <div className="p-6 rounded-xl bg-card border border-border">
                     <div className="flex items-center gap-4 mb-4">
-                      <div className="h-12 w-12 rounded-xl bg-[#EFF6FF] flex items-center justify-center">
-                        <Globe className="h-6 w-6 text-[#2563EB]" />
+                      <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Globe className="h-6 w-6 text-primary" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-[#0F172A]">Google Business Profile</h3>
-                        <p className="text-sm text-[#64748B]">Sincronize visualizações, chamadas e rotas</p>
+                        <h3 className="font-medium">Google Business Profile</h3>
+                        <p className="text-sm text-muted-foreground">Sincronize visualizações, chamadas e rotas</p>
                       </div>
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="googleUrl" className="text-[#0F172A]">URL do Google Business</Label>
+                      <Label htmlFor="googleUrl">URL do Google Business</Label>
                       <Input
                         id="googleUrl"
                         placeholder="https://business.google.com/..."
                         value={formData.googleBusinessUrl}
                         onChange={(e) => setFormData({ ...formData, googleBusinessUrl: e.target.value })}
-                        className="h-12 bg-white border-[#E6EAF2] focus-visible:ring-[#2563EB]"
+                        className="h-12 bg-secondary border-border"
                       />
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-[#EFF6FF] border border-[#BFDBFE]">
-                    <p className="text-sm text-[#64748B]">
-                      <span className="text-[#2563EB] font-medium">Pule se preferir:</span> Você pode conectar o Google Business a qualquer momento nas configurações do cliente.
+                  <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
+                    <p className="text-sm text-muted-foreground">
+                      <span className="text-primary font-medium">Pule se preferir:</span> Você pode conectar o Google Business a qualquer momento nas configurações do cliente.
                     </p>
                   </div>
                 </div>
@@ -354,7 +348,7 @@ export default function Onboarding() {
                     variant="ghost"
                     onClick={() => navigate("/dashboard")}
                     disabled={isLoading}
-                    className="text-[#64748B] hover:text-[#0F172A]"
+                    className="text-muted-foreground hover:text-foreground"
                   >
                     Cancelar
                   </Button>
@@ -363,7 +357,6 @@ export default function Onboarding() {
                     variant="ghost"
                     onClick={handleBack}
                     disabled={isLoading}
-                    className="text-[#64748B] hover:text-[#0F172A]"
                   >
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Voltar
@@ -374,7 +367,7 @@ export default function Onboarding() {
               <Button
                 onClick={handleNext}
                 disabled={!canProceed() || isLoading}
-                className="min-w-[140px] bg-[#2563EB] text-white hover:bg-[#1D4ED8] rounded-xl font-semibold"
+                className="min-w-[140px]"
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -396,7 +389,7 @@ export default function Onboarding() {
             <button
               type="button"
               onClick={() => navigate("/dashboard")}
-              className="text-sm text-[#64748B] hover:text-[#0F172A] transition-colors text-center"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors text-center"
             >
               ← Voltar para o Painel
             </button>
