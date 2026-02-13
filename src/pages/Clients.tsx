@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -54,7 +54,10 @@ export default function Clients() {
   const [linkingClient, setLinkingClient] = useState<Client | null>(null);
 
   const navigate = useNavigate();
-  const { getStatsForClient } = useClientTasks();
+
+  // ✅ FIX: passa os IDs dos clientes (evita undefined/join e carrega stats corretamente)
+  const clientIds = useMemo(() => clients.map((c) => c.id), [clients]);
+  const { getStatsForClient } = useClientTasks(clientIds);
 
   const fetchClients = async () => {
     try {
