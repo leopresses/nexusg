@@ -14,7 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export default function Tasks() {
   const [searchParams] = useSearchParams();
   const clientFromUrl = searchParams.get("client");
-  
+
   const { tasks, clients, isLoading, toggleChecklistItem, updateTaskStatus, refetch } = useTasks();
   const { playStatusChangeSound } = useUserPreferences();
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
@@ -45,28 +45,28 @@ export default function Tasks() {
 
   // Memoize filtered tasks for performance and consistency
   const filteredTasks = useMemo(() => {
-    return tasks.filter(task => {
+    return tasks.filter((task) => {
       // Filter by client - must match exactly if not "all"
       if (filterClient !== "all") {
         if (task.client_id !== filterClient) return false;
       }
-      
+
       // Filter by status - must match exactly if not "all"
       if (filterStatus !== "all") {
         if (task.status !== filterStatus) return false;
       }
-      
+
       // Filter by frequency
       if (frequencyTab !== "all") {
         const taskFrequency = (task as any).frequency || "weekly";
         if (taskFrequency !== frequencyTab) return false;
       }
-      
+
       // Filter by search query
       if (searchQuery) {
         if (!task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       }
-      
+
       return true;
     });
   }, [tasks, filterClient, filterStatus, frequencyTab, searchQuery]);
@@ -74,19 +74,19 @@ export default function Tasks() {
   // Calculate stats based on filtered tasks (when client is selected) or all tasks
   const stats = useMemo(() => {
     let tasksToCount = tasks;
-    
+
     if (filterClient !== "all") {
-      tasksToCount = tasks.filter(t => t.client_id === filterClient);
+      tasksToCount = tasks.filter((t) => t.client_id === filterClient);
     }
-    
+
     if (frequencyTab !== "all") {
-      tasksToCount = tasksToCount.filter(t => ((t as any).frequency || "weekly") === frequencyTab);
+      tasksToCount = tasksToCount.filter((t) => ((t as any).frequency || "weekly") === frequencyTab);
     }
-    
+
     return {
-      pending: tasksToCount.filter(t => t.status === "pending").length,
-      in_progress: tasksToCount.filter(t => t.status === "in_progress").length,
-      completed: tasksToCount.filter(t => t.status === "completed").length,
+      pending: tasksToCount.filter((t) => t.status === "pending").length,
+      in_progress: tasksToCount.filter((t) => t.status === "in_progress").length,
+      completed: tasksToCount.filter((t) => t.status === "completed").length,
     };
   }, [tasks, filterClient, frequencyTab]);
 
@@ -94,24 +94,28 @@ export default function Tasks() {
     return (
       <AppLayout title="Tarefas" subtitle="Gerencie todas as tarefas dos seus clientes">
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 !bg-white px-5 py-4 shadow-sm">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <span className="text-sm text-slate-600">Carregando tarefas…</span>
+          </div>
         </div>
       </AppLayout>
     );
   }
 
   // Get selected client name for subtitle
-  const selectedClient = clients.find(c => c.id === filterClient);
-  const subtitle = selectedClient 
-    ? `Tarefas de ${selectedClient.name}`
-    : "Gerencie todas as tarefas dos seus clientes";
+  const selectedClient = clients.find((c) => c.id === filterClient);
+  const subtitle = selectedClient ? `Tarefas de ${selectedClient.name}` : "Gerencie todas as tarefas dos seus clientes";
 
   return (
-    <AppLayout 
-      title="Tarefas" 
+    <AppLayout
+      title="Tarefas"
       subtitle={subtitle}
       headerActions={
-        <Button onClick={() => setCreateDialogOpen(true)}>
+        <Button
+          onClick={() => setCreateDialogOpen(true)}
+          className="h-10 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Nova Tarefa
         </Button>
@@ -120,37 +124,48 @@ export default function Tasks() {
       <div className="space-y-6">
         {/* Frequency Tabs */}
         <Tabs value={frequencyTab} onValueChange={(v) => setFrequencyTab(v as any)}>
-          <TabsList className="bg-secondary">
-            <TabsTrigger value="all" className="gap-2">
-              <CheckSquare className="h-4 w-4" />
-              Todas
-            </TabsTrigger>
-            <TabsTrigger value="daily" className="gap-2">
-              <Calendar className="h-4 w-4" />
-              Diárias
-            </TabsTrigger>
-            <TabsTrigger value="weekly" className="gap-2">
-              <CalendarDays className="h-4 w-4" />
-              Semanais
-            </TabsTrigger>
-          </TabsList>
+          <div className="rounded-2xl border border-slate-200 !bg-white p-2 shadow-sm">
+            <TabsList className="grid w-full grid-cols-3 bg-transparent p-0">
+              <TabsTrigger
+                value="all"
+                className="gap-2 rounded-xl data-[state=active]:!bg-blue-600 data-[state=active]:!text-white"
+              >
+                <CheckSquare className="h-4 w-4" />
+                Todas
+              </TabsTrigger>
+              <TabsTrigger
+                value="daily"
+                className="gap-2 rounded-xl data-[state=active]:!bg-blue-600 data-[state=active]:!text-white"
+              >
+                <Calendar className="h-4 w-4" />
+                Diárias
+              </TabsTrigger>
+              <TabsTrigger
+                value="weekly"
+                className="gap-2 rounded-xl data-[state=active]:!bg-blue-600 data-[state=active]:!text-white"
+              >
+                <CalendarDays className="h-4 w-4" />
+                Semanais
+              </TabsTrigger>
+            </TabsList>
+          </div>
         </Tabs>
 
-        <TaskFilters
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          filterStatus={filterStatus}
-          onStatusChange={setFilterStatus}
-          filterClient={filterClient}
-          onClientChange={setFilterClient}
-          clients={clients}
-        />
+        <div className="rounded-2xl border border-slate-200 !bg-white p-5 shadow-sm">
+          <TaskFilters
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            filterStatus={filterStatus}
+            onStatusChange={setFilterStatus}
+            filterClient={filterClient}
+            onClientChange={setFilterClient}
+            clients={clients}
+          />
+        </div>
 
-        <TaskStats
-          pending={stats.pending}
-          inProgress={stats.in_progress}
-          completed={stats.completed}
-        />
+        <div className="rounded-2xl border border-slate-200 !bg-white p-5 shadow-sm">
+          <TaskStats pending={stats.pending} inProgress={stats.in_progress} completed={stats.completed} />
+        </div>
 
         <div className="space-y-3">
           {filteredTasks.map((task) => (
@@ -158,9 +173,7 @@ export default function Tasks() {
               key={task.id}
               task={task}
               isExpanded={expandedTask === task.id}
-              onToggleExpand={() => setExpandedTask(
-                expandedTask === task.id ? null : task.id
-              )}
+              onToggleExpand={() => setExpandedTask(expandedTask === task.id ? null : task.id)}
               onToggleChecklistItem={handleChecklistToggle}
               onStatusChange={handleStatusChange}
             />
@@ -168,14 +181,15 @@ export default function Tasks() {
         </div>
 
         {filteredTasks.length === 0 && (
-          <div className="text-center py-12">
-            <CheckSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">Nenhuma tarefa encontrada</h3>
-            <p className="text-muted-foreground">
-              {tasks.length === 0 
+          <div className="rounded-2xl border border-slate-200 !bg-white py-12 text-center shadow-sm">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl !bg-slate-50 border border-slate-200">
+              <CheckSquare className="h-7 w-7 text-slate-500" />
+            </div>
+            <h3 className="mb-2 text-lg font-semibold text-slate-900">Nenhuma tarefa encontrada</h3>
+            <p className="mx-auto max-w-md text-sm text-slate-600">
+              {tasks.length === 0
                 ? "As tarefas serão geradas automaticamente toda semana"
-                : "Ajuste os filtros para ver outras tarefas"
-              }
+                : "Ajuste os filtros para ver outras tarefas"}
             </p>
           </div>
         )}
