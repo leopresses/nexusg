@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { 
-  Users, 
-  CheckSquare, 
+import {
+  Users,
+  CheckSquare,
   Plus,
   TrendingUp,
   Eye,
@@ -29,9 +29,9 @@ type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
 };
 
 const statusColors = {
-  pending: "bg-warning/20 text-warning border-warning/30",
-  in_progress: "bg-primary/20 text-primary border-primary/30",
-  completed: "bg-success/20 text-success border-success/30",
+  pending: "bg-amber-50 text-amber-700 border-amber-200",
+  in_progress: "bg-blue-50 text-blue-700 border-blue-200",
+  completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
 };
 
 const statusLabels = {
@@ -78,116 +78,91 @@ export default function Dashboard() {
         .eq("is_active", true)
         .order("created_at", { ascending: false });
 
-      // Get recent tasks for display (limited)
-      const recentTasksRes = await supabase
+      if (clientsRes.error) throw clientsRes.error;
+      setClients(clientsRes.data || []);
+
+      // Get recent tasks
+      const tasksRes = await supabase
         .from("tasks")
         .select("*, clients(name)")
         .order("created_at", { ascending: false })
-        .limit(10);
+        .limit(5);
 
-      // Get total task counts by status (no limit)
-      const [pendingCount, inProgressCount, completedCount] = await Promise.all([
-        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "pending"),
-        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "in_progress"),
-        supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "completed"),
-      ]);
+      if (tasksRes.error) throw tasksRes.error;
+      setRecentTasks((tasksRes.data as any) || []);
 
-      // Get today's tasks
-      const today = new Date().toISOString().split("T")[0];
-      const weekStart = new Date();
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
-      const weekStartStr = weekStart.toISOString().split("T")[0];
+      // Task stats (all tasks)
+      const allTasksRes = await supabase.from("tasks").select("status, frequency");
+      if (allTasksRes.error) throw allTasksRes.error;
 
-      // Daily tasks stats
-      const [dailyPending, dailyInProgress, dailyCompleted] = await Promise.all([
-        supabase.from("tasks").select("*", { count: "exact", head: true })
-          .eq("status", "pending").eq("frequency", "daily").eq("task_date", today),
-        supabase.from("tasks").select("*", { count: "exact", head: true })
-          .eq("status", "in_progress").eq("frequency", "daily").eq("task_date", today),
-        supabase.from("tasks").select("*", { count: "exact", head: true })
-          .eq("status", "completed").eq("frequency", "daily").eq("task_date", today),
-      ]);
+      const allTasks = allTasksRes.data || [];
 
-      // Weekly tasks stats for current week
-      const [weeklyPending, weeklyInProgress, weeklyCompleted] = await Promise.all([
-        supabase.from("tasks").select("*", { count: "exact", head: true })
-          .eq("status", "pending").eq("frequency", "weekly").eq("week_start", weekStartStr),
-        supabase.from("tasks").select("*", { count: "exact", head: true })
-          .eq("status", "in_progress").eq("frequency", "weekly").eq("week_start", weekStartStr),
-        supabase.from("tasks").select("*", { count: "exact", head: true })
-          .eq("status", "completed").eq("frequency", "weekly").eq("week_start", weekStartStr),
-      ]);
+      const overall: TaskStats = {
+        pending: allTasks.filter((t: any) => t.status === "pending").length,
+        in_progress: allTasks.filter((t: any) => t.status === "in_progress").length,
+        completed: allTasks.filter((t: any) => t.status === "completed").length,
+        total: allTasks.length,
+      };
+      setTaskStats(overall);
 
-      if (clientsRes.data) setClients(clientsRes.data);
-      if (recentTasksRes.data) setRecentTasks(recentTasksRes.data as Task[]);
-      
-      const pending = pendingCount.count || 0;
-      const inProgress = inProgressCount.count || 0;
-      const completed = completedCount.count || 0;
-      
-      setTaskStats({
-        pending,
-        in_progress: inProgress,
-        completed,
-        total: pending + inProgress + completed,
-      });
+      // Daily/Weekly stats
+      const dailyTasks = allTasks.filter((t: any) => (t.frequency || "weekly") === "daily");
+      const weeklyTasks = allTasks.filter((t: any) => (t.frequency || "weekly") === "weekly");
 
-      const dPending = dailyPending.count || 0;
-      const dInProgress = dailyInProgress.count || 0;
-      const dCompleted = dailyCompleted.count || 0;
-      
-      const wPending = weeklyPending.count || 0;
-      const wInProgress = weeklyInProgress.count || 0;
-      const wCompleted = weeklyCompleted.count || 0;
+      const daily: TaskStats = {
+        pending: dailyTasks.filter((t: any) => t.status === "pending").length,
+        in_progress: dailyTasks.filter((t: any) => t.status === "in_progress").length,
+        completed: dailyTasks.filter((t: any) => t.status === "completed").length,
+        total: dailyTasks.length,
+      };
 
-      setDayStats({
-        daily: {
-          pending: dPending,
-          in_progress: dInProgress,
-          completed: dCompleted,
-          total: dPending + dInProgress + dCompleted,
-        },
-        weekly: {
-          pending: wPending,
-          in_progress: wInProgress,
-          completed: wCompleted,
-          total: wPending + wInProgress + wCompleted,
-        },
-      });
+      const weekly: TaskStats = {
+        pending: weeklyTasks.filter((t: any) => t.status === "pending").length,
+        in_progress: weeklyTasks.filter((t: any) => t.status === "in_progress").length,
+        completed: weeklyTasks.filter((t: any) => t.status === "completed").length,
+        total: weeklyTasks.length,
+      };
+
+      setDayStats({ daily, weekly });
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching dashboard data:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const completionRate = taskStats.total > 0 
-    ? Math.round((taskStats.completed / taskStats.total) * 100) 
-    : 0;
+  const planLabel = getPlanLabel((profile as any)?.plan);
+  const clientLimit = formatClientLimit((profile as any)?.clients_limit);
 
   const stats = [
-    { label: "Clientes Ativos", value: clients.length.toString(), icon: Users, change: `Limite: ${formatClientLimit(profile?.clients_limit || 1)}` },
-    { label: "Tarefas Pendentes", value: taskStats.pending.toString(), icon: CheckSquare, change: `${taskStats.completed} concluídas` },
-    { label: "Seu Plano", value: getPlanLabel(profile?.plan || "starter").toUpperCase(), icon: Eye, change: "Plano atual" },
-    { label: "Taxa de Conclusão", value: `${completionRate}%`, icon: Phone, change: "Total geral" },
+    { label: "Clientes Ativos", value: clients.length, icon: Users, change: "Ativos no momento" },
+    { label: "Tarefas Pendentes", value: taskStats.pending, icon: CheckSquare, change: "Precisam de atenção" },
+    { label: "Visualizações (mock)", value: "—", icon: Eye, change: "Placeholder" },
+    { label: "Chamadas (mock)", value: "—", icon: Phone, change: "Placeholder" },
   ];
 
   if (isLoading) {
     return (
       <AppLayout title="Carregando..." subtitle="">
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <span className="text-sm text-slate-600">Carregando painel…</span>
+          </div>
         </div>
       </AppLayout>
     );
   }
 
   return (
-    <AppLayout 
+    <AppLayout
       title={`Olá, ${profile?.full_name || "Usuário"}! 👋`}
-      subtitle={`Semana de ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - Visão geral`}
+      subtitle={`Semana de ${new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} - Visão geral`}
       headerActions={
-        <Button onClick={() => navigate("/onboarding")}>
+        <Button
+          onClick={() => navigate("/onboarding")}
+          className="h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Novo Cliente
         </Button>
@@ -195,7 +170,7 @@ export default function Dashboard() {
     >
       <div className="space-y-6">
         {/* Stats Grid */}
-        <motion.div 
+        <motion.div
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -204,34 +179,34 @@ export default function Dashboard() {
           {stats.map((stat, index) => (
             <motion.div
               key={index}
-              className="p-5 rounded-xl bg-card border border-border hover:border-primary/30 transition-colors"
+              className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-blue-200 transition-colors"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
             >
               <div className="flex items-start justify-between mb-3">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <stat.icon className="h-5 w-5 text-primary" />
+                <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                  <stat.icon className="h-5 w-5 text-blue-600" />
                 </div>
-                <TrendingUp className="h-4 w-4 text-success" />
+                <TrendingUp className="h-4 w-4 text-emerald-600" />
               </div>
               <div className="text-2xl font-bold mb-1">{stat.value}</div>
-              <div className="text-sm text-muted-foreground">{stat.label}</div>
-              <div className="text-xs text-success mt-2">{stat.change}</div>
+              <div className="text-sm text-slate-500">{stat.label}</div>
+              <div className="text-xs text-emerald-600 mt-2">{stat.change}</div>
             </motion.div>
           ))}
         </motion.div>
 
         {/* Progress Bars */}
-        <motion.div 
+        <motion.div
           className="grid grid-cols-1 md:grid-cols-2 gap-4"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.15 }}
         >
-          <div className="rounded-xl bg-card border border-border p-5">
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
             <div className="flex items-center gap-2 mb-4">
-              <Calendar className="h-5 w-5 text-primary" />
+              <Calendar className="h-5 w-5 text-blue-600" />
               <h3 className="font-semibold">Tarefas de Hoje</h3>
             </div>
             <ProgressBar
@@ -242,9 +217,9 @@ export default function Dashboard() {
               label="Diárias"
             />
           </div>
-          <div className="rounded-xl bg-card border border-border p-5">
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
             <div className="flex items-center gap-2 mb-4">
-              <CalendarDays className="h-5 w-5 text-primary" />
+              <CalendarDays className="h-5 w-5 text-blue-600" />
               <h3 className="font-semibold">Tarefas da Semana</h3>
             </div>
             <ProgressBar
@@ -259,57 +234,57 @@ export default function Dashboard() {
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Clients List */}
-          <motion.div 
-            className="lg:col-span-2 rounded-xl bg-card border border-border"
+          <motion.div
+            className="lg:col-span-2 rounded-2xl bg-white border border-slate-200 shadow-sm"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.2 }}
           >
-            <div className="p-5 border-b border-border flex items-center justify-between">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <h2 className="font-semibold text-lg">Clientes</h2>
-              <Link to="/clients" className="text-sm text-primary hover:underline flex items-center gap-1">
+              <Link to="/clients" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                 Ver todos <ChevronRight className="h-4 w-4" />
               </Link>
             </div>
-            <div className="divide-y divide-border">
+            <div className="divide-y divide-slate-100">
               {clients.length === 0 ? (
                 <div className="p-8 text-center">
-                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <Users className="h-12 w-12 text-slate-500 mx-auto mb-4" />
                   <h3 className="font-medium mb-2">Nenhum cliente ainda</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Adicione seu primeiro cliente para começar
-                  </p>
-                  <Button onClick={() => navigate("/onboarding")}>
+                  <p className="text-sm text-slate-500 mb-4">Adicione seu primeiro cliente para começar</p>
+                  <Button
+                    onClick={() => navigate("/onboarding")}
+                    className="h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+                  >
                     <Plus className="h-4 w-4 mr-2" />
                     Adicionar Cliente
                   </Button>
                 </div>
               ) : (
                 clients.slice(0, 5).map((client) => (
-                  <div key={client.id} className="p-4 hover:bg-secondary/50 transition-colors">
+                  <div key={client.id} className="p-4 hover:bg-slate-50 transition-colors">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-xl gradient-neon flex items-center justify-center text-primary-foreground font-bold text-lg overflow-hidden">
-                          <ClientAvatar
-                            avatarUrl={(client as any).avatar_url}
-                            clientName={client.name}
-                          />
+                        <div className="h-12 w-12 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center font-bold text-lg overflow-hidden">
+                          <ClientAvatar avatarUrl={(client as any).avatar_url} clientName={client.name} />
                         </div>
                         <div>
                           <h3 className="font-medium">{client.name}</h3>
-                          <p className="text-sm text-muted-foreground capitalize">{getBusinessTypeLabel(client.business_type)}</p>
+                          <p className="text-sm text-slate-500 capitalize">
+                            {getBusinessTypeLabel(client.business_type)}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-6">
                         <div className="text-center">
                           <div className="text-sm font-medium">{client.address ? "✓" : "—"}</div>
-                          <div className="text-xs text-muted-foreground">Endereço</div>
+                          <div className="text-xs text-slate-500">Endereço</div>
                         </div>
                         <div className="text-center">
                           <div className="text-sm font-medium flex items-center gap-1">
                             {client.google_business_id ? "✓" : "—"}
                           </div>
-                          <div className="text-xs text-muted-foreground">Google</div>
+                          <div className="text-xs text-slate-500">Google</div>
                         </div>
                       </div>
                     </div>
@@ -320,65 +295,64 @@ export default function Dashboard() {
           </motion.div>
 
           {/* Recent Tasks */}
-          <motion.div 
-            className="rounded-xl bg-card border border-border"
+          <motion.div
+            className="rounded-2xl bg-white border border-slate-200 shadow-sm"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.3 }}
           >
-            <div className="p-5 border-b border-border flex items-center justify-between">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <h2 className="font-semibold text-lg">Tarefas Recentes</h2>
-              <Link to="/tasks" className="text-sm text-primary hover:underline flex items-center gap-1">
+              <Link to="/tasks" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                 Ver todas <ChevronRight className="h-4 w-4" />
               </Link>
             </div>
             <div className="p-4 space-y-3">
               {recentTasks.length === 0 ? (
                 <div className="text-center py-8">
-                  <CheckSquare className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    Nenhuma tarefa ainda
-                  </p>
+                  <CheckSquare className="h-10 w-10 text-slate-500 mx-auto mb-3" />
+                  <p className="text-sm text-slate-500">Nenhuma tarefa recente</p>
                 </div>
               ) : (
-                <>
-                  {recentTasks.slice(0, 5).map((task) => (
-                    <div 
-                      key={task.id} 
-                      className="p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer"
-                      onClick={() => navigate("/tasks")}
-                    >
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <h4 className="text-sm font-medium leading-tight">{task.title}</h4>
+                recentTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="p-3 rounded-2xl border border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium text-sm">{task.title}</div>
+                        <div className="text-xs text-slate-500 mt-1">{task.clients?.name || "Cliente"}</div>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">
-                          {task.clients?.name || "Cliente"}
-                        </span>
-                        <Badge 
-                          variant="outline" 
-                          className={`text-xs ${statusColors[task.status as keyof typeof statusColors]}`}
-                        >
-                          {statusLabels[task.status as keyof typeof statusLabels]}
-                        </Badge>
-                      </div>
+                      <Badge
+                        className={`border rounded-full ${statusColors[task.status as keyof typeof statusColors]}`}
+                      >
+                        {statusLabels[task.status as keyof typeof statusLabels]}
+                      </Badge>
                     </div>
-                  ))}
-                  {taskStats.total > 5 && (
-                    <Button 
-                      variant="outline" 
-                      className="w-full mt-2"
-                      onClick={() => navigate("/tasks")}
-                    >
-                      Ver todas ({taskStats.total} tarefas)
-                      <ChevronRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  )}
-                </>
+                  </div>
+                ))
               )}
             </div>
           </motion.div>
         </div>
+
+        {/* Plan Card */}
+        <motion.div
+          className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.35 }}
+        >
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h3 className="font-semibold text-lg">Seu plano</h3>
+              <p className="text-sm text-slate-500">
+                {planLabel} • Limite: {clientLimit}
+              </p>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </AppLayout>
   );
