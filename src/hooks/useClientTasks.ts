@@ -11,7 +11,7 @@ interface ClientTaskStats {
   total: number;
 }
 
-export function useClientTasks(clientIds: string[]) {
+export function useClientTasks(clientIds: string[] = []) {
   const [taskStats, setTaskStats] = useState<Record<string, ClientTaskStats>>({});
   const [isLoading, setIsLoading] = useState(true);
 
@@ -20,7 +20,9 @@ export function useClientTasks(clientIds: string[]) {
       fetchTaskStats();
     } else {
       setIsLoading(false);
+      setTaskStats({});
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientIds.join(",")]);
 
   const getWeekStart = () => {
@@ -45,16 +47,13 @@ export function useClientTasks(clientIds: string[]) {
 
       if (error) throw error;
 
-      // Calculate stats per client
       const stats: Record<string, ClientTaskStats> = {};
-      
-      // Initialize all clients with zero stats
-      clientIds.forEach(id => {
+
+      clientIds.forEach((id) => {
         stats[id] = { pending: 0, in_progress: 0, completed: 0, total: 0 };
       });
 
-      // Count tasks per client and status
-      (data || []).forEach(task => {
+      (data || []).forEach((task) => {
         if (stats[task.client_id]) {
           stats[task.client_id][task.status as TaskStatus]++;
           stats[task.client_id].total++;
