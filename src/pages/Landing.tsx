@@ -43,19 +43,23 @@ const stagger = {
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-slate-50 overflow-hidden">
+    <div className="min-h-screen bg-background overflow-hidden">
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur border-b border-slate-200">
+      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/60">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <Logo size="sm" />
+          {/* ✅ força o texto do Logo (inclui “Gestão”) sem mexer no componente Logo */}
+          <div className="text-foreground [&_*]:!text-foreground">
+            <Logo size="sm" />
+          </div>
+
           <div className="flex items-center gap-4">
             <Link to="/login">
-              <Button variant="ghost" size="sm" className="!text-slate-700 hover:!bg-slate-100">
+              <Button variant="ghost" size="sm" className="hover:bg-white/10">
                 Entrar
               </Button>
             </Link>
             <Link to="/register">
-              <Button variant="default" size="sm" className="!bg-blue-600 !text-white hover:!bg-blue-700 rounded-xl">
+              <Button variant="default" size="sm" className="shadow-elevated hover:shadow-gold transition-shadow">
                 Começar Grátis
               </Button>
             </Link>
@@ -66,48 +70,42 @@ export default function Landing() {
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 px-6">
         {/* Background effects */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white via-slate-50 to-white" />
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600/5 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-hero-pattern" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
 
         <div className="container mx-auto relative">
           <motion.div className="max-w-4xl mx-auto text-center" initial="hidden" animate="visible" variants={stagger}>
             <motion.div
               variants={fadeInUp}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 backdrop-blur border border-slate-200 shadow-sm mb-8"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass mb-8
+              border border-border/60 bg-black/20 dark:bg-white/10"
             >
-              <Zap className="h-4 w-4 text-blue-600" />
-              <span className="text-sm text-slate-600">A plataforma #1 para gestão de Google Business</span>
+              <Zap className="h-4 w-4 text-primary" />
+              <span className="text-sm text-foreground/80">A plataforma #1 para gestão de Google Business</span>
             </motion.div>
 
-            <motion.h1
-              variants={fadeInUp}
-              className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight text-slate-900"
-            >
-              Cresça no Google com <span className="text-blue-600">Gestão Nexus</span>
+            <motion.h1 variants={fadeInUp} className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
+              Cresça no Google com <span className="text-gradient-gold drop-shadow-sm">Gestão Nexus</span>
             </motion.h1>
 
-            <motion.p variants={fadeInUp} className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
+            <motion.p variants={fadeInUp} className="text-lg md:text-xl text-foreground/80 mb-10 max-w-2xl mx-auto">
               Automatize tarefas, acompanhe métricas e gere relatórios profissionais para restaurantes e negócios
               locais.
             </motion.p>
 
             <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/register">
-                <Button
-                  variant="default"
-                  size="xl"
-                  className="w-full sm:w-auto h-12 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700 gap-2"
-                >
+                <Button variant="hero" size="xl" className="w-full sm:w-auto">
                   Começar Gratuitamente
                   <ArrowRight className="h-5 w-5" />
                 </Button>
               </Link>
               <Link to="/demo">
                 <Button
-                  variant="outline"
+                  variant="glass"
                   size="xl"
-                  className="w-full sm:w-auto h-12 rounded-xl !bg-white !text-slate-700 border !border-slate-200 hover:!bg-slate-50"
+                  className="w-full sm:w-auto border border-border/60 bg-black/15 dark:bg-white/10"
                 >
                   Ver Demonstração
                 </Button>
@@ -116,18 +114,18 @@ export default function Landing() {
 
             <motion.div
               variants={fadeInUp}
-              className="mt-10 flex items-center justify-center gap-6 text-sm text-slate-600"
+              className="mt-10 flex items-center justify-center gap-6 text-sm text-foreground/80"
             >
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <CheckCircle2 className="h-4 w-4 text-success" />
                 <span>Sem cartão de crédito</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <CheckCircle2 className="h-4 w-4 text-success" />
                 <span>Setup em 2 minutos</span>
               </div>
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <CheckCircle2 className="h-4 w-4 text-success" />
                 <span>Suporte via WhatsApp</span>
               </div>
             </motion.div>
@@ -144,10 +142,10 @@ export default function Landing() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-slate-900">
-              Tudo que você precisa para <span className="text-blue-600">dominar o Google</span>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Tudo que você precisa para <span className="text-gradient-gold drop-shadow-sm">dominar o Google</span>
             </h2>
-            <p className="text-slate-600 max-w-2xl mx-auto">
+            <p className="text-foreground/75 max-w-2xl mx-auto">
               Ferramentas poderosas para agências e gestores que querem resultados reais.
             </p>
           </motion.div>
@@ -163,13 +161,16 @@ export default function Landing() {
               <motion.div
                 key={index}
                 variants={fadeInUp}
-                className="p-6 rounded-2xl !bg-white border border-slate-200 hover:border-blue-200 transition-all duration-300 group shadow-sm hover:shadow-md"
+                whileHover={{ y: -4, scale: 1.01 }}
+                transition={{ type: "spring", stiffness: 260, damping: 22 }}
+                className="p-6 rounded-2xl bg-card border border-border/70 hover:border-primary/50
+                transition-all duration-300 group hover:shadow-gold"
               >
-                <div className="h-12 w-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <feature.icon className="h-6 w-6 text-blue-600" />
+                <div className="h-12 w-12 rounded-xl gradient-gold flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <feature.icon className="h-6 w-6 text-primary-foreground" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2 text-slate-900">{feature.title}</h3>
-                <p className="text-slate-600 text-sm">{feature.description}</p>
+                <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
+                <p className="text-foreground/75 text-sm">{feature.description}</p>
               </motion.div>
             ))}
           </motion.div>
@@ -178,7 +179,7 @@ export default function Landing() {
 
       {/* Pricing Section */}
       <section className="py-20 px-6 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-600/5 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent" />
         <div className="container mx-auto relative">
           <motion.div
             className="text-center mb-16"
@@ -186,10 +187,10 @@ export default function Landing() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-slate-900">
-              Planos para cada <span className="text-blue-600">tamanho de negócio</span>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Planos para cada <span className="text-gradient-gold drop-shadow-sm">tamanho de negócio</span>
             </h2>
-            <p className="text-slate-600 max-w-2xl mx-auto">Comece grátis e escale conforme sua operação cresce.</p>
+            <p className="text-foreground/75 max-w-2xl mx-auto">Comece grátis e escale conforme sua operação cresce.</p>
           </motion.div>
 
           <motion.div
@@ -203,32 +204,26 @@ export default function Landing() {
               <motion.div
                 key={index}
                 variants={fadeInUp}
-                className={`relative p-5 rounded-2xl border transition-all duration-300 !bg-white shadow-sm ${
+                whileHover={{ y: -4, scale: plan.popular ? 1.06 : 1.02 }}
+                transition={{ type: "spring", stiffness: 260, damping: 22 }}
+                className={`relative p-5 rounded-2xl border transition-all duration-300 ${
                   plan.popular
-                    ? "border-emerald-200 ring-2 ring-emerald-300 scale-105"
-                    : "border-slate-200 hover:border-blue-200"
+                    ? "bg-card border-primary shadow-gold scale-105"
+                    : "bg-card border-border/70 hover:border-primary/50"
                 }`}
               >
                 {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-emerald-500 text-xs font-semibold text-white flex items-center gap-1 shadow-sm">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full gradient-gold text-xs font-semibold text-primary-foreground flex items-center gap-1 shadow-elevated">
                     <Star className="h-3 w-3" />
                     Popular
                   </div>
                 )}
                 <div className="text-center">
-                  <h3 className="text-lg font-semibold mb-1 text-slate-900">{plan.name}</h3>
-                  <p className="text-sm text-slate-600 mb-3">{plan.clients}</p>
-                  <div className="text-xl font-bold mb-4 text-slate-900">{plan.price}</div>
+                  <h3 className="text-lg font-semibold mb-1">{plan.name}</h3>
+                  <p className="text-sm text-foreground/75 mb-3">{plan.clients}</p>
+                  <div className="text-xl font-bold mb-4">{plan.price}</div>
                   <Link to="/register">
-                    <Button
-                      variant={plan.popular ? "default" : "outline"}
-                      className={`w-full rounded-xl ${
-                        plan.popular
-                          ? "!bg-emerald-500 !text-white hover:!bg-emerald-600"
-                          : "!bg-white !text-slate-700 border !border-slate-200 hover:!bg-slate-50"
-                      }`}
-                      size="sm"
-                    >
+                    <Button variant={plan.popular ? "default" : "outline"} className="w-full" size="sm">
                       Escolher Plano
                     </Button>
                   </Link>
@@ -243,22 +238,19 @@ export default function Landing() {
       <section className="py-20 px-6">
         <div className="container mx-auto">
           <motion.div
-            className="max-w-4xl mx-auto text-center p-12 rounded-3xl !bg-white border border-slate-200 shadow-sm"
+            className="max-w-4xl mx-auto text-center p-12 rounded-3xl gradient-card border border-border/70 shadow-elevated"
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", stiffness: 240, damping: 22 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-slate-900">Pronto para voar mais alto?</h2>
-            <p className="text-slate-600 mb-8 max-w-xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Pronto para voar mais alto?</h2>
+            <p className="text-foreground/75 mb-8 max-w-xl mx-auto">
               Junte-se a centenas de agências e gestores que já estão transformando a presença digital dos seus
               clientes.
             </p>
             <Link to="/register">
-              <Button
-                variant="default"
-                size="xl"
-                className="h-12 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700 gap-2"
-              >
+              <Button variant="hero" size="xl">
                 Criar Conta Gratuita
                 <ArrowRight className="h-5 w-5" />
               </Button>
@@ -268,15 +260,19 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-6 border-t border-slate-200 bg-white">
+      <footer className="py-8 px-6 border-t border-border/70">
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <Logo size="sm" />
-          <p className="text-sm text-slate-600">© 2026 Gestão Nexus. Todos os direitos reservados.</p>
+          {/* ✅ força logo no footer também */}
+          <div className="text-foreground [&_*]:!text-foreground">
+            <Logo size="sm" />
+          </div>
+
+          <p className="text-sm text-foreground/75">© 2026 Gestão Nexus. Todos os direitos reservados.</p>
           <a
             href={`https://wa.me/${WHATSAPP_NUMBER}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-blue-600 hover:underline"
+            className="text-sm text-primary hover:underline"
           >
             Suporte via WhatsApp
           </a>
