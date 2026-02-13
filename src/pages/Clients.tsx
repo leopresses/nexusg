@@ -146,20 +146,16 @@ export default function Clients() {
       title="Meus Clientes" 
       subtitle="Gerencie todos os seus clientes em um só lugar"
       headerActions={
-        <Button
-  onClick={() => navigate("/onboarding")}
-  className="h-10 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700"
->
-  <Plus className="h-4 w-4 mr-2" />
-  Adicionar Cliente
-</Button>
+        <Button onClick={() => navigate("/onboarding")}>
+          <Plus className="h-4 w-4 mr-2" />
+          Adicionar Cliente
+        </Button>
       }
     >
       <div className="space-y-6">
         {/* Search Bar */}
         <div className="relative max-w-md">
-          <Search className="pl-10 h-10 rounded-full !bg-white !text-slate-900 border border-slate-200 shadow-sm
-          focus-visible:ring-2 focus-visible:ring-blue-500 placeholder:text-slate-500"
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar clientes..."
             value={searchQuery}
@@ -171,8 +167,7 @@ export default function Clients() {
         {/* Clients Grid */}
         {filteredClients.length === 0 ? (
           <motion.div 
-            className="rounded-2xl !bg-white !text-slate-900 border border-slate-200 shadow-sm p-5
-            hover:border-blue-200 transition-all duration-200 cursor-pointer group"
+            className="rounded-xl bg-card border border-border p-12 text-center"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
@@ -299,8 +294,8 @@ export default function Clients() {
                   )}
 
                   {/* Task Progress Section */}
-                  <div className="mb-4 p-3 rounded-2xl !bg-slate-50 border border-slate-200">
-                    <div className="h-12 w-12 rounded-2xl !bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-900 font-bold text-lg overflow-hidden">
+                  <div className="mb-4 p-3 rounded-lg bg-secondary/30">
+                    <div className="flex items-center gap-2 mb-2">
                       <ListTodo className="h-4 w-4 text-primary" />
                       <span className="text-sm font-medium">Tarefas da Semana</span>
                     </div>
