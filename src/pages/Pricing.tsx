@@ -28,23 +28,20 @@ export default function Pricing() {
       <div className="space-y-8">
         {/* Current Plan Banner */}
         <motion.div
-          className="rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 p-6"
+          className="rounded-2xl !bg-white border border-slate-200 p-6 shadow-sm"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h3 className="font-semibold text-lg mb-1">Seu plano atual</h3>
-              <p className="text-muted-foreground">
-                Você está no plano <span className="text-primary font-semibold uppercase">{currentPlan}</span>
-                {profile?.clients_limit && (
-                  <span className="ml-2">
-                    ({formatClientLimit(profile.clients_limit)})
-                  </span>
-                )}
+              <h3 className="font-semibold text-lg mb-1 text-slate-900">Seu plano atual</h3>
+              <p className="text-slate-600">
+                Você está no plano <span className="text-blue-600 font-semibold uppercase">{currentPlan}</span>
+                {profile?.clients_limit && <span className="ml-2">({formatClientLimit(profile.clients_limit)})</span>}
               </p>
             </div>
-            <Badge className="bg-primary/20 text-primary border-primary/30 text-sm px-4 py-1">
+
+            <Badge className="!bg-blue-50 !text-blue-700 border border-blue-200 text-sm px-4 py-1 rounded-full">
               {currentPlan === "starter" ? "Gratuito" : "Ativo"}
             </Badge>
           </div>
@@ -64,60 +61,74 @@ export default function Pricing() {
             return (
               <motion.div
                 key={plan.id}
-                className={`rounded-xl border p-5 flex flex-col ${
-                  plan.highlighted
-                    ? "bg-card border-primary shadow-lg shadow-primary/10 relative"
-                    : "bg-card border-border"
-                } ${isCurrentPlan ? "ring-2 ring-primary" : ""}`}
+                className={`rounded-2xl border p-5 flex flex-col shadow-sm !bg-white border-slate-200 relative ${
+                  plan.highlighted ? "ring-2 ring-emerald-300" : ""
+                } ${isCurrentPlan ? "ring-2 ring-blue-300" : ""}`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + index * 0.1 }}
               >
                 {plan.highlighted && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground">Mais Popular</Badge>
+                    <Badge className="!bg-emerald-500 !text-white border border-emerald-400 rounded-full">
+                      Mais Popular
+                    </Badge>
                   </div>
                 )}
 
                 <div className="flex items-center gap-2 mb-3">
                   <div
-                    className={`h-9 w-9 rounded-lg flex items-center justify-center ${
-                      plan.highlighted ? "bg-primary/20" : "bg-muted"
+                    className={`h-9 w-9 rounded-xl flex items-center justify-center border ${
+                      plan.highlighted ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-200"
                     }`}
                   >
-                    <PlanIcon className={`h-4 w-4 ${plan.highlighted ? "text-primary" : "text-muted-foreground"}`} />
+                    <PlanIcon className={`h-4 w-4 ${plan.highlighted ? "text-emerald-600" : "text-slate-600"}`} />
                   </div>
-                  <h3 className="text-lg font-bold">{plan.name}</h3>
+                  <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
                 </div>
 
                 <div className="mb-3">
-                  <span className="text-2xl font-bold">{plan.price}</span>
-                  <span className="text-muted-foreground text-sm">{plan.period}</span>
+                  <span className="text-2xl font-bold text-slate-900">{plan.price}</span>
+                  <span className="text-slate-500 text-sm">{plan.period}</span>
                 </div>
 
-                <p className="text-xs text-muted-foreground mb-4">{plan.description}</p>
+                <p className="text-xs text-slate-600 mb-4">{plan.description}</p>
 
                 <ul className="space-y-2 mb-4 flex-1">
                   {plan.features.map((feature, featureIndex) => (
-                    <li key={featureIndex} className="flex items-start gap-2 text-xs">
-                      <Check className="h-3 w-3 text-primary mt-0.5 flex-shrink-0" />
+                    <li key={featureIndex} className="flex items-start gap-2 text-xs text-slate-700">
+                      <Check className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
                       <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
 
                 {isCurrentPlan ? (
-                  <Button variant="outline" className="w-full" size="sm" disabled>
+                  <Button
+                    variant="outline"
+                    className="w-full h-9 rounded-xl !bg-white !text-slate-700 border !border-slate-200"
+                    size="sm"
+                    disabled
+                  >
                     Plano Atual
                   </Button>
                 ) : plan.id === "starter" ? (
-                  <Button variant="outline" className="w-full" size="sm" disabled>
+                  <Button
+                    variant="outline"
+                    className="w-full h-9 rounded-xl !bg-white !text-slate-700 border !border-slate-200"
+                    size="sm"
+                    disabled
+                  >
                     Plano Gratuito
                   </Button>
                 ) : (
                   <Button
                     variant={plan.highlighted ? "default" : "outline"}
-                    className="w-full gap-2"
+                    className={`w-full gap-2 h-9 rounded-xl ${
+                      plan.highlighted
+                        ? "!bg-emerald-500 !text-white hover:!bg-emerald-600"
+                        : "!bg-white !text-slate-700 border !border-slate-200 hover:!bg-slate-50"
+                    }`}
                     size="sm"
                     onClick={() => handleUpgrade(plan.id, plan.name, plan.price, plan.clientsLimit)}
                   >
@@ -132,18 +143,18 @@ export default function Pricing() {
 
         {/* FAQ or Additional Info */}
         <motion.div
-          className="rounded-xl bg-card border border-border p-6 text-center"
+          className="rounded-2xl !bg-white border border-slate-200 p-6 text-center shadow-sm"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <p className="text-muted-foreground">
+          <p className="text-slate-600">
             Precisa de ajuda para escolher o plano ideal?{" "}
             <a
               href={`https://wa.me/${WHATSAPP_NUMBER}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:underline"
+              className="text-blue-600 hover:underline"
             >
               Fale conosco pelo WhatsApp
             </a>
