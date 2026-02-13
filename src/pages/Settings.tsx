@@ -1,827 +1,350 @@
-import { useState, useEffect } from "react";
+// src/pages/Settings.tsx
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { useSearchParams } from "react-router-dom";
-import { 
-  Upload,
-  Palette,
-  Building2,
-  Save,
-  Eye,
-  RotateCcw,
-  Trash2,
-  Loader2,
-  ImageIcon,
-  User,
-  Lock,
-  Volume2,
-  VolumeX,
-  Settings as SettingsIcon,
-  Link as LinkIcon,
-} from "lucide-react";
+import { Save, Upload, Loader2, Image as ImageIcon } from "lucide-react";
+import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/hooks/use-toast";
-import { AppLayout } from "@/components/AppLayout";
-import { useBrandSettings } from "@/hooks/useBrandSettings";
-import { useUserPreferences } from "@/hooks/useUserPreferences";
-import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { PlaceIdSettings } from "@/components/places/PlaceIdSettings";
-import { formatClientLimit, getPlanLabel } from "@/config/plans";
 
-// Account Settings Component
-function AccountSettings() {
-  const { user, profile, refreshProfile } = useAuth();
-  const { toast } = useToast();
-  const [fullName, setFullName] = useState(profile?.full_name || "");
-  const [isSavingName, setIsSavingName] = useState(false);
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
+type BrandSettings = {
+  id?: string;
+  user_id?: string;
+  business_name?: string | null;
+  support_whatsapp?: string | null;
+  website?: string | null;
+  primary_color?: string | null;
+  logo_url?: string | null;
+  report_footer_text?: string | null;
+  enable_sounds?: boolean | null;
+  updated_at?: string | null;
+};
+
+export default function Settings() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const [settings, setSettings] = useState<BrandSettings>({
+    business_name: "",
+    support_whatsapp: "",
+    website: "",
+    primary_color: "#2563EB",
+    logo_url: "",
+    report_footer_text: "Relatório gerado por Gestão Nexus",
+    enable_sounds: true,
   });
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
 
-  useEffect(() => {
-    if (profile?.full_name) {
-      setFullName(profile.full_name);
-    }
-  }, [profile?.full_name]);
-
-  const handleSaveName = async () => {
-    if (!user) return;
-    
-    setIsSavingName(true);
+  const fetchSettings = async () => {
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ full_name: fullName })
-        .eq("user_id", user.id);
-
-      if (error) throw error;
-
-      await refreshProfile();
-      toast({
-        title: "Nome atualizado!",
-        description: "Seu nome foi salvo com sucesso.",
-      });
-    } catch (error: any) {
-      console.error("Error updating name:", error);
-      toast({
-        title: "Erro ao salvar",
-        description: error.message || "Não foi possível atualizar o nome.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSavingName(false);
-    }
-  };
-
-  const validatePassword = (pwd: string): { valid: boolean; errors: string[] } => {
-    const errors: string[] = [];
-    if (pwd.length < 8) errors.push("Mínimo 8 caracteres");
-    if (!/[A-Z]/.test(pwd)) errors.push("1 letra maiúscula");
-    if (!/[0-9]/.test(pwd)) errors.push("1 número");
-    return { valid: errors.length === 0, errors };
-  };
-
-  const handleChangePassword = async () => {
-    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-      toast({
-        title: "Preencha todos os campos",
-        description: "Todos os campos de senha são obrigatórios.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast({
-        title: "Senhas não coincidem",
-        description: "A nova senha e a confirmação devem ser iguais.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const validation = validatePassword(passwordForm.newPassword);
-    if (!validation.valid) {
-      toast({
-        title: "Senha fraca",
-        description: `Requisitos: ${validation.errors.join(", ")}`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsChangingPassword(true);
-    try {
-      // First verify current password by signing in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: user?.email || "",
-        password: passwordForm.currentPassword,
-      });
-
-      if (signInError) {
-        toast({
-          title: "Senha atual incorreta",
-          description: "A senha atual informada está incorreta.",
-          variant: "destructive",
-        });
-        setIsChangingPassword(false);
+      setIsLoading(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoading(false);
         return;
       }
 
-      // Update to new password
-      const { error } = await supabase.auth.updateUser({
-        password: passwordForm.newPassword,
-      });
+      const { data, error } = await supabase.from("brand_settings").select("*").eq("user_id", user.id).maybeSingle();
 
       if (error) throw error;
 
-      toast({
-        title: "Senha alterada!",
-        description: "Sua senha foi atualizada com sucesso.",
-      });
-      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-      setShowPasswordForm(false);
-    } catch (error: any) {
-      console.error("Error changing password:", error);
-      toast({
-        title: "Erro ao alterar senha",
-        description: error.message || "Não foi possível alterar a senha.",
-        variant: "destructive",
-      });
+      if (data) {
+        setSettings({
+          id: data.id,
+          user_id: data.user_id,
+          business_name: (data as any).business_name ?? "",
+          support_whatsapp: (data as any).support_whatsapp ?? "",
+          website: (data as any).website ?? "",
+          primary_color: (data as any).primary_color ?? "#2563EB",
+          logo_url: (data as any).logo_url ?? "",
+          report_footer_text: (data as any).report_footer_text ?? "Relatório gerado por Gestão Nexus",
+          enable_sounds: (data as any).enable_sounds ?? true,
+          updated_at: (data as any).updated_at,
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao carregar configurações");
     } finally {
-      setIsChangingPassword(false);
+      setIsLoading(false);
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Informações Pessoais
-          </CardTitle>
-          <CardDescription>Gerencie suas informações de perfil</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Email</Label>
-            <Input 
-              value={user?.email || ""} 
-              disabled 
-              className="bg-secondary border-border" 
-            />
-            <p className="text-xs text-muted-foreground">O email não pode ser alterado.</p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="fullName">Nome Completo</Label>
-            <div className="flex gap-2">
-              <Input 
-                id="fullName"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="bg-secondary border-border" 
-                placeholder="Seu nome completo"
-              />
-              <Button 
-                onClick={handleSaveName} 
-                disabled={isSavingName || fullName === profile?.full_name}
-              >
-                {isSavingName ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Lock className="h-5 w-5" />
-            Segurança
-          </CardTitle>
-          <CardDescription>Altere sua senha de acesso</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {!showPasswordForm ? (
-            <Button variant="outline" onClick={() => setShowPasswordForm(true)}>
-              <Lock className="h-4 w-4 mr-2" />
-              Alterar Senha
-            </Button>
-          ) : (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="currentPassword">Senha Atual</Label>
-                <Input 
-                  id="currentPassword"
-                  type="password"
-                  value={passwordForm.currentPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                  className="bg-secondary border-border" 
-                  placeholder="Digite sua senha atual"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">Nova Senha</Label>
-                <Input 
-                  id="newPassword"
-                  type="password"
-                  value={passwordForm.newPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                  className="bg-secondary border-border" 
-                  placeholder="Mínimo 8 caracteres, 1 maiúscula, 1 número"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirmar Nova Senha</Label>
-                <Input 
-                  id="confirmPassword"
-                  type="password"
-                  value={passwordForm.confirmPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                  className="bg-secondary border-border" 
-                  placeholder="Repita a nova senha"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowPasswordForm(false);
-                    setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-                  }}
-                  disabled={isChangingPassword}
-                >
-                  Cancelar
-                </Button>
-                <Button onClick={handleChangePassword} disabled={isChangingPassword}>
-                  {isChangingPassword ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Salvar Nova Senha
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// Preferences Settings Component
-function PreferencesSettings() {
-  const { preferences, updateSoundEnabled, playStatusChangeSound } = useUserPreferences();
-
-  const handleSoundToggle = async (enabled: boolean) => {
-    await updateSoundEnabled(enabled);
-    if (enabled) {
-      // Play a test sound when enabling
-      playStatusChangeSound();
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <SettingsIcon className="h-5 w-5" />
-            Configurações Gerais
-          </CardTitle>
-          <CardDescription>Personalize sua experiência no aplicativo</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                {preferences.soundEnabled ? (
-                  <Volume2 className="h-4 w-4 text-primary" />
-                ) : (
-                  <VolumeX className="h-4 w-4 text-muted-foreground" />
-                )}
-                <Label htmlFor="sound-toggle" className="font-medium">
-                  Som de Ações
-                </Label>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Tocar som ao mudar status de tarefas
-              </p>
-            </div>
-            <Switch
-              id="sound-toggle"
-              checked={preferences.soundEnabled}
-              onCheckedChange={handleSoundToggle}
-            />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-export default function Settings() {
-  const { toast } = useToast();
-  const { user, profile } = useAuth();
-  const { 
-    brandSettings, 
-    isLoading, 
-    isUploading,
-    updateBrandSettings, 
-    uploadLogo,
-    deleteLogo 
-  } = useBrandSettings();
-  
-  const [localSettings, setLocalSettings] = useState({
-    companyName: "",
-    logo: null as string | null,
-    primaryColor: "#22c55e",
-    secondaryColor: "#0a1628",
-    accentColor: "#06b6d4",
-    reportFooter: "",
-  });
-  const [previewMode] = useState(true); // Always show preview mode
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Sync local settings with fetched brand settings
   useEffect(() => {
-    if (!isLoading) {
-      setLocalSettings({
-        companyName: brandSettings.companyName,
-        logo: brandSettings.logo,
-        primaryColor: brandSettings.primaryColor,
-        secondaryColor: brandSettings.secondaryColor,
-        accentColor: brandSettings.accentColor,
-        reportFooter: brandSettings.reportFooter,
-      });
-    }
-  }, [brandSettings, isLoading]);
+    fetchSettings();
+  }, []);
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleUploadLogo = async (file: File) => {
+    try {
+      setIsUploading(true);
 
-    const { url, error } = await uploadLogo(file);
-    
-    if (error) {
-      toast({
-        title: "Erro ao fazer upload",
-        description: error,
-        variant: "destructive",
-      });
-      return;
-    }
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Faça login para enviar o logo");
+        return;
+      }
 
-    if (url) {
-      setLocalSettings((prev) => ({ ...prev, logo: url }));
-      toast({
-        title: "Logo carregado!",
-        description: "Clique em 'Salvar Alterações' para aplicar.",
-      });
-    }
-  };
+      const ext = file.name.split(".").pop() || "png";
+      const path = `${user.id}/logo-${Date.now()}.${ext}`;
 
-  const handleDeleteLogo = async () => {
-    const { success, error } = await deleteLogo();
-    
-    if (error) {
-      toast({
-        title: "Erro ao remover logo",
-        description: error,
-        variant: "destructive",
-      });
-      return;
-    }
+      const { error: uploadError } = await supabase.storage.from("brand-logos").upload(path, file, { upsert: true });
 
-    if (success) {
-      setLocalSettings((prev) => ({ ...prev, logo: null }));
-      toast({
-        title: "Logo removido",
-        description: "O logo foi removido com sucesso.",
-      });
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrl } = supabase.storage.from("brand-logos").getPublicUrl(path);
+
+      setSettings((prev) => ({ ...prev, logo_url: publicUrl.publicUrl }));
+      toast.success("Logo enviado com sucesso!");
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao enviar logo");
+    } finally {
+      setIsUploading(false);
     }
   };
 
   const handleSave = async () => {
-    setIsSaving(true);
-    
-    const result = await updateBrandSettings(localSettings);
-    
-    if (result.error) {
-      toast({
-        title: "Erro ao salvar",
-        description: "Não foi possível salvar as configurações.",
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Configurações salvas!",
-        description: "Suas personalizações foram aplicadas com sucesso.",
-      });
-    }
-    
-    setIsSaving(false);
-  };
+    try {
+      setIsSaving(true);
 
-  const handleReset = () => {
-    setLocalSettings({
-      companyName: "Gestão Nexus",
-      logo: brandSettings.logo, // Keep the uploaded logo
-      primaryColor: "#22c55e",
-      secondaryColor: "#0a1628",
-      accentColor: "#06b6d4",
-      reportFooter: "Relatório gerado por Gestão Nexus",
-    });
-    toast({
-      title: "Configurações resetadas",
-      description: "Voltou para as configurações padrão (exceto logo).",
-    });
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Faça login para salvar");
+        return;
+      }
+
+      const payload: any = {
+        user_id: user.id,
+        business_name: settings.business_name || null,
+        support_whatsapp: settings.support_whatsapp || null,
+        website: settings.website || null,
+        primary_color: settings.primary_color || "#2563EB",
+        logo_url: settings.logo_url || null,
+        report_footer_text: settings.report_footer_text || null,
+        enable_sounds: !!settings.enable_sounds,
+        updated_at: new Date().toISOString(),
+      };
+
+      // upsert by user_id (se tiver constraint). se não tiver, o update/insert funciona via id.
+      const { data: existing } = await supabase
+        .from("brand_settings")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (existing?.id) {
+        const { error } = await supabase.from("brand_settings").update(payload).eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("brand_settings").insert(payload);
+        if (error) throw error;
+      }
+
+      toast.success("Configurações salvas!");
+      fetchSettings();
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao salvar configurações");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (isLoading) {
     return (
-      <AppLayout title="Configurações" subtitle="Personalize sua experiência e marca">
+      <AppLayout title="Configurações" subtitle="Personalize sua marca e preferências do sistema">
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 !bg-white px-5 py-4 shadow-sm">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <span className="text-sm text-slate-600">Carregando configurações…</span>
+          </div>
         </div>
       </AppLayout>
     );
   }
 
   return (
-    <AppLayout 
-      title="Configurações" 
-      subtitle="Personalize sua experiência e marca"
-      headerActions={
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleReset} disabled={isSaving}>
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Resetar
-          </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            Salvar Alterações
-          </Button>
-        </div>
-      }
-    >
+    <AppLayout title="Configurações" subtitle="Personalize sua marca e preferências do sistema">
+      <div className="space-y-6">
+        {/* Brand Card */}
+        <motion.div
+          className="rounded-2xl !bg-white border border-slate-200 p-6 shadow-sm"
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Identidade da Marca</h2>
+              <p className="text-sm text-slate-600">Essas informações aparecem nos relatórios em PDF.</p>
+            </div>
 
-      <Tabs defaultValue="whitelabel" className="space-y-6">
-        <TabsList className="bg-secondary">
-          <TabsTrigger value="whitelabel">White Label</TabsTrigger>
-          <TabsTrigger value="integrations">Integrações</TabsTrigger>
-          <TabsTrigger value="preferences">Preferências</TabsTrigger>
-          <TabsTrigger value="account">Conta</TabsTrigger>
-          <TabsTrigger value="plan">Plano</TabsTrigger>
-        </TabsList>
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="h-10 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Salvando…
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Salvar
+                </>
+              )}
+            </Button>
+          </div>
 
-            <TabsContent value="whitelabel" className="space-y-6">
-              <div className="grid lg:grid-cols-2 gap-6">
-                {/* Settings Form */}
-                <div className="space-y-6">
-                  {/* Company Info */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Building2 className="h-5 w-5" />
-                        Informações da Empresa
-                      </CardTitle>
-                      <CardDescription>
-                        Personalize como sua marca aparece nos relatórios
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="companyName">Nome da Empresa</Label>
-                        <Input
-                          id="companyName"
-                          value={localSettings.companyName}
-                          onChange={(e) => setLocalSettings({ ...localSettings, companyName: e.target.value })}
-                          className="bg-secondary border-border"
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Logo */}
+            <div className="lg:col-span-1">
+              <Label className="text-slate-700">Logo</Label>
+              <div className="mt-2 rounded-2xl border border-slate-200 !bg-slate-50 p-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 rounded-2xl border border-slate-200 !bg-white flex items-center justify-center overflow-hidden">
+                    {settings.logo_url ? (
+                      <img src={settings.logo_url} alt="Logo" className="h-full w-full object-contain" />
+                    ) : (
+                      <ImageIcon className="h-7 w-7 text-slate-400" />
+                    )}
+                  </div>
+
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-slate-900">Envie seu logo</div>
+                    <div className="text-xs text-slate-600">PNG/JPG recomendado</div>
+
+                    <div className="mt-3">
+                      <label className="inline-flex">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={isUploading}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleUploadLogo(file);
+                          }}
                         />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Logo da Empresa</Label>
-                        <div className="flex items-center gap-4">
-                          <div className="h-20 w-20 rounded-xl bg-secondary border-2 border-dashed border-border flex items-center justify-center overflow-hidden relative">
-                            {isUploading ? (
-                              <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                            ) : localSettings.logo ? (
-                              <img 
-                                src={localSettings.logo} 
-                                alt="Logo" 
-                                className="h-full w-full object-contain"
-                                onError={(e) => {
-                                  e.currentTarget.src = '';
-                                  e.currentTarget.style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                            )}
-                          </div>
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="file"
-                                id="logo-upload"
-                                accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
-                                onChange={handleLogoUpload}
-                                className="hidden"
-                                disabled={isUploading}
-                              />
-                              <Label htmlFor="logo-upload">
-                                <Button variant="outline" size="sm" asChild disabled={isUploading}>
-                                  <span>
-                                    {isUploading ? (
-                                      <>
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Enviando...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Upload className="h-4 w-4 mr-2" />
-                                        Escolher arquivo
-                                      </>
-                                    )}
-                                  </span>
-                                </Button>
-                              </Label>
-                              {localSettings.logo && (
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={handleDeleteLogo}
-                                  disabled={isUploading}
-                                  className="text-destructive hover:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              PNG, JPG, WebP ou SVG até 2MB. Recomendado: 200x200px
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="reportFooter">Texto do rodapé dos relatórios</Label>
-                        <Input
-                          id="reportFooter"
-                          value={localSettings.reportFooter}
-                          onChange={(e) => setLocalSettings({ ...localSettings, reportFooter: e.target.value })}
-                          className="bg-secondary border-border"
-                          placeholder="Ex: Relatório gerado por Sua Empresa"
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Colors */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Palette className="h-5 w-5" />
-                        Cores da Marca
-                      </CardTitle>
-                      <CardDescription>
-                        Defina as cores que aparecerão nos relatórios PDF
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="primaryColor">Cor Primária</Label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="color"
-                              id="primaryColor"
-                              value={localSettings.primaryColor}
-                              onChange={(e) => setLocalSettings({ ...localSettings, primaryColor: e.target.value })}
-                              className="h-10 w-10 rounded-lg cursor-pointer border-0"
-                            />
-                            <Input
-                              value={localSettings.primaryColor}
-                              onChange={(e) => setLocalSettings({ ...localSettings, primaryColor: e.target.value })}
-                              className="bg-secondary border-border flex-1"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="secondaryColor">Cor Secundária</Label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="color"
-                              id="secondaryColor"
-                              value={localSettings.secondaryColor}
-                              onChange={(e) => setLocalSettings({ ...localSettings, secondaryColor: e.target.value })}
-                              className="h-10 w-10 rounded-lg cursor-pointer border-0"
-                            />
-                            <Input
-                              value={localSettings.secondaryColor}
-                              onChange={(e) => setLocalSettings({ ...localSettings, secondaryColor: e.target.value })}
-                              className="bg-secondary border-border flex-1"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="accentColor">Cor de Destaque</Label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="color"
-                              id="accentColor"
-                              value={localSettings.accentColor}
-                              onChange={(e) => setLocalSettings({ ...localSettings, accentColor: e.target.value })}
-                              className="h-10 w-10 rounded-lg cursor-pointer border-0"
-                            />
-                            <Input
-                              value={localSettings.accentColor}
-                              onChange={(e) => setLocalSettings({ ...localSettings, accentColor: e.target.value })}
-                              className="bg-secondary border-border flex-1"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Preview */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold">Pré-visualização do Relatório</h3>
-
-                  <motion.div 
-                    className="rounded-xl border border-border overflow-hidden shadow-elevated"
-                    style={{ 
-                      background: previewMode ? "#ffffff" : undefined,
-                    }}
-                  >
-                    {/* Report Header Preview */}
-                    <div 
-                      className="p-6"
-                      style={{ backgroundColor: localSettings.secondaryColor }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          {localSettings.logo ? (
-                            <img 
-                              src={localSettings.logo} 
-                              alt="Logo" 
-                              className="h-10 w-10 object-contain rounded-lg"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
+                        <span
+                          className={`inline-flex items-center justify-center h-9 px-4 rounded-xl border border-slate-200 !bg-white text-slate-700 hover:!bg-slate-100 cursor-pointer ${
+                            isUploading ? "opacity-60 pointer-events-none" : ""
+                          }`}
+                        >
+                          {isUploading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Enviando…
+                            </>
                           ) : (
-                            <div 
-                              className="h-10 w-10 rounded-lg flex items-center justify-center"
-                              style={{ backgroundColor: localSettings.primaryColor }}
-                            >
-                              <span className="text-white font-bold">
-                                {localSettings.companyName.charAt(0)}
-                              </span>
-                            </div>
+                            <>
+                              <Upload className="h-4 w-4 mr-2" />
+                              Escolher arquivo
+                            </>
                           )}
-                          <span className="font-bold text-white">{localSettings.companyName}</span>
-                        </div>
-                        <span className="text-white/70 text-sm">Relatório Semanal</span>
-                      </div>
-                    </div>
-
-                    {/* Report Content Preview */}
-                    <div className="p-6 bg-white">
-                      <h2 className="text-lg font-bold text-gray-900 mb-4">Pizzaria Roma</h2>
-                      
-                      <div className="grid grid-cols-3 gap-4 mb-6">
-                        <div 
-                          className="p-4 rounded-lg text-center"
-                          style={{ backgroundColor: `${localSettings.primaryColor}15` }}
-                        >
-                          <div className="text-2xl font-bold" style={{ color: localSettings.primaryColor }}>456</div>
-                          <div className="text-xs text-gray-500">Visualizações</div>
-                        </div>
-                        <div 
-                          className="p-4 rounded-lg text-center"
-                          style={{ backgroundColor: `${localSettings.primaryColor}15` }}
-                        >
-                          <div className="text-2xl font-bold" style={{ color: localSettings.primaryColor }}>23</div>
-                          <div className="text-xs text-gray-500">Chamadas</div>
-                        </div>
-                        <div 
-                          className="p-4 rounded-lg text-center"
-                          style={{ backgroundColor: `${localSettings.primaryColor}15` }}
-                        >
-                          <div className="text-2xl font-bold" style={{ color: localSettings.primaryColor }}>89</div>
-                          <div className="text-xs text-gray-500">Rotas</div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <h3 className="font-semibold text-gray-900 text-sm">Tarefas Concluídas</h3>
-                        <div className="space-y-1">
-                          {["Postar 3 fotos", "Responder avaliações", "Atualizar horário"].map((task, i) => (
-                            <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
-                              <div 
-                                className="h-4 w-4 rounded-full flex items-center justify-center"
-                                style={{ backgroundColor: localSettings.primaryColor }}
-                              >
-                                <span className="text-white text-[10px]">✓</span>
-                              </div>
-                              {task}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Report Footer Preview */}
-                    <div 
-                      className="p-4 text-center text-sm"
-                      style={{ 
-                        backgroundColor: localSettings.secondaryColor,
-                        color: "rgba(255,255,255,0.7)"
-                      }}
-                    >
-                      {localSettings.reportFooter}
-                    </div>
-                  </motion.div>
-
-                  <p className="text-sm text-muted-foreground text-center">
-                    Esta é uma prévia de como seu relatório PDF será exibido
-                  </p>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="integrations" className="space-y-6">
-              <PlaceIdSettings />
-            </TabsContent>
-
-            <TabsContent value="preferences">
-              <PreferencesSettings />
-            </TabsContent>
-
-            <TabsContent value="account">
-              <AccountSettings />
-            </TabsContent>
-
-            <TabsContent value="plan">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Seu Plano Atual</CardTitle>
-                  <CardDescription>Gerencie sua assinatura</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-primary/10 border border-primary/20 mb-4">
-                    <div>
-                      <h3 className="font-semibold text-lg capitalize">{getPlanLabel(profile?.plan || "starter")}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {formatClientLimit(profile?.clients_limit || 1)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Limite de clientes</p>
-                      <p className="text-2xl font-bold text-primary">
-                        {(profile?.clients_limit || 1) >= 999999 ? "∞" : profile?.clients_limit || 1}
-                      </p>
+                        </span>
+                      </label>
                     </div>
                   </div>
-                  <Button className="w-full" asChild>
-                    <a href="/pricing">Ver Planos</a>
-                  </Button>
-                </CardContent>
-              </Card>
-        </TabsContent>
-      </Tabs>
+                </div>
+
+                {settings.logo_url && <div className="mt-3 text-xs text-slate-500 break-all">{settings.logo_url}</div>}
+              </div>
+            </div>
+
+            {/* Fields */}
+            <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-slate-700">Nome da Empresa</Label>
+                <Input
+                  value={settings.business_name || ""}
+                  onChange={(e) => setSettings((p) => ({ ...p, business_name: e.target.value }))}
+                  placeholder="Ex: Agência XYZ"
+                  className="h-10 rounded-xl !bg-white !text-slate-900 border border-slate-200 shadow-sm
+                  focus-visible:ring-2 focus-visible:ring-blue-500 placeholder:text-slate-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-slate-700">WhatsApp de Suporte</Label>
+                <Input
+                  value={settings.support_whatsapp || ""}
+                  onChange={(e) => setSettings((p) => ({ ...p, support_whatsapp: e.target.value }))}
+                  placeholder="Ex: +55 11 99999-9999"
+                  className="h-10 rounded-xl !bg-white !text-slate-900 border border-slate-200 shadow-sm
+                  focus-visible:ring-2 focus-visible:ring-blue-500 placeholder:text-slate-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-slate-700">Website</Label>
+                <Input
+                  value={settings.website || ""}
+                  onChange={(e) => setSettings((p) => ({ ...p, website: e.target.value }))}
+                  placeholder="Ex: https://minhaagencia.com"
+                  className="h-10 rounded-xl !bg-white !text-slate-900 border border-slate-200 shadow-sm
+                  focus-visible:ring-2 focus-visible:ring-blue-500 placeholder:text-slate-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-slate-700">Cor Primária</Label>
+                <Input
+                  type="color"
+                  value={settings.primary_color || "#2563EB"}
+                  onChange={(e) => setSettings((p) => ({ ...p, primary_color: e.target.value }))}
+                  className="h-10 rounded-xl !bg-white border border-slate-200 shadow-sm p-1"
+                />
+                <div className="text-xs text-slate-500">Usada em botões e detalhes do PDF.</div>
+              </div>
+
+              <div className="md:col-span-2 space-y-2">
+                <Label className="text-slate-700">Texto do Rodapé do Relatório</Label>
+                <Textarea
+                  value={settings.report_footer_text || ""}
+                  onChange={(e) => setSettings((p) => ({ ...p, report_footer_text: e.target.value }))}
+                  placeholder="Ex: Relatório gerado por Gestão Nexus"
+                  className="min-h-[90px] rounded-2xl !bg-white !text-slate-900 border border-slate-200 shadow-sm
+                  focus-visible:ring-2 focus-visible:ring-blue-500 placeholder:text-slate-500"
+                />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Preferences Card */}
+        <motion.div
+          className="rounded-2xl !bg-white border border-slate-200 p-6 shadow-sm"
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+        >
+          <h2 className="text-lg font-semibold text-slate-900">Preferências</h2>
+          <p className="text-sm text-slate-600 mb-6">Ajuste comportamentos do sistema.</p>
+
+          <div className="flex items-center justify-between gap-4 p-4 rounded-2xl !bg-slate-50 border border-slate-200">
+            <div>
+              <div className="font-medium text-slate-900">Sons de Feedback</div>
+              <div className="text-sm text-slate-600">Tocar som ao concluir tarefas e alterações de status.</div>
+            </div>
+            <Switch
+              checked={!!settings.enable_sounds}
+              onCheckedChange={(v) => setSettings((p) => ({ ...p, enable_sounds: v }))}
+            />
+          </div>
+        </motion.div>
+      </div>
     </AppLayout>
   );
 }
