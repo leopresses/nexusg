@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Check, MessageCircle } from "lucide-react";
+import { Check, MessageCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AppLayout } from "@/components/AppLayout";
@@ -28,23 +28,25 @@ export default function Pricing() {
       <div className="space-y-8">
         {/* Current Plan Banner */}
         <motion.div
-          className="rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 p-6"
+          className="rounded-2xl bg-secondary border border-border p-6 relative overflow-hidden"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="absolute inset-0 bg-grid-pattern opacity-30" />
+          <div className="relative flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h3 className="font-semibold text-lg mb-1">Seu plano atual</h3>
+              <h3 className="font-display font-semibold text-lg mb-1 text-foreground">Seu plano atual</h3>
               <p className="text-muted-foreground">
-                Você está no plano <span className="text-primary font-semibold uppercase">{currentPlan}</span>
+                Você está no plano{" "}
+                <span className="text-gradient-neon font-semibold uppercase">{currentPlan}</span>
                 {profile?.clients_limit && (
-                  <span className="ml-2">
+                  <span className="ml-2 text-muted-foreground">
                     ({formatClientLimit(profile.clients_limit)})
                   </span>
                 )}
               </p>
             </div>
-            <Badge className="bg-primary/20 text-primary border-primary/30 text-sm px-4 py-1">
+            <Badge variant="gold" className="text-sm px-4 py-1">
               {currentPlan === "starter" ? "Gratuito" : "Ativo"}
             </Badge>
           </div>
@@ -64,10 +66,10 @@ export default function Pricing() {
             return (
               <motion.div
                 key={plan.id}
-                className={`rounded-xl border p-5 flex flex-col ${
+                className={`rounded-2xl border p-5 flex flex-col transition-all duration-300 ${
                   plan.highlighted
-                    ? "bg-card border-primary shadow-lg shadow-primary/10 relative"
-                    : "bg-card border-border"
+                    ? "bg-card border-primary shadow-neon relative"
+                    : "bg-card border-border hover:border-muted-foreground/30"
                 } ${isCurrentPlan ? "ring-2 ring-primary" : ""}`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -75,23 +77,30 @@ export default function Pricing() {
               >
                 {plan.highlighted && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground">Mais Popular</Badge>
+                    <Badge variant="gold" className="gap-1">
+                      <Sparkles className="h-3 w-3" />
+                      Mais Popular
+                    </Badge>
                   </div>
                 )}
 
                 <div className="flex items-center gap-2 mb-3">
                   <div
-                    className={`h-9 w-9 rounded-lg flex items-center justify-center ${
-                      plan.highlighted ? "bg-primary/20" : "bg-muted"
+                    className={`h-9 w-9 rounded-xl flex items-center justify-center ${
+                      plan.highlighted ? "gradient-neon shadow-neon" : "bg-secondary"
                     }`}
                   >
-                    <PlanIcon className={`h-4 w-4 ${plan.highlighted ? "text-primary" : "text-muted-foreground"}`} />
+                    <PlanIcon
+                      className={`h-4 w-4 ${
+                        plan.highlighted ? "text-primary-foreground" : "text-muted-foreground"
+                      }`}
+                    />
                   </div>
-                  <h3 className="text-lg font-bold">{plan.name}</h3>
+                  <h3 className="text-lg font-display font-bold text-foreground">{plan.name}</h3>
                 </div>
 
                 <div className="mb-3">
-                  <span className="text-2xl font-bold">{plan.price}</span>
+                  <span className="text-2xl font-display font-bold text-foreground">{plan.price}</span>
                   <span className="text-muted-foreground text-sm">{plan.period}</span>
                 </div>
 
@@ -101,23 +110,23 @@ export default function Pricing() {
                   {plan.features.map((feature, featureIndex) => (
                     <li key={featureIndex} className="flex items-start gap-2 text-xs">
                       <Check className="h-3 w-3 text-primary mt-0.5 flex-shrink-0" />
-                      <span>{feature}</span>
+                      <span className="text-foreground/80">{feature}</span>
                     </li>
                   ))}
                 </ul>
 
                 {isCurrentPlan ? (
-                  <Button variant="outline" className="w-full" size="sm" disabled>
+                  <Button variant="outline" className="w-full rounded-xl" size="sm" disabled>
                     Plano Atual
                   </Button>
                 ) : plan.id === "starter" ? (
-                  <Button variant="outline" className="w-full" size="sm" disabled>
+                  <Button variant="outline" className="w-full rounded-xl" size="sm" disabled>
                     Plano Gratuito
                   </Button>
                 ) : (
                   <Button
-                    variant={plan.highlighted ? "default" : "outline"}
-                    className="w-full gap-2"
+                    variant={plan.highlighted ? "hero" : "outline"}
+                    className="w-full gap-2 rounded-xl"
                     size="sm"
                     onClick={() => handleUpgrade(plan.id, plan.name, plan.price, plan.clientsLimit)}
                   >
@@ -130,9 +139,9 @@ export default function Pricing() {
           })}
         </motion.div>
 
-        {/* FAQ or Additional Info */}
+        {/* FAQ / Help */}
         <motion.div
-          className="rounded-xl bg-card border border-border p-6 text-center"
+          className="rounded-2xl bg-card border border-border p-6 text-center cyber-lines"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
@@ -143,7 +152,7 @@ export default function Pricing() {
               href={`https://wa.me/${WHATSAPP_NUMBER}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary hover:underline"
+              className="text-primary hover:underline font-medium"
             >
               Fale conosco pelo WhatsApp
             </a>
