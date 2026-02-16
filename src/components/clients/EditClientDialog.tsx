@@ -1,22 +1,10 @@
 import { useState, useEffect } from "react";
 import { Loader2, Save } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ClientAvatarUpload } from "./ClientAvatarUpload";
@@ -41,12 +29,7 @@ const businessTypeLabels: Record<BusinessType, string> = {
   barbershop_salon: "Barbearia/Salão",
 };
 
-export function EditClientDialog({ 
-  open, 
-  onOpenChange, 
-  client, 
-  onSuccess 
-}: EditClientDialogProps) {
+export function EditClientDialog({ open, onOpenChange, client, onSuccess }: EditClientDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
   const [businessType, setBusinessType] = useState<BusinessType>("other");
@@ -92,47 +75,46 @@ export function EditClientDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      {/* Ajustado: !bg-white e !text-slate-900 para forçar o tema claro */}
+      <DialogContent className="sm:max-w-md !bg-white !text-slate-900 border-slate-200">
         <DialogHeader>
-          <DialogTitle>Editar Cliente</DialogTitle>
-          <DialogDescription>
-            Atualize as informações do cliente
-          </DialogDescription>
+          <DialogTitle className="text-slate-900 font-bold">Editar Cliente</DialogTitle>
+          <DialogDescription className="text-slate-500">Atualize as informações do cliente</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           {/* Avatar Upload */}
           {client && (
             <div className="space-y-2">
-              <Label>Foto do Cliente</Label>
-              <ClientAvatarUpload
-                clientId={client.id}
-                currentAvatarUrl={avatarUrl}
-                onAvatarChange={setAvatarUrl}
-              />
+              <Label className="text-slate-700 font-medium">Foto do Cliente</Label>
+              <ClientAvatarUpload clientId={client.id} currentAvatarUrl={avatarUrl} onAvatarChange={setAvatarUrl} />
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="name">Nome do Cliente</Label>
+            <Label htmlFor="name" className="text-slate-700 font-medium">
+              Nome do Cliente
+            </Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="bg-secondary border-border"
+              className="!bg-white !text-slate-900 border-slate-200 focus:ring-blue-500"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="businessType">Tipo de Negócio</Label>
+            <Label htmlFor="businessType" className="text-slate-700 font-medium">
+              Tipo de Negócio
+            </Label>
             <Select value={businessType} onValueChange={(v) => setBusinessType(v as BusinessType)}>
-              <SelectTrigger className="bg-secondary border-border">
+              <SelectTrigger className="!bg-white !text-slate-900 border-slate-200">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white border-slate-200">
                 {Object.entries(businessTypeLabels).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
+                  <SelectItem key={value} value={value} className="text-slate-700 focus:bg-slate-100">
                     {label}
                   </SelectItem>
                 ))}
@@ -141,12 +123,14 @@ export function EditClientDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="address">Endereço (opcional)</Label>
+            <Label htmlFor="address" className="text-slate-700 font-medium">
+              Endereço (opcional)
+            </Label>
             <Input
               id="address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="bg-secondary border-border"
+              className="!bg-white !text-slate-900 border-slate-200 focus:ring-blue-500"
               placeholder="Rua, número, cidade..."
             />
           </div>
@@ -157,15 +141,12 @@ export function EditClientDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
+              className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-700"
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
-              )}
+            <Button type="submit" disabled={isLoading} className="bg-blue-600 text-white hover:bg-blue-700">
+              {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
               Salvar
             </Button>
           </div>
