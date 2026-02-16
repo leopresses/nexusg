@@ -1,3 +1,4 @@
+// src/pages/Settings.tsx
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Save, Upload, Loader2, Image as ImageIcon, CheckCircle2 } from "lucide-react";
@@ -38,6 +39,7 @@ export default function Settings() {
     enable_sounds: true,
   });
 
+  // Estilo centralizado para os balões azuis de alto contraste
   const toastStyle = {
     className: "!bg-blue-600 !text-white border-none shadow-2xl rounded-2xl p-4 font-bold",
   };
@@ -48,24 +50,31 @@ export default function Settings() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase.from("brand_settings").select("*").eq("user_id", user.id).maybeSingle();
+
       if (error) throw error;
+
       if (data) {
         setSettings({
-          id: data.id,
-          user_id: data.user_id,
-          business_name: data.business_name ?? "",
-          support_whatsapp: data.support_whatsapp ?? "",
-          website: data.website ?? "",
-          primary_color: data.primary_color ?? "#2563EB",
-          logo_url: data.logo_url ?? "",
-          report_footer_text: data.report_footer_text ?? "Relatório gerado por Gestão Nexus",
-          enable_sounds: data.enable_sounds ?? true,
+          id: (data as any).id,
+          user_id: (data as any).user_id,
+          business_name: (data as any).business_name ?? "",
+          support_whatsapp: (data as any).support_whatsapp ?? "",
+          website: (data as any).website ?? "",
+          primary_color: (data as any).primary_color ?? "#2563EB",
+          logo_url: (data as any).logo_url ?? "",
+          report_footer_text: (data as any).report_footer_text ?? "Relatório gerado por Gestão Nexus",
+          enable_sounds: (data as any).enable_sounds ?? true,
+          updated_at: (data as any).updated_at,
         });
       }
     } catch (e) {
-      toast.error("Erro ao carregar", toastStyle);
+      toast.error("Erro ao carregar configurações", toastStyle);
     } finally {
       setIsLoading(false);
     }
@@ -81,12 +90,20 @@ export default function Settings() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Faça login para enviar o logo", toastStyle);
+        return;
+      }
+
       const ext = file.name.split(".").pop() || "png";
       const path = `${user.id}/logo-${Date.now()}.${ext}`;
+
       const { error: uploadError } = await supabase.storage.from("brand-logos").upload(path, file, { upsert: true });
+
       if (uploadError) throw uploadError;
+
       const { data: publicUrl } = supabase.storage.from("brand-logos").getPublicUrl(path);
+
       setSettings((prev) => ({ ...prev, logo_url: publicUrl.publicUrl }));
       toast.success("Logo enviado com sucesso!", toastStyle);
     } catch (e) {
@@ -102,8 +119,12 @@ export default function Settings() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
-      const payload = {
+      if (!user) {
+        toast.error("Faça login para salvar", toastStyle);
+        return;
+      }
+
+      const payload: any = {
         user_id: user.id,
         business_name: settings.business_name || null,
         support_whatsapp: settings.support_whatsapp || null,
@@ -114,175 +135,178 @@ export default function Settings() {
         enable_sounds: !!settings.enable_sounds,
         updated_at: new Date().toISOString(),
       };
+
       const { data: existing } = await supabase
         .from("brand_settings")
         .select("id")
         .eq("user_id", user.id)
         .maybeSingle();
-      const { error } = existing?.id
-        ? await supabase.from("brand_settings").update(payload).eq("id", existing.id)
-        : await supabase.from("brand_settings").insert(payload);
-      if (error) throw error;
+
+      if (existing?.id) {
+        const { error } = await supabase.from("brand_settings").update(payload).eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("brand_settings").insert(payload);
+        if (error) throw error;
+      }
+
       toast.success("Configurações salvas!", toastStyle);
+      fetchSettings();
     } catch (e) {
-      toast.error("Erro ao salvar", toastStyle);
+      toast.error("Erro ao salvar configurações", toastStyle);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const companyName = settings.business_name || "Gestão Nexus";
-  const primaryColor = settings.primary_color || "#2563EB";
-  const footerText = settings.report_footer_text || "Relatório gerado por Gestão Nexus";
+  const companyName = (settings.business_name || "Gestão Nexus").toString().trim() || "Gestão Nexus";
+  const primaryColor = (settings.primary_color || "#2563EB").toString();
+  const secondaryColor = "#1D4ED8";
+  const footerText = (settings.report_footer_text || "Relatório gerado por Gestão Nexus").toString();
+  const initialLetter = companyName.charAt(0).toUpperCase() || "G";
 
-  if (isLoading) return <AppLayout title="Configurações">Carregando...</AppLayout>;
+  if (isLoading) {
+    return (
+      <AppLayout title="Configurações">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
-    <AppLayout title="Configurações" subtitle="Personalize sua identidade e preferências">
+    <AppLayout title="Configurações" subtitle="Personalize sua experiência e marca">
+      {/* Grid Restaurado para Lado a Lado (lg:grid-cols-2) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        {/* LADO ESQUERDO: FORMULÁRIO */}
+        {/* LADO ESQUERDO: Configurações */}
         <div className="space-y-6">
           <motion.div
-            className="rounded-3xl !bg-white border border-slate-200 p-8 shadow-sm"
+            className="rounded-2xl !bg-white border border-slate-200 p-6 shadow-sm"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
           >
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">Identidade da Marca</h2>
-                <p className="text-sm text-slate-500">Altere os dados e veja ao lado o resultado.</p>
-              </div>
-              <Button onClick={handleSave} disabled={isSaving} className="!bg-blue-600 rounded-xl font-bold px-6">
-                {isSaving ? <Loader2 className="animate-spin" /> : <Save className="mr-2 h-4" />} Salvar
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-slate-900">Identidade da Marca</h2>
+              <Button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="h-10 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700 font-bold"
+              >
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Salvar
               </Button>
             </div>
 
-            <div className="space-y-6">
-              {/* LOGO RESTAURADO */}
-              <div className="space-y-3">
-                <Label className="text-slate-700 font-bold">Logo da Empresa</Label>
-                <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 flex flex-col items-center justify-center gap-3">
-                  <div className="h-16 w-16 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden">
-                    {settings.logo_url ? (
-                      <img src={settings.logo_url} alt="Logo" className="h-full w-full object-contain" />
-                    ) : (
-                      <ImageIcon className="h-8 w-8 text-slate-300" />
-                    )}
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-slate-500 mb-2">Recomendado: Quadrado, fundo transparente.</p>
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => e.target.files?.[0] && handleUploadLogo(e.target.files[0])}
-                        disabled={isUploading}
-                      />
-                      <span className="text-sm font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 justify-center">
-                        <Upload className="h-4 w-4" /> {isUploading ? "Enviando..." : "Trocar Logo"}
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
+            <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-slate-700 font-bold">Nome no Relatório</Label>
+                  <Label>Nome da Empresa</Label>
                   <Input
                     value={settings.business_name || ""}
                     onChange={(e) => setSettings({ ...settings, business_name: e.target.value })}
-                    className="rounded-xl border-slate-200 h-12"
+                    className="rounded-xl border-slate-200 !bg-white !text-slate-900"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-slate-700 font-bold">Cor de Destaque</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="color"
-                      value={settings.primary_color || "#2563EB"}
-                      onChange={(e) => setSettings({ ...settings, primary_color: e.target.value })}
-                      className="h-12 w-14 p-1 rounded-xl cursor-pointer"
-                    />
-                    <Input
-                      value={settings.primary_color || ""}
-                      onChange={(e) => setSettings({ ...settings, primary_color: e.target.value })}
-                      className="rounded-xl border-slate-200 h-12 font-mono uppercase"
-                    />
-                  </div>
+                  <Label>Cor Primária</Label>
+                  <Input
+                    type="color"
+                    value={settings.primary_color || "#2563EB"}
+                    onChange={(e) => setSettings({ ...settings, primary_color: e.target.value })}
+                    className="h-10 p-1 rounded-xl"
+                  />
                 </div>
               </div>
-
               <div className="space-y-2">
-                <Label className="text-slate-700 font-bold">Texto do Rodapé</Label>
+                <Label>Texto do Rodapé</Label>
                 <Textarea
                   value={settings.report_footer_text || ""}
                   onChange={(e) => setSettings({ ...settings, report_footer_text: e.target.value })}
-                  className="rounded-xl border-slate-200 min-h-[100px] text-slate-600"
+                  className="rounded-xl border-slate-200 min-h-[90px] !bg-white !text-slate-900"
                 />
               </div>
             </div>
           </motion.div>
+
+          <motion.div
+            className="rounded-2xl !bg-white border border-slate-200 p-6 shadow-sm"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Preferências</h2>
+            <div className="flex items-center justify-between p-4 rounded-xl !bg-slate-50 border border-slate-100">
+              <span className="text-sm font-medium text-slate-900">Sons de Feedback</span>
+              <Switch
+                checked={!!settings.enable_sounds}
+                onCheckedChange={(v) => setSettings({ ...settings, enable_sounds: v })}
+              />
+            </div>
+          </motion.div>
         </div>
 
-        {/* LADO DIREITO: PRÉVIA (STICKY) */}
+        {/* LADO DIREITO: Prévia em Tempo Real (Sticky) */}
         <div className="lg:sticky lg:top-24">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-sm font-bold text-slate-600">Prévia em Tempo Real</span>
-          </div>
-
           <motion.div
             className="rounded-[32px] overflow-hidden border border-slate-200 shadow-2xl bg-white"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
           >
-            <div className="p-6 text-white" style={{ backgroundColor: primaryColor }}>
+            {/* Header do PDF */}
+            <div className="p-6 text-white" style={{ backgroundColor: secondaryColor }}>
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center font-bold">
-                    {companyName.charAt(0).toUpperCase()}
+                    {initialLetter}
                   </div>
                   <span className="font-bold text-lg">{companyName}</span>
                 </div>
-                <span className="text-white/60 text-[10px] font-black uppercase tracking-widest">Relatório</span>
+                <span className="text-white/60 text-xs font-bold uppercase tracking-widest">Relatório</span>
               </div>
             </div>
 
-            <div className="p-8 space-y-8 min-h-[350px]">
-              <div className="grid grid-cols-3 gap-3">
+            {/* Corpo do PDF */}
+            <div className="p-8 space-y-8 min-h-[400px]">
+              <h2
+                className="text-2xl font-black text-slate-900 border-b-4 inline-block"
+                style={{ borderBottomColor: primaryColor }}
+              >
+                Pizzaria Roma
+              </h2>
+
+              <div className="grid grid-cols-3 gap-4">
                 {[
-                  { v: "00", l: "Métrica" },
-                  { v: "00", l: "Métrica" },
-                  { v: "00", l: "Métrica" },
-                ].map((k, i) => (
-                  <div key={i} className="p-4 rounded-2xl text-center border border-slate-100 bg-slate-50/50">
-                    <div className="text-xl font-black mb-1 text-emerald-500">{k.v}</div>
-                    <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{k.l}</div>
+                  { v: "456", l: "Views" },
+                  { v: "23", l: "Call" },
+                  { v: "89", l: "Maps" },
+                ].map((k) => (
+                  <div
+                    key={k.l}
+                    className="p-5 rounded-2xl text-center border border-slate-100"
+                    style={{ backgroundColor: `${primaryColor}08` }}
+                  >
+                    <div className="text-2xl font-black mb-1" style={{ color: primaryColor }}>
+                      {k.v}
+                    </div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{k.l}</div>
                   </div>
                 ))}
               </div>
+
               <div className="space-y-3">
-                <div className="h-3 w-1/3 bg-slate-100 rounded-full" />
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-full bg-emerald-500" />
-                  <div className="h-2 w-3/4 bg-slate-50 rounded-full" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-3 w-3 rounded-full bg-emerald-500" />
-                  <div className="h-2 w-1/2 bg-slate-50 rounded-full" />
-                </div>
+                <div className="text-sm font-bold text-slate-900 uppercase tracking-tighter">Tarefas Concluídas</div>
+                {["Postar 3 fotos", "Responder avaliações"].map((t) => (
+                  <div key={t} className="flex items-center gap-2 text-sm text-slate-600 font-medium">
+                    <CheckCircle2 className="h-4 w-4" style={{ color: primaryColor }} /> {t}
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div className="p-4 bg-blue-600 text-center text-[9px] font-bold text-white uppercase tracking-widest">
+            {/* Rodapé do PDF */}
+            <div className="p-4 bg-slate-50 text-center text-[10px] font-bold text-slate-400 border-t border-slate-100 uppercase tracking-widest">
               {footerText}
             </div>
           </motion.div>
-          <p className="mt-4 text-center text-[10px] text-slate-400">
-            O layout acima é uma representação simplificada do PDF.
-          </p>
         </div>
       </div>
     </AppLayout>
