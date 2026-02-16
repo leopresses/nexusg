@@ -7,45 +7,40 @@ interface ClientTaskProgressProps {
   total: number;
 }
 
-export function ClientTaskProgress({ 
-  pending, 
-  inProgress, 
-  completed, 
-  total 
-}: ClientTaskProgressProps) {
+export function ClientTaskProgress({ pending, inProgress, completed, total }: ClientTaskProgressProps) {
   if (total === 0) {
-    return (
-      <p className="text-xs text-muted-foreground italic">
-        Nenhuma tarefa esta semana
-      </p>
-    );
+    return <p className="text-xs text-slate-400 italic">Nenhuma tarefa esta semana</p>;
   }
 
   const progress = Math.round((completed / total) * 100);
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between text-xs">
-        <span className="text-muted-foreground">Progresso da semana</span>
-        <span className="font-medium">{progress}%</span>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between text-[11px] uppercase tracking-wider font-bold">
+        <span className="text-slate-500">Progresso Semanal</span>
+        <span className="text-blue-600">{progress}%</span>
       </div>
-      <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-        <div 
-          className="h-full gradient-neon transition-all duration-300"
+
+      {/* Barra de Progresso com contraste elevado */}
+      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+        <div
+          className="h-full !bg-blue-600 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(37,99,235,0.3)]"
           style={{ width: `${progress}%` }}
         />
       </div>
-      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <Clock className="h-3 w-3 text-warning" />
+
+      {/* Legenda de Status com cores sólidas */}
+      <div className="flex items-center gap-4 text-[11px] font-bold">
+        <span className="flex items-center gap-1.5 text-slate-600">
+          <Clock className="h-3.5 w-3.5 text-amber-500" />
           {pending}
         </span>
-        <span className="flex items-center gap-1">
-          <AlertCircle className="h-3 w-3 text-primary" />
+        <span className="flex items-center gap-1.5 text-slate-600">
+          <AlertCircle className="h-3.5 w-3.5 text-blue-500" />
           {inProgress}
         </span>
-        <span className="flex items-center gap-1">
-          <CheckCircle2 className="h-3 w-3 text-success" />
+        <span className="flex items-center gap-1.5 text-slate-600">
+          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
           {completed}
         </span>
       </div>
