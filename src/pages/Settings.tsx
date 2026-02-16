@@ -43,6 +43,19 @@ export default function Settings() {
     className: "!bg-blue-600 !text-white border-none shadow-2xl rounded-2xl p-4 font-bold",
   };
 
+  // Helper to get signed URL from a stored logo path
+  const getSignedLogoUrl = async (storedUrl: string): Promise<string | null> => {
+    if (!storedUrl) return null;
+    const parts = storedUrl.split('/brand-logos/');
+    if (parts.length < 2) return null;
+    const filePath = parts[1];
+    const { data, error } = await supabase.storage
+      .from('brand-logos')
+      .createSignedUrl(filePath, 3600);
+    if (error || !data) return null;
+    return data.signedUrl;
+  };
+
   const fetchSettings = async () => {
     try {
       setIsLoading(true);
@@ -59,15 +72,22 @@ export default function Settings() {
       if (error) throw error;
 
       if (data) {
+        // Get signed URL for logo display
+        let displayLogoUrl = "";
+        if (data.logo_url) {
+          const signed = await getSignedLogoUrl(data.logo_url);
+          displayLogoUrl = signed || "";
+        }
+
         setSettings({
           id: (data as any).id,
           user_id: (data as any).user_id,
-          business_name: (data as any).business_name ?? "",
+          business_name: (data as any).company_name ?? "",
           support_whatsapp: (data as any).support_whatsapp ?? "",
           website: (data as any).website ?? "",
           primary_color: (data as any).primary_color ?? "#2563EB",
-          logo_url: (data as any).logo_url ?? "",
-          report_footer_text: (data as any).report_footer_text ?? "Relatório gerado por Gestão Nexus",
+          logo_url: displayLogoUrl,
+          report_footer_text: (data as any).report_footer ?? "Relatório gerado por Gestão Nexus",
           enable_sounds: (data as any).enable_sounds ?? true,
           updated_at: (data as any).updated_at,
         });
@@ -96,14 +116,24 @@ export default function Settings() {
         return;
       }
 
-      // Validação básica
       if (!file.type.startsWith("image/")) {
         toast.error("Por favor, selecione um arquivo de imagem.", toastStyle);
         return;
       }
 
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error("Arquivo muito grande. Máximo 2MB.", toastStyle);
+        return;
+      }
+
       const ext = file.name.split(".").pop() || "png";
       const path = `${user.id}/logo-${Date.now()}.${ext}`;
+
+      // Delete old logos
+      const { data: existingFiles } = await supabase.storage.from("brand-logos").list(user.id);
+      if (existingFiles && existingFiles.length > 0) {
+        await supabase.storage.from("brand-logos").remove(existingFiles.map(f => `${user.id}/${f.name}`));
+      }
 
       const { error: uploadError } = await supabase.storage.from("brand-logos").upload(path, file, {
         upsert: true,
@@ -112,9 +142,24 @@ export default function Settings() {
 
       if (uploadError) throw uploadError;
 
-      const { data: publicUrl } = supabase.storage.from("brand-logos").getPublicUrl(path);
+      // Store the reference URL in DB
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const storedUrl = `${baseUrl}/storage/v1/object/public/brand-logos/${path}`;
 
-      setSettings((prev) => ({ ...prev, logo_url: publicUrl.publicUrl }));
+      // Update DB immediately
+      const { data: existing } = await supabase
+        .from("brand_settings")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (existing?.id) {
+        await supabase.from("brand_settings").update({ logo_url: storedUrl, updated_at: new Date().toISOString() }).eq("id", existing.id);
+      }
+
+      // Get signed URL for display
+      const signedUrl = await getSignedLogoUrl(storedUrl);
+      setSettings((prev) => ({ ...prev, logo_url: signedUrl || "" }));
       toast.success("Logo enviado com sucesso!", toastStyle);
     } catch (e) {
       console.error(e);
