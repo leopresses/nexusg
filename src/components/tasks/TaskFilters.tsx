@@ -44,11 +44,21 @@ export function TaskFilters({
           <SelectTrigger className="w-[150px] h-10 rounded-full !bg-white !text-slate-900 border border-slate-200 shadow-sm">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
+          {/* Ajustado: SelectContent forçado para branco */}
           <SelectContent className="!bg-white border border-slate-200 rounded-xl shadow-lg">
-            <SelectItem value="all">Todos os status</SelectItem>
-            <SelectItem value="pending">Pendente</SelectItem>
-            <SelectItem value="in_progress">Em progresso</SelectItem>
-            <SelectItem value="completed">Concluída</SelectItem>
+            {/* Ajustado: !text-slate-900 garante que o texto apareça em preto sem depender do hover */}
+            <SelectItem value="all" className="!text-slate-900 focus:bg-slate-100">
+              Todos os status
+            </SelectItem>
+            <SelectItem value="pending" className="!text-slate-900 focus:bg-slate-100">
+              Pendente
+            </SelectItem>
+            <SelectItem value="in_progress" className="!text-slate-900 focus:bg-slate-100">
+              Em progresso
+            </SelectItem>
+            <SelectItem value="completed" className="!text-slate-900 focus:bg-slate-100">
+              Concluída
+            </SelectItem>
           </SelectContent>
         </Select>
 
@@ -57,9 +67,11 @@ export function TaskFilters({
             <SelectValue placeholder="Cliente" />
           </SelectTrigger>
           <SelectContent className="!bg-white border border-slate-200 rounded-xl shadow-lg">
-            <SelectItem value="all">Todos os clientes</SelectItem>
+            <SelectItem value="all" className="!text-slate-900 focus:bg-slate-100">
+              Todos os clientes
+            </SelectItem>
             {clients.map((client) => (
-              <SelectItem key={client.id} value={client.id}>
+              <SelectItem key={client.id} value={client.id} className="!text-slate-900 focus:bg-slate-100">
                 {client.name}
               </SelectItem>
             ))}
