@@ -14,8 +14,7 @@ const features = [
   {
     icon: BarChart3,
     title: "Google Place ID",
-    description: "Google Place ID
-Conecte o estabelecimento ao Google para sincronizar métricas, dados e presença digital automaticamente.
+    description: "Conecte o estabelecimento ao Google para sincronizar métricas, dados e presença digital automaticamente.
 ",
   },
   {
