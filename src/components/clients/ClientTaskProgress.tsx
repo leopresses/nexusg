@@ -18,18 +18,19 @@ export function ClientTaskProgress({ pending, inProgress, completed, total }: Cl
     <div className="space-y-3">
       <div className="flex items-center justify-between text-[11px] uppercase tracking-wider font-bold">
         <span className="text-slate-500">Progresso Semanal</span>
-        <span className="text-blue-600">{progress}%</span>
+        {/* Texto do percentual também em verde para combinar com a barra */}
+        <span className="text-emerald-600">{progress}%</span>
       </div>
 
-      {/* Barra de Progresso com contraste elevado */}
+      {/* Barra de Progresso ajustada para VERDE */}
       <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
         <div
-          className="h-full !bg-blue-600 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(37,99,235,0.3)]"
+          className="h-full !bg-emerald-500 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(16,185,129,0.2)]"
           style={{ width: `${progress}%` }}
         />
       </div>
 
-      {/* Legenda de Status com cores sólidas */}
+      {/* Legenda de Status */}
       <div className="flex items-center gap-4 text-[11px] font-bold">
         <span className="flex items-center gap-1.5 text-slate-600">
           <Clock className="h-3.5 w-3.5 text-amber-500" />
