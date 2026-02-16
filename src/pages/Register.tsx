@@ -33,7 +33,6 @@ export default function Register() {
     if (pwd.length < 8) errors.push("Mínimo 8 caracteres");
     if (!/[A-Z]/.test(pwd)) errors.push("1 letra maiúscula");
     if (!/[0-9]/.test(pwd)) errors.push("1 número");
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) errors.push("1 caractere especial");
     return { valid: errors.length === 0, errors };
   };
 
@@ -52,49 +51,33 @@ export default function Register() {
 
     setIsLoading(true);
 
-    try {
-      const { error } = await signUp(email, password, name);
+    const { error } = await signUp(email, password, name);
 
-      if (error) {
-        let errorMessage = "Ocorreu um erro ao criar sua conta. Tente novamente.";
+    if (error) {
+      let errorMessage = "Ocorreu um erro ao criar sua conta.";
 
-        const msg = error.message?.toLowerCase() || "";
-
-        if (msg.includes("already registered") || msg.includes("user_already_exists")) {
-          errorMessage = "Este email já está cadastrado. Tente fazer login.";
-        } else if (msg.includes("invalid email") || msg.includes("invalid_email")) {
-          errorMessage = "Por favor, insira um email válido.";
-        } else if (msg.includes("weak password") || msg.includes("weak_password")) {
-          errorMessage = "Senha muito fraca. Use letras maiúsculas, números e caracteres especiais.";
-        } else if (msg.includes("rate") || msg.includes("over_email_send_rate_limit") || msg.includes("too many")) {
-          errorMessage = "Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.";
-        } else if (msg.includes("signup_disabled")) {
-          errorMessage = "O cadastro está temporariamente desabilitado.";
-        } else if (msg.includes("email_provider_disabled")) {
-          errorMessage = "Cadastro por email não está disponível no momento.";
-        }
-
-        toast({
-          title: "Erro no cadastro",
-          description: errorMessage,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Conta criada!",
-          description: "Bem-vindo ao Gestão Nexus! Vamos configurar seu primeiro cliente.",
-        });
-        navigate("/onboarding");
+      if (error.message.includes("already registered")) {
+        errorMessage = "Este email já está cadastrado. Tente fazer login.";
+      } else if (error.message.includes("invalid email")) {
+        errorMessage = "Por favor, insira um email válido.";
+      } else if (error.message.includes("weak password")) {
+        errorMessage = "Senha muito fraca. Use letras, números e símbolos.";
       }
-    } catch (err) {
+
       toast({
-        title: "Erro inesperado",
-        description: "Não foi possível conectar ao servidor. Verifique sua conexão.",
+        title: "Erro no cadastro",
+        description: errorMessage,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
+    } else {
+      toast({
+        title: "Conta criada!",
+        description: "Bem-vindo ao Gestão Nexus! Vamos configurar seu primeiro cliente.",
+      });
+      navigate("/onboarding");
     }
+
+    setIsLoading(false);
   };
 
   return (

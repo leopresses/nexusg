@@ -43,11 +43,10 @@ export default function Login() {
         errorMessage = "Confirme seu email antes de fazer login.";
       }
 
-      // CORREÇÃO NA LINHA 53: Removido 'variant: "destructive"' para o balão ficar branco
       toast({
         title: "Erro no login",
         description: errorMessage,
-        // Sem a variante destructive, o toast segue o tema claro do site
+        variant: "destructive",
       });
     } else {
       toast({
@@ -71,6 +70,7 @@ export default function Login() {
           transition={{ duration: 0.5 }}
         >
           <Link to="/" className="inline-block mb-8">
+            {/* garante logo sempre legível no tema claro */}
             <div className="text-slate-900 [&_*]:!text-slate-900">
               <Logo size="md" />
             </div>
@@ -83,7 +83,7 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-slate-700 font-medium">
+              <Label htmlFor="email" className="text-slate-700">
                 Email
               </Label>
               <div className="relative">
@@ -94,7 +94,7 @@ export default function Login() {
                   placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-12 bg-white border-slate-200 rounded-xl shadow-sm focus-visible:ring-blue-600 !text-slate-900"
+                  className="pl-10 h-12 bg-white border-slate-200 rounded-xl shadow-sm focus-visible:ring-blue-600"
                   required
                 />
               </div>
@@ -102,10 +102,10 @@ export default function Login() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-slate-700 font-medium">
+                <Label htmlFor="password" className="text-slate-700">
                   Senha
                 </Label>
-                <Link to="/forgot-password" className="text-sm text-blue-600 hover:underline font-medium">
+                <Link to="/forgot-password" className="text-sm text-blue-600 hover:underline">
                   Esqueceu a senha?
                 </Link>
               </div>
@@ -118,7 +118,7 @@ export default function Login() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 h-12 bg-white border-slate-200 rounded-xl shadow-sm focus-visible:ring-blue-600 !text-slate-900"
+                  className="pl-10 pr-10 h-12 bg-white border-slate-200 rounded-xl shadow-sm focus-visible:ring-blue-600"
                   required
                 />
                 <button
@@ -138,7 +138,7 @@ export default function Login() {
               shadow-lg hover:shadow-xl transition-all"
               disabled={isLoading}
             >
-              <span className="relative z-10 flex items-center justify-center gap-2 font-bold">
+              <span className="relative z-10 flex items-center justify-center gap-2">
                 {isLoading ? "Entrando..." : "Entrar"}
                 <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
               </span>
@@ -149,14 +149,11 @@ export default function Login() {
           <div className="mt-8 space-y-4 text-center">
             <p className="text-slate-600">
               Não tem uma conta?{" "}
-              <Link to="/register" className="text-blue-600 hover:underline font-bold">
+              <Link to="/register" className="text-blue-600 hover:underline font-medium">
                 Criar conta grátis
               </Link>
             </p>
-            <Link
-              to="/"
-              className="inline-block text-sm text-slate-400 hover:text-slate-800 transition-colors font-medium"
-            >
+            <Link to="/" className="inline-block text-sm text-slate-500 hover:text-slate-800 transition-colors">
               ← Voltar para tela inicial
             </Link>
           </div>
@@ -164,7 +161,8 @@ export default function Login() {
       </div>
 
       {/* Right side - Decorative */}
-      <div className="hidden lg:flex flex-1 items-center justify-center p-8 relative overflow-hidden border-l border-slate-100">
+      <div className="hidden lg:flex flex-1 items-center justify-center p-8 relative overflow-hidden">
+        {/* fundo CLARO premium (sem gradient-dark) */}
         <div className="absolute inset-0 bg-gradient-to-b from-white via-[#f6f8fc] to-[#f6f8fc]" />
         <div className="absolute top-24 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-gradient-to-r from-blue-500/20 via-indigo-500/10 to-transparent rounded-full blur-[120px]" />
         <div className="absolute bottom-10 left-10 w-72 h-72 bg-blue-600/10 rounded-full blur-3xl" />
@@ -180,7 +178,7 @@ export default function Login() {
             whileHover={{ y: -4, scale: 1.02 }}
             transition={{ type: "spring", stiffness: 260, damping: 22 }}
           >
-            <div className="h-14 w-14 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center shadow-inner">
+            <div className="h-14 w-14 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center">
               <svg
                 className="h-9 w-9 text-white"
                 viewBox="0 0 24 24"
@@ -196,8 +194,8 @@ export default function Login() {
             </div>
           </motion.div>
 
-          <h2 className="text-2xl font-bold mb-4 text-slate-900 tracking-tight">Gerencie tudo em um só lugar</h2>
-          <p className="text-slate-600 leading-relaxed">
+          <h2 className="text-2xl font-bold mb-4 text-slate-900">Gerencie tudo em um só lugar</h2>
+          <p className="text-slate-600">
             Tarefas, métricas e relatórios para todos os seus clientes com a precisão que seu negócio merece.
           </p>
         </motion.div>
