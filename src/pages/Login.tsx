@@ -43,10 +43,11 @@ export default function Login() {
         errorMessage = "Confirme seu email antes de fazer login.";
       }
 
+      // AJUSTE NA LINHA 53: Removido 'variant: "destructive"' para o balão ficar branco
       toast({
         title: "Erro no login",
         description: errorMessage,
-        variant: "destructive",
+        // O estilo padrão do Toast agora será branco com texto escuro
       });
     } else {
       toast({
@@ -70,7 +71,6 @@ export default function Login() {
           transition={{ duration: 0.5 }}
         >
           <Link to="/" className="inline-block mb-8">
-            {/* garante logo sempre legível no tema claro */}
             <div className="text-slate-900 [&_*]:!text-slate-900">
               <Logo size="md" />
             </div>
@@ -162,7 +162,6 @@ export default function Login() {
 
       {/* Right side - Decorative */}
       <div className="hidden lg:flex flex-1 items-center justify-center p-8 relative overflow-hidden">
-        {/* fundo CLARO premium (sem gradient-dark) */}
         <div className="absolute inset-0 bg-gradient-to-b from-white via-[#f6f8fc] to-[#f6f8fc]" />
         <div className="absolute top-24 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-gradient-to-r from-blue-500/20 via-indigo-500/10 to-transparent rounded-full blur-[120px]" />
         <div className="absolute bottom-10 left-10 w-72 h-72 bg-blue-600/10 rounded-full blur-3xl" />
