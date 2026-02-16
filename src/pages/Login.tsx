@@ -18,11 +18,17 @@ export default function Login() {
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
 
+  // Estilo padrão para os balões azuis (Adicionado para consistência)
+  const toastStyle = {
+    className: "!bg-blue-600 !text-white border-none shadow-2xl rounded-2xl p-4 font-bold",
+  };
+
   useEffect(() => {
     if (user) {
       toast({
         title: "Você já está logado",
         description: "Redirecionando para o painel...",
+        ...toastStyle, // Aplica o estilo azul
       });
       navigate("/dashboard");
     }
@@ -43,15 +49,17 @@ export default function Login() {
         errorMessage = "Confirme seu email antes de fazer login.";
       }
 
+      // LINHA 53 CORRIGIDA: Removido 'variant: destructive' e adicionado estilo azul
       toast({
         title: "Erro no login",
         description: errorMessage,
-        variant: "destructive",
+        ...toastStyle, // Garante que o balão seja azul
       });
     } else {
       toast({
         title: "Login realizado!",
         description: "Bem-vindo de volta ao Gestão Nexus.",
+        ...toastStyle, // Garante que o balão seja azul
       });
       navigate("/dashboard");
     }
