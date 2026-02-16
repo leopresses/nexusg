@@ -37,12 +37,18 @@ export function DeleteClientDialog({ open, onOpenChange, client, onSuccess }: De
 
       if (error) throw error;
 
-      toast.success("Cliente excluído com sucesso!");
+      // LINHA 49: Ajustada para usar o estilo de balão azul com contraste
+      toast.success("Cliente excluído com sucesso!", {
+        className: "!bg-blue-600 !text-white border-none shadow-2xl rounded-2xl p-4",
+      });
+
       onOpenChange(false);
       onSuccess();
     } catch (error) {
       console.error("Error deleting client:", error);
-      toast.error("Erro ao excluir cliente");
+      toast.error("Erro ao excluir cliente", {
+        className: "!bg-blue-600 !text-white border-none shadow-2xl rounded-2xl p-4",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -50,32 +56,29 @@ export function DeleteClientDialog({ open, onOpenChange, client, onSuccess }: De
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      {/* Ajustado: !bg-white, texto slate-900 e bordas claras */}
-      <AlertDialogContent className="!bg-white !text-slate-900 border-slate-200 shadow-xl">
-        <AlertDialogHeader>
-          <AlertDialogTitle className="text-slate-900 font-bold">Excluir Cliente</AlertDialogTitle>
-          <AlertDialogDescription className="text-slate-600">
+      {/* Balão principal ajustado para branco com respiro */}
+      <AlertDialogContent className="!bg-white !text-slate-900 border-slate-200 shadow-2xl rounded-[32px] p-8">
+        <AlertDialogHeader className="mb-4">
+          <AlertDialogTitle className="text-2xl font-bold text-slate-900">Excluir Cliente</AlertDialogTitle>
+          <AlertDialogDescription className="text-slate-600 text-base">
             Tem certeza que deseja excluir o cliente <strong className="text-slate-900">{client?.name}</strong>? Esta
             ação não pode ser desfeita e todas as tarefas associadas serão removidas.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="gap-2">
-          {/* Ajustado: Estilo do botão cancelar para o tema claro */}
+        <AlertDialogFooter className="gap-3">
           <AlertDialogCancel
             disabled={isLoading}
-            className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl"
+            className="h-12 px-6 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all"
           >
             Cancelar
           </AlertDialogCancel>
-
-          {/* Ajustado: Botão de ação com tom destrutivo sólido */}
           <AlertDialogAction
             onClick={handleDelete}
             disabled={isLoading}
-            className="!bg-red-600 !text-white hover:!bg-red-700 rounded-xl shadow-sm border-0"
+            className="h-12 px-8 rounded-xl !bg-red-600 !text-white hover:!bg-red-700 shadow-lg shadow-red-200 transition-all border-0"
           >
             {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
-            Excluir Cliente
+            Excluir permanentemente
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
