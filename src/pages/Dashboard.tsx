@@ -12,6 +12,8 @@ import {
   Loader2,
   Calendar,
   CalendarDays,
+  Clock,
+  ArrowUpRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +42,6 @@ const statusLabels = {
   completed: "Concluída",
 };
 
-// Task stats for the total count across all tasks
 interface TaskStats {
   pending: number;
   in_progress: number;
@@ -71,7 +72,6 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      // Get all clients
       const clientsRes = await supabase
         .from("clients")
         .select("*")
@@ -81,7 +81,6 @@ export default function Dashboard() {
       if (clientsRes.error) throw clientsRes.error;
       setClients(clientsRes.data || []);
 
-      // Get recent tasks
       const tasksRes = await supabase
         .from("tasks")
         .select("*, clients(name)")
@@ -91,7 +90,6 @@ export default function Dashboard() {
       if (tasksRes.error) throw tasksRes.error;
       setRecentTasks((tasksRes.data as any) || []);
 
-      // Task stats (all tasks)
       const allTasksRes = await supabase.from("tasks").select("status, frequency");
       if (allTasksRes.error) throw allTasksRes.error;
 
@@ -105,7 +103,6 @@ export default function Dashboard() {
       };
       setTaskStats(overall);
 
-      // Daily/Weekly stats
       const dailyTasks = allTasks.filter((t: any) => (t.frequency || "weekly") === "daily");
       const weeklyTasks = allTasks.filter((t: any) => (t.frequency || "weekly") === "weekly");
 
@@ -135,10 +132,38 @@ export default function Dashboard() {
   const clientLimit = formatClientLimit((profile as any)?.clients_limit);
 
   const stats = [
-    { label: "Clientes Ativos", value: clients.length, icon: Users, change: "Ativos no momento" },
-    { label: "Tarefas Pendentes", value: taskStats.pending, icon: CheckSquare, change: "Precisam de atenção" },
-    { label: "Visualizações (mock)", value: "—", icon: Eye, change: "Placeholder" },
-    { label: "Chamadas (mock)", value: "—", icon: Phone, change: "Placeholder" },
+    {
+      label: "Clientes Ativos",
+      value: clients.length,
+      icon: Users,
+      change: "Total na carteira",
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+    },
+    {
+      label: "Tarefas Pendentes",
+      value: taskStats.pending,
+      icon: CheckSquare,
+      change: "Aguardando ação",
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+    },
+    {
+      label: "Visualizações",
+      value: "—",
+      icon: Eye,
+      change: "Métrica Google",
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
+    },
+    {
+      label: "Chamadas",
+      value: "—",
+      icon: Phone,
+      change: "Métrica Google",
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+    },
   ];
 
   if (isLoading) {
@@ -156,22 +181,22 @@ export default function Dashboard() {
 
   return (
     <AppLayout
-      title={`Olá, ${profile?.full_name || "Usuário"}! 👋`}
-      subtitle={`Semana de ${new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} - Visão geral`}
+      title={`Olá, ${profile?.full_name?.split(" ")[0] || "Usuário"}! 👋`}
+      subtitle={`Visão geral • ${new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}`}
       headerActions={
         <Button
           onClick={() => navigate("/onboarding")}
-          className="h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+          className="h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-100 font-bold px-6"
         >
           <Plus className="h-4 w-4 mr-2" />
           Novo Cliente
         </Button>
       }
     >
-      <div className="space-y-6">
-        {/* Stats Grid */}
+      <div className="space-y-8">
+        {/* Stats Grid - Visualmente Melhorado */}
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
@@ -179,113 +204,159 @@ export default function Dashboard() {
           {stats.map((stat, index) => (
             <motion.div
               key={index}
-              className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-blue-200 transition-colors"
+              className="relative p-6 rounded-[20px] bg-white border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:border-blue-100 transition-all duration-300 group"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                  <stat.icon className="h-5 w-5 text-blue-600" />
+              <div className="flex justify-between items-start mb-4">
+                <div
+                  className={`h-12 w-12 rounded-2xl ${stat.bg} flex items-center justify-center transition-transform group-hover:scale-110 duration-300`}
+                >
+                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
                 </div>
-                <TrendingUp className="h-4 w-4 text-emerald-600" />
+                {index < 2 && (
+                  <span className="flex items-center text-[10px] font-bold bg-slate-50 text-slate-500 px-2 py-1 rounded-full">
+                    <TrendingUp className="h-3 w-3 mr-1 text-emerald-500" /> +0%
+                  </span>
+                )}
               </div>
-              <div className="text-2xl font-bold mb-1">{stat.value}</div>
-              <div className="text-sm text-slate-500">{stat.label}</div>
-              <div className="text-xs text-emerald-600 mt-2">{stat.change}</div>
+              <div className="space-y-1">
+                <div className="text-3xl font-black text-slate-900 tracking-tight">{stat.value}</div>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium text-slate-500">{stat.label}</div>
+                </div>
+                <div className="text-xs text-slate-400 font-medium pt-2 border-t border-slate-50 mt-3">
+                  {stat.change}
+                </div>
+              </div>
             </motion.div>
           ))}
         </motion.div>
 
-        {/* Progress Bars */}
+        {/* Progress Bars Section */}
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          className="grid grid-cols-1 md:grid-cols-2 gap-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.15 }}
         >
-          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Calendar className="h-5 w-5 text-blue-600" />
-              <h3 className="font-semibold">Tarefas de Hoje</h3>
+          <div className="rounded-[24px] bg-white border border-slate-100 shadow-sm p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            <div className="flex items-center justify-between mb-6 relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900">Metas Diárias</h3>
+                  <p className="text-xs text-slate-500">Progresso de hoje</p>
+                </div>
+              </div>
             </div>
             <ProgressBar
               pending={dayStats.daily.pending}
               inProgress={dayStats.daily.in_progress}
               completed={dayStats.daily.completed}
               total={dayStats.daily.total}
-              label="Diárias"
+              label="Tarefas"
             />
           </div>
-          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <CalendarDays className="h-5 w-5 text-blue-600" />
-              <h3 className="font-semibold">Tarefas da Semana</h3>
+
+          <div className="rounded-[24px] bg-white border border-slate-100 shadow-sm p-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            <div className="flex items-center justify-between mb-6 relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                  <CalendarDays className="h-5 w-5 text-indigo-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900">Metas Semanais</h3>
+                  <p className="text-xs text-slate-500">Visão geral da semana</p>
+                </div>
+              </div>
             </div>
             <ProgressBar
               pending={dayStats.weekly.pending}
               inProgress={dayStats.weekly.in_progress}
               completed={dayStats.weekly.completed}
               total={dayStats.weekly.total}
-              label="Semanais"
+              label="Tarefas"
             />
           </div>
         </motion.div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Clients List */}
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Clients List - Redesenhado */}
           <motion.div
-            className="lg:col-span-2 rounded-2xl bg-white border border-slate-200 shadow-sm"
+            className="lg:col-span-2 rounded-[24px] bg-white border border-slate-100 shadow-sm overflow-hidden"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.2 }}
           >
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="font-semibold text-lg">Clientes</h2>
-              <Link to="/clients" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
-                Ver todos <ChevronRight className="h-4 w-4" />
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-slate-400" />
+                <h2 className="font-bold text-lg text-slate-900">Meus Clientes</h2>
+              </div>
+              <Link to="/clients">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-medium"
+                >
+                  Ver todos <ArrowUpRight className="ml-1 h-4 w-4" />
+                </Button>
               </Link>
             </div>
+
             <div className="divide-y divide-slate-100">
               {clients.length === 0 ? (
-                <div className="p-8 text-center">
-                  <Users className="h-12 w-12 text-slate-500 mx-auto mb-4" />
-                  <h3 className="font-medium mb-2">Nenhum cliente ainda</h3>
-                  <p className="text-sm text-slate-500 mb-4">Adicione seu primeiro cliente para começar</p>
+                <div className="p-12 text-center">
+                  <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Users className="h-8 w-8 text-slate-300" />
+                  </div>
+                  <h3 className="font-bold text-slate-900 mb-1">Comece sua jornada</h3>
+                  <p className="text-sm text-slate-500 mb-6 max-w-xs mx-auto">
+                    Adicione seu primeiro cliente para desbloquear o poder do Gestão Nexus.
+                  </p>
                   <Button
                     onClick={() => navigate("/onboarding")}
-                    className="h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+                    className="h-10 rounded-xl bg-blue-600 text-white font-bold shadow-lg shadow-blue-100"
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Adicionar Cliente
+                    <Plus className="h-4 w-4 mr-2" /> Cadastrar Cliente
                   </Button>
                 </div>
               ) : (
                 clients.slice(0, 5).map((client) => (
-                  <div key={client.id} className="p-4 hover:bg-slate-50 transition-colors">
+                  <div key={client.id} className="p-4 hover:bg-slate-50 transition-all cursor-pointer group">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center font-bold text-lg overflow-hidden">
+                        <div className="h-12 w-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-sm group-hover:border-blue-200 group-hover:shadow-md transition-all overflow-hidden">
                           <ClientAvatar avatarUrl={(client as any).avatar_url} clientName={client.name} />
                         </div>
                         <div>
-                          <h3 className="font-medium">{client.name}</h3>
-                          <p className="text-sm text-slate-500 capitalize">
-                            {getBusinessTypeLabel(client.business_type)}
-                          </p>
+                          <h3 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                            {client.name}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                              {getBusinessTypeLabel(client.business_type)}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-6">
-                        <div className="text-center">
-                          <div className="text-sm font-medium">{client.address ? "✓" : "—"}</div>
-                          <div className="text-xs text-slate-500">Endereço</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-sm font-medium flex items-center gap-1">
-                            {client.google_business_id ? "✓" : "—"}
+
+                      <div className="flex items-center gap-2">
+                        {client.google_business_id && (
+                          <div
+                            className="h-8 w-8 rounded-full bg-blue-50 flex items-center justify-center"
+                            title="Google Conectado"
+                          >
+                            <span className="text-blue-600 font-bold text-xs">G</span>
                           </div>
-                          <div className="text-xs text-slate-500">Google</div>
-                        </div>
+                        )}
+                        <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-blue-400 transition-colors" />
                       </div>
                     </div>
                   </div>
@@ -294,38 +365,64 @@ export default function Dashboard() {
             </div>
           </motion.div>
 
-          {/* Recent Tasks */}
+          {/* Recent Tasks - Redesenhado */}
           <motion.div
-            className="rounded-2xl bg-white border border-slate-200 shadow-sm"
+            className="rounded-[24px] bg-white border border-slate-100 shadow-sm overflow-hidden flex flex-col"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.3 }}
           >
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="font-semibold text-lg">Tarefas Recentes</h2>
-              <Link to="/tasks" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
-                Ver todas <ChevronRight className="h-4 w-4" />
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-slate-400" />
+                <h2 className="font-bold text-lg text-slate-900">Atividades</h2>
+              </div>
+              <Link
+                to="/tasks"
+                className="text-xs font-bold text-slate-500 hover:text-blue-600 uppercase tracking-wide"
+              >
+                Ver Fila
               </Link>
             </div>
-            <div className="p-4 space-y-3">
+
+            <div className="p-4 space-y-3 flex-1 overflow-y-auto max-h-[400px]">
               {recentTasks.length === 0 ? (
-                <div className="text-center py-8">
-                  <CheckSquare className="h-10 w-10 text-slate-500 mx-auto mb-3" />
-                  <p className="text-sm text-slate-500">Nenhuma tarefa recente</p>
+                <div className="text-center py-12">
+                  <CheckSquare className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                  <p className="text-sm text-slate-500 font-medium">Tudo limpo por aqui!</p>
                 </div>
               ) : (
                 recentTasks.map((task) => (
                   <div
                     key={task.id}
-                    className="p-3 rounded-2xl border border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-colors"
+                    className="group p-4 rounded-2xl border border-slate-100 bg-white hover:border-blue-100 hover:shadow-md transition-all relative overflow-hidden"
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    {/* Status Indicator Line */}
+                    <div
+                      className={`absolute left-0 top-0 bottom-0 w-1 ${
+                        task.status === "completed"
+                          ? "bg-emerald-500"
+                          : task.status === "in_progress"
+                            ? "bg-blue-500"
+                            : "bg-amber-500"
+                      }`}
+                    />
+
+                    <div className="flex justify-between items-start pl-3">
                       <div>
-                        <div className="font-medium text-sm">{task.title}</div>
-                        <div className="text-xs text-slate-500 mt-1">{task.clients?.name || "Cliente"}</div>
+                        <div className="font-bold text-sm text-slate-800 line-clamp-1">{task.title}</div>
+                        <div className="text-xs text-slate-500 mt-1 font-medium flex items-center gap-1">
+                          <Users className="h-3 w-3" /> {task.clients?.name || "Cliente"}
+                        </div>
                       </div>
                       <Badge
-                        className={`border rounded-full ${statusColors[task.status as keyof typeof statusColors]}`}
+                        className={`text-[10px] px-2 h-5 border-0 ${
+                          task.status === "completed"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : task.status === "in_progress"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-amber-100 text-amber-700"
+                        }`}
                       >
                         {statusLabels[task.status as keyof typeof statusLabels]}
                       </Badge>
@@ -334,25 +431,21 @@ export default function Dashboard() {
                 ))
               )}
             </div>
+
+            {/* Mini Plan Card at bottom of sidebar */}
+            <div className="mt-auto p-4 bg-slate-50 border-t border-slate-100 m-4 rounded-xl">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Seu Plano</span>
+                <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded text-center min-w-[60px]">
+                  {planLabel}
+                </span>
+              </div>
+              <div className="text-xs text-slate-600 font-medium">
+                Você pode gerenciar até <strong className="text-slate-900">{clientLimit}</strong>
+              </div>
+            </div>
           </motion.div>
         </div>
-
-        {/* Plan Card */}
-        <motion.div
-          className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.35 }}
-        >
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h3 className="font-semibold text-lg">Seu plano</h3>
-              <p className="text-sm text-slate-500">
-                {planLabel} • Limite: {clientLimit}
-              </p>
-            </div>
-          </div>
-        </motion.div>
       </div>
     </AppLayout>
   );
