@@ -33,8 +33,8 @@ export function ClientTaskProgress({
       
       {/* Ajustado: Fundo slate-100 (cinza claro) em vez de secondary */}
       <div className="h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
-        <div 
-          {/* Ajustado: Substituído gradient-neon por um azul sólido e profissional */}
+      {/* Ajustado: Substituído gradient-neon por um azul sólido e profissional */}
+      <div 
           className="h-full bg-blue-600 transition-all duration-500 ease-out"
           style={{ width: `${progress}%` }}
         />
