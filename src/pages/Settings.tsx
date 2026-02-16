@@ -39,6 +39,11 @@ export default function Settings() {
     enable_sounds: true,
   });
 
+  // ÚNICA ALTERAÇÃO: Estilo do balão azul aplicado globalmente nesta página
+  const toastStyle = {
+    className: "!bg-blue-600 !text-white border-none shadow-2xl rounded-2xl p-4 font-bold",
+  };
+
   const fetchSettings = async () => {
     try {
       setIsLoading(true);
@@ -68,7 +73,7 @@ export default function Settings() {
       }
     } catch (e) {
       console.error(e);
-      toast.error("Erro ao carregar configurações");
+      toast.error("Erro ao carregar configurações", toastStyle);
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +90,7 @@ export default function Settings() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Faça login para enviar o logo");
+        toast.error("Faça login para enviar o logo", toastStyle);
         return;
       }
       const ext = file.name.split(".").pop() || "png";
@@ -94,10 +99,10 @@ export default function Settings() {
       if (uploadError) throw uploadError;
       const { data: publicUrl } = supabase.storage.from("brand-logos").getPublicUrl(path);
       setSettings((prev) => ({ ...prev, logo_url: publicUrl.publicUrl }));
-      toast.success("Logo enviado com sucesso!");
+      toast.success("Logo enviado com sucesso!", toastStyle);
     } catch (e) {
       console.error(e);
-      toast.error("Erro ao enviar logo");
+      toast.error("Erro ao enviar logo", toastStyle);
     } finally {
       setIsUploading(false);
     }
@@ -110,7 +115,7 @@ export default function Settings() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Faça login para salvar");
+        toast.error("Faça login para salvar", toastStyle);
         return;
       }
       const payload: any = {
@@ -138,11 +143,11 @@ export default function Settings() {
         const { error } = await supabase.from("brand_settings").insert(payload);
         if (error) throw error;
       }
-      toast.success("Configurações salvas!");
+      toast.success("Configurações salvas!", toastStyle);
       fetchSettings();
     } catch (e) {
       console.error(e);
-      toast.error("Erro ao salvar configurações");
+      toast.error("Erro ao salvar configurações", toastStyle);
     } finally {
       setIsSaving(false);
     }
@@ -169,9 +174,7 @@ export default function Settings() {
 
   return (
     <AppLayout title="Configurações" subtitle="Personalize sua identidade e preferências">
-      {/* Layout Grid Lado a Lado */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
-        {/* Coluna da Esquerda: Formulários (3/5) */}
         <div className="lg:col-span-3 space-y-6">
           <motion.div
             className="rounded-2xl !bg-white border border-slate-200 p-6 shadow-sm"
@@ -194,7 +197,6 @@ export default function Settings() {
             </div>
 
             <div className="space-y-6">
-              {/* Logo Upload Area */}
               <div className="space-y-2">
                 <Label className="text-slate-700">Logo da Empresa</Label>
                 <div className="flex items-center gap-4 p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/50">
@@ -270,7 +272,6 @@ export default function Settings() {
             </div>
           </motion.div>
 
-          {/* Preferências */}
           <motion.div
             className="rounded-2xl !bg-white border border-slate-200 p-6 shadow-sm"
             initial={{ opacity: 0, x: -20 }}
@@ -291,7 +292,6 @@ export default function Settings() {
           </motion.div>
         </div>
 
-        {/* Coluna da Direita: Preview (2/5) */}
         <div className="lg:col-span-2 sticky top-6">
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
             <div className="flex items-center gap-2 text-slate-900 mb-2">
@@ -300,7 +300,6 @@ export default function Settings() {
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-2xl bg-white scale-[0.95] origin-top">
-              {/* PDF Header */}
               <div className="p-4" style={{ backgroundColor: secondaryColor }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -320,7 +319,6 @@ export default function Settings() {
                 </div>
               </div>
 
-              {/* PDF Body */}
               <div className="p-5 space-y-4">
                 <div className="h-4 w-1/3 bg-slate-100 rounded" />
                 <div className="grid grid-cols-3 gap-2">
@@ -348,7 +346,6 @@ export default function Settings() {
                 </div>
               </div>
 
-              {/* PDF Footer */}
               <div
                 className="p-3 text-center text-[10px]"
                 style={{ backgroundColor: secondaryColor, color: "rgba(255,255,255,0.7)" }}
