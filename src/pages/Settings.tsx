@@ -14,13 +14,13 @@ import { supabase } from "@/integrations/supabase/client";
 type BrandSettings = {
   id?: string;
   user_id?: string;
-  business_name?: string | null;
-  support_whatsapp?: string | null;
-  website?: string | null;
+  company_name?: string | null;
   primary_color?: string | null;
+  secondary_color?: string | null;
+  accent_color?: string | null;
   logo_url?: string | null;
-  report_footer_text?: string | null;
-  enable_sounds?: boolean | null;
+  report_footer?: string | null;
+  enable_sounds?: boolean;
   updated_at?: string | null;
 };
 
@@ -30,12 +30,10 @@ export default function Settings() {
   const [isUploading, setIsUploading] = useState(false);
 
   const [settings, setSettings] = useState<BrandSettings>({
-    business_name: "",
-    support_whatsapp: "",
-    website: "",
+    company_name: "",
     primary_color: "#2563EB",
     logo_url: "",
-    report_footer_text: "Relatório gerado por Gestão Nexus",
+    report_footer: "Relatório gerado por Gestão Nexus",
     enable_sounds: true,
   });
 
@@ -56,13 +54,13 @@ export default function Settings() {
         setSettings({
           id: data.id,
           user_id: data.user_id,
-          business_name: data.business_name ?? "",
-          support_whatsapp: data.support_whatsapp ?? "",
-          website: data.website ?? "",
+          company_name: data.company_name ?? "",
           primary_color: data.primary_color ?? "#2563EB",
+          secondary_color: data.secondary_color ?? "",
+          accent_color: data.accent_color ?? "",
           logo_url: data.logo_url ?? "",
-          report_footer_text: data.report_footer_text ?? "Relatório gerado por Gestão Nexus",
-          enable_sounds: data.enable_sounds ?? true,
+          report_footer: data.report_footer ?? "Relatório gerado por Gestão Nexus",
+          enable_sounds: true,
           updated_at: data.updated_at,
         });
       }
@@ -115,13 +113,12 @@ export default function Settings() {
       }
       const payload: any = {
         user_id: user.id,
-        business_name: settings.business_name || null,
-        support_whatsapp: settings.support_whatsapp || null,
-        website: settings.website || null,
+        company_name: settings.company_name || null,
         primary_color: settings.primary_color || "#2563EB",
+        secondary_color: settings.secondary_color || null,
+        accent_color: settings.accent_color || null,
         logo_url: settings.logo_url || null,
-        report_footer_text: settings.report_footer_text || null,
-        enable_sounds: !!settings.enable_sounds,
+        report_footer: settings.report_footer || null,
         updated_at: new Date().toISOString(),
       };
 
@@ -148,10 +145,10 @@ export default function Settings() {
     }
   };
 
-  const companyName = (settings.business_name || "Gestão Nexus").toString().trim() || "Gestão Nexus";
+  const companyName = (settings.company_name || "Gestão Nexus").toString().trim() || "Gestão Nexus";
   const primaryColor = (settings.primary_color || "#2563EB").toString();
-  const secondaryColor = "#1D4ED8";
-  const footerText = (settings.report_footer_text || "Relatório gerado por Gestão Nexus").toString();
+  const secondaryColor = settings.secondary_color || "#1D4ED8";
+  const footerText = (settings.report_footer || "Relatório gerado por Gestão Nexus").toString();
   const initialLetter = companyName.charAt(0).toUpperCase() || "G";
 
   if (isLoading) {
@@ -235,8 +232,8 @@ export default function Settings() {
                 <div className="space-y-2">
                   <Label className="text-slate-700 font-medium">Nome no Relatório</Label>
                   <Input
-                    value={settings.business_name || ""}
-                    onChange={(e) => setSettings((p) => ({ ...p, business_name: e.target.value }))}
+                    value={settings.company_name || ""}
+                    onChange={(e) => setSettings((p) => ({ ...p, company_name: e.target.value }))}
                     className="!bg-white !text-slate-900 border-slate-200"
                   />
                 </div>
@@ -262,8 +259,8 @@ export default function Settings() {
               <div className="space-y-2">
                 <Label className="text-slate-700 font-medium">Texto do Rodapé</Label>
                 <Textarea
-                  value={settings.report_footer_text || ""}
-                  onChange={(e) => setSettings((p) => ({ ...p, report_footer_text: e.target.value }))}
+                  value={settings.report_footer || ""}
+                  onChange={(e) => setSettings((p) => ({ ...p, report_footer: e.target.value }))}
                   className="min-h-[80px] !bg-white !text-slate-900 border-slate-200"
                 />
               </div>
