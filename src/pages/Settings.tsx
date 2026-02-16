@@ -1,41 +1,33 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Save, Upload, Loader2, Image as ImageIcon, CheckCircle2 } from "lucide-react";
+import { Save, Loader2, CheckCircle2 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 type BrandSettings = {
   id?: string;
   user_id?: string;
-  business_name?: string | null;
-  support_whatsapp?: string | null;
-  website?: string | null;
+  company_name?: string | null;
   primary_color?: string | null;
   logo_url?: string | null;
-  report_footer_text?: string | null;
-  enable_sounds?: boolean | null;
+  report_footer?: string | null;
   updated_at?: string | null;
 };
 
 export default function Settings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
 
   const [settings, setSettings] = useState<BrandSettings>({
-    business_name: "",
-    support_whatsapp: "",
-    website: "",
+    company_name: "",
     primary_color: "#2563EB",
     logo_url: "",
-    report_footer_text: "Relatório gerado por Gestão Nexus",
-    enable_sounds: true,
+    report_footer: "Relatório gerado por Gestão Nexus",
   });
 
   const toastStyle = {
@@ -57,13 +49,10 @@ export default function Settings() {
         setSettings({
           id: data.id,
           user_id: data.user_id,
-          business_name: data.business_name ?? "",
-          support_whatsapp: data.support_whatsapp ?? "",
-          website: data.website ?? "",
+          company_name: data.company_name ?? "",
           primary_color: data.primary_color ?? "#2563EB",
           logo_url: data.logo_url ?? "",
-          report_footer_text: data.report_footer_text ?? "Relatório gerado por Gestão Nexus",
-          enable_sounds: data.enable_sounds ?? true,
+          report_footer: data.report_footer ?? "Relatório gerado por Gestão Nexus",
         });
       }
     } catch (e) {
@@ -87,13 +76,10 @@ export default function Settings() {
 
       const payload = {
         user_id: user.id,
-        business_name: settings.business_name || null,
-        support_whatsapp: settings.support_whatsapp || null,
-        website: settings.website || null,
+        company_name: settings.company_name || null,
         primary_color: settings.primary_color || "#2563EB",
         logo_url: settings.logo_url || null,
-        report_footer_text: settings.report_footer_text || null,
-        enable_sounds: !!settings.enable_sounds,
+        report_footer: settings.report_footer || null,
         updated_at: new Date().toISOString(),
       };
 
@@ -116,26 +102,25 @@ export default function Settings() {
     }
   };
 
-  const companyName = settings.business_name || "Sua Empresa";
+  const companyName = settings.company_name || "Sua Empresa";
   const primaryColor = settings.primary_color || "#2563EB";
-  const footerText = settings.report_footer_text || "Relatório gerado por Gestão Nexus";
+  const footerText = settings.report_footer || "Relatório gerado por Gestão Nexus";
 
   if (isLoading) return <AppLayout title="Configurações">Carregando...</AppLayout>;
 
   return (
     <AppLayout title="Configurações" subtitle="Gerencie sua marca e preferências">
-      {/* Layout Lado a Lado (Grid) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         {/* LADO ESQUERDO: Formulário */}
         <div className="space-y-6">
           <motion.div
-            className="rounded-3xl !bg-white border border-slate-200 p-8 shadow-sm"
+            className="rounded-3xl bg-card border border-border p-8 shadow-sm"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
           >
             <div className="flex items-center justify-between mb-8">
-              <h2 className="text-xl font-bold text-slate-900">Identidade visual</h2>
-              <Button onClick={handleSave} disabled={isSaving} className="!bg-blue-600 rounded-xl">
+              <h2 className="text-xl font-bold text-foreground">Identidade visual</h2>
+              <Button onClick={handleSave} disabled={isSaving} className="bg-primary rounded-xl">
                 {isSaving ? <Loader2 className="animate-spin" /> : <Save className="mr-2 h-4" />} Salvar
               </Button>
             </div>
@@ -145,9 +130,9 @@ export default function Settings() {
                 <div className="space-y-2">
                   <Label>Nome da Empresa</Label>
                   <Input
-                    value={settings.business_name || ""}
-                    onChange={(e) => setSettings({ ...settings, business_name: e.target.value })}
-                    className="rounded-xl border-slate-200"
+                    value={settings.company_name || ""}
+                    onChange={(e) => setSettings({ ...settings, company_name: e.target.value })}
+                    className="rounded-xl border-border"
                   />
                 </div>
                 <div className="space-y-2">
@@ -163,26 +148,11 @@ export default function Settings() {
               <div className="space-y-2">
                 <Label>Texto do Rodapé</Label>
                 <Textarea
-                  value={settings.report_footer_text || ""}
-                  onChange={(e) => setSettings({ ...settings, report_footer_text: e.target.value })}
-                  className="rounded-xl border-slate-200 min-h-[100px]"
+                  value={settings.report_footer || ""}
+                  onChange={(e) => setSettings({ ...settings, report_footer: e.target.value })}
+                  className="rounded-xl border-border min-h-[100px]"
                 />
               </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            className="rounded-3xl !bg-white border border-slate-200 p-8 shadow-sm"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <h2 className="text-lg font-bold mb-4">Preferências</h2>
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-              <span className="font-medium">Sons de Feedback</span>
-              <Switch
-                checked={!!settings.enable_sounds}
-                onCheckedChange={(v) => setSettings({ ...settings, enable_sounds: v })}
-              />
             </div>
           </motion.div>
         </div>
@@ -190,7 +160,7 @@ export default function Settings() {
         {/* LADO DIREITO: Prévia do PDF */}
         <div className="sticky top-24">
           <motion.div
-            className="rounded-[32px] overflow-hidden border border-slate-200 shadow-2xl bg-white"
+            className="rounded-[32px] overflow-hidden border border-border shadow-2xl bg-card"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
           >
@@ -208,7 +178,7 @@ export default function Settings() {
 
             <div className="p-8 space-y-8 min-h-[400px]">
               <h2
-                className="text-2xl font-black text-slate-900 border-b-4 inline-block"
+                className="text-2xl font-black text-foreground border-b-4 inline-block"
                 style={{ borderBottomColor: primaryColor }}
               >
                 Pizzaria Roma
@@ -222,28 +192,28 @@ export default function Settings() {
                 ].map((k) => (
                   <div
                     key={k.l}
-                    className="p-4 rounded-2xl text-center border border-slate-100"
+                    className="p-4 rounded-2xl text-center border border-border"
                     style={{ backgroundColor: `${primaryColor}10` }}
                   >
                     <div className="text-2xl font-black mb-1" style={{ color: primaryColor }}>
                       {k.v}
                     </div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{k.l}</div>
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{k.l}</div>
                   </div>
                 ))}
               </div>
 
               <div className="space-y-3">
-                <div className="text-sm font-bold text-slate-900">Ações Concluídas</div>
+                <div className="text-sm font-bold text-foreground">Ações Concluídas</div>
                 {["Postar 3 fotos", "Responder reviews"].map((t) => (
-                  <div key={t} className="flex items-center gap-2 text-sm text-slate-600">
+                  <div key={t} className="flex items-center gap-2 text-sm text-muted-foreground">
                     <CheckCircle2 className="h-4 w-4" style={{ color: primaryColor }} /> {t}
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 text-center text-[10px] font-bold text-slate-400 border-t border-slate-100 uppercase tracking-widest">
+            <div className="p-4 bg-muted text-center text-[10px] font-bold text-muted-foreground border-t border-border uppercase tracking-widest">
               {footerText}
             </div>
           </motion.div>
