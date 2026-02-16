@@ -43,7 +43,6 @@ export default function Login() {
         errorMessage = "Confirme seu email antes de fazer login.";
       }
 
-      // LINHA 53 AJUSTADA: Removido 'variant: destructive' para herdar o fundo azul do Toaster global
       toast({
         title: "Erro no login",
         description: errorMessage,
@@ -130,18 +129,12 @@ export default function Login() {
               </div>
             </div>
 
-            <Button
-              type="submit"
-              className="w-full h-12 rounded-xl relative overflow-hidden group
-              !bg-gradient-to-r !from-blue-600 !to-indigo-600 !text-white hover:opacity-95
-              shadow-lg hover:shadow-xl transition-all"
-              disabled={isLoading}
-            >
-              <span className="relative z-10 flex items-center justify-center gap-2 font-bold">
+            {/* BOTÃO AJUSTADO: Agora usa a variante 'default' (azul Nexus) configurada globalmente */}
+            <Button type="submit" variant="default" className="w-full h-12" disabled={isLoading}>
+              <span className="flex items-center justify-center gap-2 font-bold">
                 {isLoading ? "Entrando..." : "Entrar"}
-                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="h-5 w-5" />
               </span>
-              <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.35),transparent_55%)]" />
             </Button>
           </form>
 
@@ -152,53 +145,25 @@ export default function Login() {
                 Criar conta grátis
               </Link>
             </p>
-            <Link
-              to="/"
-              className="inline-block text-sm text-slate-500 hover:text-slate-800 transition-colors font-medium"
-            >
-              ← Voltar para tela inicial
-            </Link>
           </div>
         </motion.div>
       </div>
 
       {/* Right side - Decorative */}
-      <div className="hidden lg:flex flex-1 items-center justify-center p-8 relative overflow-hidden border-l border-slate-100">
-        <div className="absolute inset-0 bg-gradient-to-b from-white via-[#f6f8fc] to-[#f6f8fc]" />
-        <div className="absolute top-24 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-gradient-to-r from-blue-500/20 via-indigo-500/10 to-transparent rounded-full blur-[120px]" />
-        <div className="absolute bottom-10 left-10 w-72 h-72 bg-blue-600/10 rounded-full blur-3xl" />
-
+      <div className="hidden lg:flex flex-1 items-center justify-center p-8 relative overflow-hidden border-l border-slate-100 bg-[#f6f8fc]">
+        <div className="absolute top-24 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-blue-500/10 rounded-full blur-[120px]" />
         <motion.div
           className="relative text-center max-w-md"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
         >
-          <motion.div
-            className="h-24 w-24 mx-auto mb-8 rounded-3xl bg-white border border-slate-200 shadow-[0_10px_40px_rgba(0,0,0,0.06)] flex items-center justify-center"
-            whileHover={{ y: -4, scale: 1.02 }}
-            transition={{ type: "spring", stiffness: 260, damping: 22 }}
-          >
-            <div className="h-14 w-14 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center">
-              <svg
-                className="h-9 w-9 text-white"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                <polyline points="22 4 12 14.01 9 11.01" />
-              </svg>
+          <div className="h-20 w-20 mx-auto mb-8 rounded-3xl bg-white border border-slate-200 shadow-sm flex items-center justify-center">
+            <div className="h-12 w-12 rounded-2xl bg-blue-600 flex items-center justify-center">
+              <ArrowRight className="h-6 w-6 text-white" />
             </div>
-          </motion.div>
-
+          </div>
           <h2 className="text-2xl font-bold mb-4 text-slate-900">Gerencie tudo em um só lugar</h2>
-          <p className="text-slate-600">
-            Tarefas, métricas e relatórios para todos os seus clientes com a precisão que seu negócio merece.
-          </p>
+          <p className="text-slate-600">A produtividade que seu negócio merece com a precisão do Gestão Nexus.</p>
         </motion.div>
       </div>
     </div>
