@@ -23,6 +23,11 @@ export function useReports() {
   const [reports, setReports] = useState<Report[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Estilo padrão para os balões de notificação do Gestão Nexus
+  const toastStyle = {
+    className: "!bg-blue-600 !text-white border-none shadow-2xl rounded-2xl p-4 font-bold",
+  };
+
   const fetchReports = useCallback(async () => {
     if (!user) return;
 
@@ -30,10 +35,12 @@ export function useReports() {
       setIsLoading(true);
       const { data, error } = await supabase
         .from("reports")
-        .select(`
+        .select(
+          `
           *,
           client:clients(name)
-        `)
+        `,
+        )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -42,7 +49,7 @@ export function useReports() {
       setReports(data || []);
     } catch (error) {
       console.error("Error fetching reports:", error);
-      toast.error("Erro ao carregar relatórios");
+      toast.error("Erro ao carregar relatórios", toastStyle);
     } finally {
       setIsLoading(false);
     }
@@ -74,41 +81,37 @@ export function useReports() {
           metrics: reportData.metrics,
           file_url: reportData.fileUrl || null,
         })
-        .select(`
+        .select(
+          `
           *,
           client:clients(name)
-        `)
+        `,
+        )
         .single();
 
       if (error) throw error;
 
-      // Immediately add the new report to the list at the top
       if (data) {
         setReports((prev) => [data as Report, ...prev]);
+        toast.success("Relatório salvo com sucesso!", toastStyle);
       }
-      
+
       return data;
     } catch (error) {
       console.error("Error saving report:", error);
-      toast.error("Erro ao salvar relatório");
+      toast.error("Erro ao salvar relatório", toastStyle);
       return null;
     }
   };
 
   const updateReportFileUrl = async (reportId: string, fileUrl: string) => {
     try {
-      const { error } = await supabase
-        .from("reports")
-        .update({ file_url: fileUrl })
-        .eq("id", reportId);
+      const { error } = await supabase.from("reports").update({ file_url: fileUrl }).eq("id", reportId);
 
       if (error) throw error;
 
-      // Update local state
-      setReports((prev) =>
-        prev.map((r) => (r.id === reportId ? { ...r, file_url: fileUrl } : r))
-      );
-      
+      setReports((prev) => prev.map((r) => (r.id === reportId ? { ...r, file_url: fileUrl } : r)));
+
       return true;
     } catch (error) {
       console.error("Error updating report file URL:", error);
@@ -118,18 +121,17 @@ export function useReports() {
 
   const deleteReport = async (reportId: string) => {
     try {
-      const { error } = await supabase
-        .from("reports")
-        .delete()
-        .eq("id", reportId);
+      const { error } = await supabase.from("reports").delete().eq("id", reportId);
 
       if (error) throw error;
 
       setReports((prev) => prev.filter((r) => r.id !== reportId));
-      toast.success("Relatório excluído com sucesso");
+
+      // LINHA 129: Ajustada para o balão azul de alto contraste
+      toast.success("Relatório excluído com sucesso", toastStyle);
     } catch (error) {
       console.error("Error deleting report:", error);
-      toast.error("Erro ao excluir relatório");
+      toast.error("Erro ao excluir relatório", toastStyle);
     }
   };
 
