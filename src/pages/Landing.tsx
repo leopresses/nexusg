@@ -13,8 +13,10 @@ const features = [
   },
   {
     icon: BarChart3,
-    title: "Métricas do Google",
-    description: "Acompanhe visualizações, chamadas e rotas do Google Business em tempo real.",
+    title: "Google Place ID",
+    description: "Google Place ID
+Conecte o estabelecimento ao Google para sincronizar métricas, dados e presença digital automaticamente.
+",
   },
   {
     icon: FileText,
