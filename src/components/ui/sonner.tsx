@@ -1,28 +1,27 @@
-import { useTheme } from "next-themes";
-import { Toaster as Sonner, toast } from "sonner";
+"use client";
 
-type ToasterProps = React.ComponentProps<typeof Sonner>;
+import { Toaster as SonnerToaster } from "sonner";
 
-const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
-
+export function Toaster() {
   return (
-    <Sonner
-      theme={theme as ToasterProps["theme"]}
-      className="toaster group"
+    <SonnerToaster
+      position="top-right"
+      expand
+      richColors
       toastOptions={{
-        classNames: {
-          // Ajustado para fundo azul sólido, texto branco e bordas arredondadas premium
-          toast:
-            "group toast group-[.toaster]:!bg-blue-600 group-[.toaster]:!text-white group-[.toaster]:border-none group-[.toaster]:shadow-2xl group-[.toaster]:rounded-2xl group-[.toaster]:font-bold",
-          description: "group-[.toast]:!text-blue-50/90",
-          actionButton: "group-[.toast]:bg-white group-[.toast]:text-blue-600",
-          cancelButton: "group-[.toast]:bg-blue-700 group-[.toast]:text-white",
+        className: `
+          !bg-gradient-to-r
+          !from-blue-600
+          !to-blue-700
+          !text-white
+          !border-0
+          shadow-2xl
+        `,
+        style: {
+          borderRadius: "14px",
+          padding: "16px 18px",
         },
       }}
-      {...props}
     />
   );
-};
-
-export { Toaster, toast };
+}
