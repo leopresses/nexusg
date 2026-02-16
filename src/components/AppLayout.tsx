@@ -72,7 +72,8 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex">
+    // ✅ trava o layout na altura da tela e impede scroll do body
+    <div className="h-screen bg-slate-50 text-slate-900 flex overflow-hidden">
       {/* Mobile overlay */}
       {isMobile && sidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setSidebarOpen(false)} />
@@ -86,9 +87,9 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
               ? `fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out ${
                   sidebarOpen ? "translate-x-0" : "-translate-x-full"
                 }`
-              : "relative w-64"
+              : "relative w-64 flex-shrink-0"
           }
-          flex flex-col h-screen
+          flex flex-col h-full
           bg-gradient-to-b from-[#1E3A8A] via-[#1D4ED8] to-[#2563EB]
           text-white
         `}
@@ -110,6 +111,7 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
           )}
         </div>
 
+        {/* ✅ pode rolar só dentro do menu se passar do tamanho */}
         <nav className="flex-1 p-4 overflow-y-auto">
           <ul className="space-y-2">
             {navItems.map((item, index) => (
@@ -144,7 +146,8 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
+      {/* ✅ só o lado direito rola */}
+      <main className="flex-1 h-full overflow-y-auto min-w-0">
         {/* Header */}
         <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-lg border-b border-slate-200 px-4 md:px-6 py-4">
           <div className="flex items-center justify-between">
