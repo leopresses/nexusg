@@ -11,22 +11,23 @@ export function Toaster() {
           <Toast
             key={id}
             {...props}
-            // AJUSTE: Forçando fundo branco, texto escuro e bordas suaves globalmente
-            className="!bg-white !text-slate-900 border border-slate-200 shadow-xl rounded-2xl p-4"
+            // AJUSTE: Fundo azul sólido (!bg-blue-600) e texto branco para máximo contraste
+            className="!bg-blue-600 !text-white border-none shadow-2xl rounded-2xl p-5"
           >
             <div className="grid gap-1">
-              {title && <ToastTitle className="text-sm font-bold text-slate-900">{title}</ToastTitle>}
+              {title && <ToastTitle className="text-sm font-bold text-white">{title}</ToastTitle>}
               {description && (
-                <ToastDescription className="text-xs text-slate-600 font-medium">{description}</ToastDescription>
+                <ToastDescription className="text-xs text-blue-50/90 font-medium">{description}</ToastDescription>
               )}
             </div>
             {action}
-            {/* Ajustado: Botão de fechar com cor discreta */}
-            <ToastClose className="text-slate-400 hover:text-slate-900 transition-colors" />
+            {/* Ajustado: Botão de fechar branco para visibilidade no fundo azul */}
+            <ToastClose className="text-white/70 hover:text-white transition-colors" />
           </Toast>
         );
       })}
-      <ToastViewport className="fixed top-4 right-4 z-[100] flex flex-col gap-2 w-full max-w-[420px]" />
+      {/* Posicionamento do Viewport */}
+      <ToastViewport className="fixed top-4 right-4 z-[100] flex flex-col gap-3 w-full max-w-[380px]" />
     </ToastProvider>
   );
 }
