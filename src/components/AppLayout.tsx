@@ -72,7 +72,7 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
   };
 
   return (
-    <div className="h-screen bg-background flex overflow-hidden">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex">
       {/* Mobile overlay */}
       {isMobile && sidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setSidebarOpen(false)} />
@@ -83,19 +83,26 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
         className={`
           ${
             isMobile
-              ? `fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`
-              : "relative w-64 flex-shrink-0"
+              ? `fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out ${
+                  sidebarOpen ? "translate-x-0" : "-translate-x-full"
+                }`
+              : "relative w-64"
           }
-          bg-sidebar border-r border-sidebar-border flex flex-col h-full
+          flex flex-col h-screen
+          bg-gradient-to-b from-[#1E3A8A] via-[#1D4ED8] to-[#2563EB]
+          text-white
         `}
       >
-        <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
-          <Logo size="sm" showText={true} />
+        <div className="p-4 border-b border-white/15 flex items-center justify-between">
+          <div className="text-white">
+            <Logo size="sm" showText={true} />
+          </div>
+
           {isMobile && (
             <Button
               variant="ghost"
               size="icon"
-              className="text-sidebar-foreground"
+              className="text-white/90 hover:bg-white/10 hover:text-white rounded-xl"
               onClick={() => setSidebarOpen(false)}
             >
               <X className="h-5 w-5" />
@@ -110,10 +117,10 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
                 <Link
                   to={item.href}
                   onClick={handleNavClick}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
                     isActive(item.href)
-                      ? "bg-sidebar-accent text-sidebar-primary"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent"
+                      ? "bg-white/15 ring-1 ring-white/20 text-white"
+                      : "text-white/90 hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   <item.icon className="h-5 w-5 flex-shrink-0" />
@@ -124,10 +131,10 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-sidebar-border">
+        <div className="p-4 border-t border-white/15">
           <Button
             variant="ghost"
-            className="w-full justify-start gap-3 text-sidebar-foreground"
+            className="w-full justify-start gap-3 text-white/90 hover:bg-white/10 hover:text-white rounded-xl"
             onClick={handleSignOut}
           >
             <LogOut className="h-5 w-5" />
@@ -137,22 +144,29 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 h-full overflow-y-auto min-w-0">
+      <main className="flex-1 overflow-auto">
         {/* Header */}
-        <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border px-4 md:px-6 py-4">
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-lg border-b border-slate-200 px-4 md:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {/* Mobile menu toggle */}
               {isMobile && (
-                <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(true)}>
-                  <Menu className="h-5 w-5" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-xl hover:bg-slate-100"
+                  onClick={() => setSidebarOpen(true)}
+                >
+                  <Menu className="h-5 w-5 text-slate-700" />
                 </Button>
               )}
+
               <div>
-                <h1 className="text-xl md:text-2xl font-bold">{title}</h1>
-                {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+                <h1 className="text-xl md:text-2xl font-semibold text-slate-900">{title}</h1>
+                {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
               </div>
             </div>
+
             <div className="flex items-center gap-4">{headerActions}</div>
           </div>
         </header>
