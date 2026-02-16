@@ -43,10 +43,10 @@ export default function Login() {
         errorMessage = "Confirme seu email antes de fazer login.";
       }
 
+      // LINHA 53 AJUSTADA: Removido 'variant: destructive' para herdar o fundo azul do Toaster global
       toast({
         title: "Erro no login",
         description: errorMessage,
-        variant: "destructive",
       });
     } else {
       toast({
@@ -70,7 +70,6 @@ export default function Login() {
           transition={{ duration: 0.5 }}
         >
           <Link to="/" className="inline-block mb-8">
-            {/* garante logo sempre legível no tema claro */}
             <div className="text-slate-900 [&_*]:!text-slate-900">
               <Logo size="md" />
             </div>
@@ -94,7 +93,7 @@ export default function Login() {
                   placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-12 bg-white border-slate-200 rounded-xl shadow-sm focus-visible:ring-blue-600"
+                  className="pl-10 h-12 bg-white border-slate-200 rounded-xl shadow-sm focus-visible:ring-blue-600 !text-slate-900"
                   required
                 />
               </div>
@@ -118,7 +117,7 @@ export default function Login() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 h-12 bg-white border-slate-200 rounded-xl shadow-sm focus-visible:ring-blue-600"
+                  className="pl-10 pr-10 h-12 bg-white border-slate-200 rounded-xl shadow-sm focus-visible:ring-blue-600 !text-slate-900"
                   required
                 />
                 <button
@@ -138,7 +137,7 @@ export default function Login() {
               shadow-lg hover:shadow-xl transition-all"
               disabled={isLoading}
             >
-              <span className="relative z-10 flex items-center justify-center gap-2">
+              <span className="relative z-10 flex items-center justify-center gap-2 font-bold">
                 {isLoading ? "Entrando..." : "Entrar"}
                 <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
               </span>
@@ -149,11 +148,14 @@ export default function Login() {
           <div className="mt-8 space-y-4 text-center">
             <p className="text-slate-600">
               Não tem uma conta?{" "}
-              <Link to="/register" className="text-blue-600 hover:underline font-medium">
+              <Link to="/register" className="text-blue-600 hover:underline font-bold">
                 Criar conta grátis
               </Link>
             </p>
-            <Link to="/" className="inline-block text-sm text-slate-500 hover:text-slate-800 transition-colors">
+            <Link
+              to="/"
+              className="inline-block text-sm text-slate-500 hover:text-slate-800 transition-colors font-medium"
+            >
               ← Voltar para tela inicial
             </Link>
           </div>
@@ -161,8 +163,7 @@ export default function Login() {
       </div>
 
       {/* Right side - Decorative */}
-      <div className="hidden lg:flex flex-1 items-center justify-center p-8 relative overflow-hidden">
-        {/* fundo CLARO premium (sem gradient-dark) */}
+      <div className="hidden lg:flex flex-1 items-center justify-center p-8 relative overflow-hidden border-l border-slate-100">
         <div className="absolute inset-0 bg-gradient-to-b from-white via-[#f6f8fc] to-[#f6f8fc]" />
         <div className="absolute top-24 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-gradient-to-r from-blue-500/20 via-indigo-500/10 to-transparent rounded-full blur-[120px]" />
         <div className="absolute bottom-10 left-10 w-72 h-72 bg-blue-600/10 rounded-full blur-3xl" />
