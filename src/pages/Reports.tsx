@@ -1,11 +1,25 @@
-import { motion } from "framer-motion";
-import { FileText, Plus, Download, Calendar, Clock, Trash2, Loader2, Share2, MessageCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  FileText,
+  Plus,
+  Download,
+  Calendar,
+  Clock,
+  Trash2,
+  Loader2,
+  Share2,
+  MessageCircle,
+  HelpCircle,
+  X,
+  ArrowRight,
+  Printer,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppLayout } from "@/components/AppLayout";
 import { GenerateReportDialog } from "@/components/reports/GenerateReportDialog";
 import { DeleteReportDialog } from "@/components/reports/DeleteReportDialog";
 import { useReports, type Report } from "@/hooks/useReports";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { WHATSAPP_NUMBER } from "@/config/plans";
 import { toast } from "sonner";
 
@@ -14,6 +28,22 @@ export default function Reports() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
+
+  // Estado para o tutorial
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  // Check tutorial on load
+  useEffect(() => {
+    const hasSeenTutorial = localStorage.getItem("reports_tutorial_seen");
+    if (!hasSeenTutorial) {
+      setTimeout(() => setShowTutorial(true), 1000);
+    }
+  }, []);
+
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem("reports_tutorial_seen", "true");
+  };
 
   const handleDeleteClick = (report: Report) => {
     setReportToDelete(report);
@@ -39,7 +69,6 @@ export default function Reports() {
       `📅 Período: ${periodStart} - ${periodEnd}\n` +
       `✅ Tarefas concluídas: ${report.metrics?.completedTasks || 0}\n\n`;
 
-    // If we have a PDF URL, include it
     if (report.file_url) {
       message += `📄 Baixar relatório em PDF:\n${report.file_url}\n\n`;
     }
@@ -75,13 +104,86 @@ export default function Reports() {
       title="Gerador de Relatórios"
       subtitle="Crie e gerencie relatórios personalizados para seus clientes"
       headerActions={
-        <Button
-          onClick={() => setIsDialogOpen(true)}
-          className="h-10 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Gerar Novo Relatório
-        </Button>
+        <div className="flex items-center gap-2 relative">
+          {/* Botão de Ajuda */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowTutorial(true)}
+            className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
+            title="Como funciona?"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </Button>
+
+          {/* Botão Principal Azul */}
+          <Button onClick={() => setIsDialogOpen(true)} variant="default" className="rounded-xl shadow-md font-bold">
+            <Plus className="h-4 w-4 mr-2" />
+            Gerar Novo Relatório
+          </Button>
+
+          {/* Tutorial Bubble */}
+          <AnimatePresence>
+            {showTutorial && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                className="absolute right-0 top-14 z-50 w-80 bg-blue-600 text-white p-5 rounded-2xl shadow-xl shadow-blue-200"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-white/20 p-1.5 rounded-lg">
+                      <Printer className="h-4 w-4 text-white" />
+                    </div>
+                    <h3 className="font-bold text-sm">Relatórios Profissionais</h3>
+                  </div>
+                  <button
+                    onClick={closeTutorial}
+                    className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 text-sm text-blue-50">
+                  <ul className="space-y-2 list-none">
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        1
+                      </span>
+                      <span>Clique em "Gerar Novo Relatório" para selecionar um cliente e período.</span>
+                    </li>
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        2
+                      </span>
+                      <span>O sistema compila automaticamente tarefas concluídas e métricas.</span>
+                    </li>
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        3
+                      </span>
+                      <span>Envie o PDF gerado diretamente via WhatsApp para seu cliente.</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={closeTutorial}
+                    className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1"
+                  >
+                    Entendi <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
+
+                {/* Seta do balão */}
+                <div className="absolute -top-2 right-12 w-4 h-4 bg-blue-600 rotate-45 transform" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       }
     >
       <div className="space-y-6">
@@ -96,11 +198,11 @@ export default function Reports() {
               <FileText className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-lg mb-1 text-slate-900">Como funciona?</h3>
+              <h3 className="font-bold text-lg mb-1 text-slate-900">Como funciona?</h3>
               <p className="text-slate-600">
                 Gere relatórios detalhados sobre o desempenho dos seus clientes. Os relatórios mostram apenas as{" "}
                 <strong>tarefas concluídas</strong> e são exportados em PDF com a identidade visual personalizada da sua
-                marca (configurável em Configurações). Você pode compartilhar o PDF diretamente via WhatsApp.
+                marca (configurável em Configurações).
               </p>
             </div>
           </div>
@@ -115,16 +217,13 @@ export default function Reports() {
             transition={{ delay: 0.1 }}
           >
             <div className="h-20 w-20 rounded-full !bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto mb-6">
-              <FileText className="h-10 w-10 text-slate-500" />
+              <FileText className="h-10 w-10 text-slate-400" />
             </div>
-            <h3 className="text-xl font-semibold mb-2 text-slate-900">Nenhum relatório gerado ainda</h3>
+            <h3 className="text-xl font-bold mb-2 text-slate-900">Nenhum relatório gerado ainda</h3>
             <p className="text-slate-600 mb-6 max-w-md mx-auto">
               Comece gerando seu primeiro relatório para acompanhar o desempenho dos seus clientes ao longo do tempo.
             </p>
-            <Button
-              onClick={() => setIsDialogOpen(true)}
-              className="h-10 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700"
-            >
+            <Button onClick={() => setIsDialogOpen(true)} variant="default" className="rounded-xl shadow-md font-bold">
               <Plus className="h-4 w-4 mr-2" />
               Gerar Primeiro Relatório
             </Button>
@@ -144,7 +243,7 @@ export default function Reports() {
                       <FileText className="h-5 w-5 text-blue-600" />
                     </div>
                     <div>
-                      <h4 className="font-medium text-slate-900">{report.name}</h4>
+                      <h4 className="font-bold text-slate-900">{report.name}</h4>
                       <div className="flex items-center gap-3 text-sm text-slate-500">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
@@ -157,7 +256,11 @@ export default function Reports() {
                             minute: "2-digit",
                           })}
                         </span>
-                        {report.client && <span className="text-blue-600 font-medium">{report.client.name}</span>}
+                        {report.client && (
+                          <span className="text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded text-xs">
+                            {report.client.name}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -166,9 +269,9 @@ export default function Reports() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleShareWhatsApp(report)}
-                      className="gap-2 rounded-xl !bg-white !text-slate-700 border !border-slate-200 hover:!bg-slate-50"
+                      className="gap-2 rounded-xl !bg-white !text-slate-700 border !border-slate-200 hover:!bg-slate-50 font-medium"
                     >
-                      <MessageCircle className="h-4 w-4" />
+                      <MessageCircle className="h-4 w-4 text-emerald-600" />
                       WhatsApp
                     </Button>
                     <Button
@@ -176,16 +279,16 @@ export default function Reports() {
                       size="sm"
                       onClick={() => handleDownloadPdf(report)}
                       disabled={!report.file_url}
-                      className="rounded-xl !bg-white !text-slate-700 border !border-slate-200 hover:!bg-slate-50 disabled:opacity-60"
+                      className="rounded-xl !bg-white !text-slate-700 border !border-slate-200 hover:!bg-slate-50 disabled:opacity-60 font-medium"
                     >
-                      <Download className="h-4 w-4 mr-2" />
+                      <Download className="h-4 w-4 mr-2 text-blue-600" />
                       PDF
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDeleteClick(report)}
-                      className="rounded-xl text-slate-500 hover:text-red-600 hover:!bg-slate-100"
+                      className="rounded-xl text-slate-400 hover:text-red-600 hover:!bg-red-50"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
