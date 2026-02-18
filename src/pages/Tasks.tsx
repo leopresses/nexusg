@@ -1,6 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { CheckSquare, Loader2, Plus, Calendar, CalendarDays } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  CheckSquare,
+  Loader2,
+  Plus,
+  Calendar,
+  CalendarDays,
+  HelpCircle,
+  X,
+  ArrowRight,
+  ListTodo,
+  Filter,
+} from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { useTasks } from "@/hooks/useTasks";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
@@ -24,12 +36,28 @@ export default function Tasks() {
   const [frequencyTab, setFrequencyTab] = useState<"all" | "daily" | "weekly">("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
+  // Estado para o tutorial
+  const [showTutorial, setShowTutorial] = useState(false);
+
   // Update filter when URL changes
   useEffect(() => {
     if (clientFromUrl) {
       setFilterClient(clientFromUrl);
     }
   }, [clientFromUrl]);
+
+  // Check tutorial on load
+  useEffect(() => {
+    const hasSeenTutorial = localStorage.getItem("tasks_tutorial_seen");
+    if (!hasSeenTutorial) {
+      setTimeout(() => setShowTutorial(true), 1000);
+    }
+  }, []);
+
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem("tasks_tutorial_seen", "true");
+  };
 
   // Handle status change with sound
   const handleStatusChange = async (taskId: string, status: "pending" | "in_progress" | "completed") => {
@@ -112,13 +140,89 @@ export default function Tasks() {
       title="Tarefas"
       subtitle={subtitle}
       headerActions={
-        <Button
-          onClick={() => setCreateDialogOpen(true)}
-          className="h-10 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Tarefa
-        </Button>
+        <div className="flex items-center gap-2 relative">
+          {/* Botão de Ajuda */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowTutorial(true)}
+            className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
+            title="Como funciona?"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </Button>
+
+          {/* Botão Nova Tarefa */}
+          <Button
+            onClick={() => setCreateDialogOpen(true)}
+            className="h-10 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700 shadow-md font-bold"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Tarefa
+          </Button>
+
+          {/* Tutorial Bubble */}
+          <AnimatePresence>
+            {showTutorial && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                className="absolute right-0 top-14 z-50 w-80 bg-blue-600 text-white p-5 rounded-2xl shadow-xl shadow-blue-200"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-white/20 p-1.5 rounded-lg">
+                      <ListTodo className="h-4 w-4 text-white" />
+                    </div>
+                    <h3 className="font-bold text-sm">Gerencie suas Demandas</h3>
+                  </div>
+                  <button
+                    onClick={closeTutorial}
+                    className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 text-sm text-blue-50">
+                  <ul className="space-y-2 list-none">
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        1
+                      </span>
+                      <span>Use os filtros acima para focar em um cliente específico ou frequência.</span>
+                    </li>
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        2
+                      </span>
+                      <span>Clique na tarefa para ver e marcar os itens do checklist.</span>
+                    </li>
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        3
+                      </span>
+                      <span>Crie tarefas avulsas personalizadas no botão "Nova Tarefa".</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={closeTutorial}
+                    className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1"
+                  >
+                    Entendi <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
+
+                {/* Seta do balão */}
+                <div className="absolute -top-2 right-12 w-4 h-4 bg-blue-600 rotate-45 transform" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       }
     >
       <div className="space-y-6">
@@ -128,21 +232,21 @@ export default function Tasks() {
             <TabsList className="grid w-full grid-cols-3 bg-transparent p-0">
               <TabsTrigger
                 value="all"
-                className="gap-2 rounded-xl data-[state=active]:!bg-blue-600 data-[state=active]:!text-white"
+                className="gap-2 rounded-xl data-[state=active]:!bg-blue-600 data-[state=active]:!text-white font-medium"
               >
                 <CheckSquare className="h-4 w-4" />
                 Todas
               </TabsTrigger>
               <TabsTrigger
                 value="daily"
-                className="gap-2 rounded-xl data-[state=active]:!bg-blue-600 data-[state=active]:!text-white"
+                className="gap-2 rounded-xl data-[state=active]:!bg-blue-600 data-[state=active]:!text-white font-medium"
               >
                 <Calendar className="h-4 w-4" />
                 Diárias
               </TabsTrigger>
               <TabsTrigger
                 value="weekly"
-                className="gap-2 rounded-xl data-[state=active]:!bg-blue-600 data-[state=active]:!text-white"
+                className="gap-2 rounded-xl data-[state=active]:!bg-blue-600 data-[state=active]:!text-white font-medium"
               >
                 <CalendarDays className="h-4 w-4" />
                 Semanais
@@ -183,13 +287,13 @@ export default function Tasks() {
         {filteredTasks.length === 0 && (
           <div className="rounded-2xl border border-slate-200 !bg-white py-12 text-center shadow-sm">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl !bg-slate-50 border border-slate-200">
-              <CheckSquare className="h-7 w-7 text-slate-500" />
+              <Filter className="h-7 w-7 text-slate-400" />
             </div>
-            <h3 className="mb-2 text-lg font-semibold text-slate-900">Nenhuma tarefa encontrada</h3>
+            <h3 className="mb-2 text-lg font-bold text-slate-900">Nenhuma tarefa encontrada</h3>
             <p className="mx-auto max-w-md text-sm text-slate-600">
               {tasks.length === 0
                 ? "As tarefas serão geradas automaticamente toda semana"
-                : "Ajuste os filtros para ver outras tarefas"}
+                : "Ajuste os filtros de status ou cliente para ver outras tarefas"}
             </p>
           </div>
         )}
