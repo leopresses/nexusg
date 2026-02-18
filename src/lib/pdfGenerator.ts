@@ -8,6 +8,7 @@ export interface BrandSettings {
   secondaryColor: string;
   accentColor: string;
   reportFooter: string;
+  supportWhatsapp?: string | null;
 }
 
 export interface ClientData {
@@ -308,7 +309,12 @@ export async function generateClientReport(
   doc.setTextColor(200, 200, 200);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text(brandSettings.reportFooter, pageWidth / 2, pageHeight - 8, { align: 'center' });
+  
+  const whatsapp = brandSettings.supportWhatsapp?.trim();
+  const footerLine = whatsapp
+    ? `${brandSettings.reportFooter} • WhatsApp: ${whatsapp}`
+    : brandSettings.reportFooter;
+  doc.text(footerLine, pageWidth / 2, pageHeight - 8, { align: 'center' });
   
   return doc;
 }
