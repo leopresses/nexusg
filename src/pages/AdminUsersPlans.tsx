@@ -1,6 +1,21 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Shield, Users, Crown, UserCog, Loader2, Search, MoreVertical, Mail, UserPlus, Trash2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Shield,
+  Users,
+  Crown,
+  UserCog,
+  Loader2,
+  Search,
+  MoreVertical,
+  Mail,
+  UserPlus,
+  Trash2,
+  HelpCircle,
+  X,
+  ArrowRight,
+  Settings,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -46,9 +61,22 @@ export default function AdminUsersPlans() {
   const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Estado para o tutorial
+  const [showTutorial, setShowTutorial] = useState(false);
+
   useEffect(() => {
     fetchUsers();
+    // Check tutorial on load
+    const hasSeenTutorial = localStorage.getItem("admin_users_tutorial_seen");
+    if (!hasSeenTutorial) {
+      setTimeout(() => setShowTutorial(true), 1000);
+    }
   }, []);
+
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem("admin_users_tutorial_seen", "true");
+  };
 
   const fetchUsers = async () => {
     setError(null);
@@ -388,7 +416,86 @@ export default function AdminUsersPlans() {
   );
 
   return (
-    <AppLayout title="Usuários & Planos" subtitle="Gerencie usuários, permissões e planos">
+    <AppLayout
+      title="Usuários & Planos"
+      subtitle="Gerencie usuários, permissões e planos"
+      headerActions={
+        <div className="relative">
+          {/* Botão de Ajuda */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowTutorial(true)}
+            className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
+            title="Como gerenciar usuários?"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </Button>
+
+          {/* Tutorial Bubble */}
+          <AnimatePresence>
+            {showTutorial && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                className="absolute right-0 top-14 z-50 w-80 bg-blue-600 text-white p-5 rounded-2xl shadow-xl shadow-blue-200"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-white/20 p-1.5 rounded-lg">
+                      <Settings className="h-4 w-4 text-white" />
+                    </div>
+                    <h3 className="font-bold text-sm">Gestão de Usuários</h3>
+                  </div>
+                  <button
+                    onClick={closeTutorial}
+                    className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 text-sm text-blue-50">
+                  <ul className="space-y-2 list-none">
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        1
+                      </span>
+                      <span>Use as abas para alternar entre Usuários e Administradores.</span>
+                    </li>
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        2
+                      </span>
+                      <span>No menu de ações (três pontos), altere o plano de qualquer usuário.</span>
+                    </li>
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        3
+                      </span>
+                      <span>Promova usuários a Admin para dar acesso total ao sistema.</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={closeTutorial}
+                    className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1"
+                  >
+                    Entendi <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
+
+                {/* Seta do balão */}
+                <div className="absolute -top-2 right-3 w-4 h-4 bg-blue-600 rotate-45 transform" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      }
+    >
       <div className="space-y-6">
         {/* Stats Cards */}
         <motion.div
