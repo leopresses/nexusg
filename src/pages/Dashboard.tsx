@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Users,
@@ -12,6 +12,9 @@ import {
   Loader2,
   Calendar,
   CalendarDays,
+  HelpCircle,
+  X,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +43,6 @@ const statusLabels = {
   completed: "Concluída",
 };
 
-// Task stats for the total count across all tasks
 interface TaskStats {
   pending: number;
   in_progress: number;
@@ -62,16 +64,26 @@ export default function Dashboard() {
     weekly: { pending: 0, in_progress: 0, completed: 0, total: 0 },
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [showTutorial, setShowTutorial] = useState(false);
   const { profile } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchData();
+    // Check if user has seen tutorial
+    const hasSeenTutorial = localStorage.getItem("dashboard_tutorial_seen");
+    if (!hasSeenTutorial) {
+      setTimeout(() => setShowTutorial(true), 1000);
+    }
   }, []);
+
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem("dashboard_tutorial_seen", "true");
+  };
 
   const fetchData = async () => {
     try {
-      // Get all clients
       const clientsRes = await supabase
         .from("clients")
         .select("*")
@@ -81,7 +93,6 @@ export default function Dashboard() {
       if (clientsRes.error) throw clientsRes.error;
       setClients(clientsRes.data || []);
 
-      // Get recent tasks
       const tasksRes = await supabase
         .from("tasks")
         .select("*, clients(name)")
@@ -91,7 +102,6 @@ export default function Dashboard() {
       if (tasksRes.error) throw tasksRes.error;
       setRecentTasks((tasksRes.data as any) || []);
 
-      // Task stats (all tasks)
       const allTasksRes = await supabase.from("tasks").select("status, frequency");
       if (allTasksRes.error) throw allTasksRes.error;
 
@@ -105,7 +115,6 @@ export default function Dashboard() {
       };
       setTaskStats(overall);
 
-      // Daily/Weekly stats
       const dailyTasks = allTasks.filter((t: any) => (t.frequency || "weekly") === "daily");
       const weeklyTasks = allTasks.filter((t: any) => (t.frequency || "weekly") === "weekly");
 
@@ -159,16 +168,84 @@ export default function Dashboard() {
       title={`Olá, ${profile?.full_name || "Usuário"}! 👋`}
       subtitle={`Semana de ${new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} - Visão geral`}
       headerActions={
-        <Button
-          onClick={() => navigate("/onboarding")}
-          className="h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Cliente
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowTutorial(true)}
+            className="text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+            title="Ver tutorial"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </Button>
+          <Button
+            onClick={() => navigate("/onboarding")}
+            className="h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Cliente
+          </Button>
+        </div>
       }
     >
-      <div className="space-y-6">
+      <div className="space-y-6 relative">
+        {/* Tutorial Bubble */}
+        <AnimatePresence>
+          {showTutorial && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              className="absolute right-0 top-0 z-50 w-80 bg-blue-600 text-white p-5 rounded-2xl shadow-xl shadow-blue-200"
+            >
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="bg-white/20 p-1.5 rounded-lg">
+                    <TrendingUp className="h-4 w-4 text-white" />
+                  </div>
+                  <h3 className="font-bold text-sm">Bem-vindo ao Painel!</h3>
+                </div>
+                <button
+                  onClick={closeTutorial}
+                  className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-sm text-blue-50">
+                <p>Aqui você tem uma visão geral do seu negócio:</p>
+                <ul className="space-y-2 list-none">
+                  <li className="flex gap-2 items-start">
+                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">1</span>
+                    <span>Acompanhe o progresso das suas tarefas diárias e semanais.</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">2</span>
+                    <span>Veja estatísticas rápidas dos seus clientes.</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">3</span>
+                    <span>Adicione novos clientes rapidamente no botão acima.</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={closeTutorial}
+                  className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1"
+                >
+                  Entendi <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+
+              {/* Seta do balão */}
+              <div className="absolute -top-2 right-12 w-4 h-4 bg-blue-600 rotate-45 transform" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Stats Grid */}
         <motion.div
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
