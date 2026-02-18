@@ -132,13 +132,10 @@ Deno.serve(async (req) => {
     if (client_id) {
       console.log(`[places-details] Updating client ${client_id} with place data`);
       
-      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const adminClient = createClient(supabaseUrl, serviceRoleKey);
-      
-      // Verify client belongs to user
+      // Verify client belongs to user via RLS (only owner can read)
       const { data: clientData, error: clientError } = await supabase
         .from("clients")
-        .select("id, user_id")
+        .select("id")
         .eq("id", client_id)
         .single();
 
@@ -146,13 +143,6 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({ error: "CLIENT_NOT_FOUND", message: "Cliente não encontrado." }),
           { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      if (clientData.user_id !== user.id) {
-        return new Response(
-          JSON.stringify({ error: "UNAUTHORIZED", message: "Sem permissão para atualizar este cliente." }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
