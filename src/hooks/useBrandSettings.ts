@@ -10,6 +10,7 @@ const defaultBrandSettings: BrandSettings = {
   secondaryColor: '#0a1628',
   accentColor: '#06b6d4',
   reportFooter: 'Relatório gerado por Gestão Nexus',
+  supportWhatsapp: null,
 };
 
 export function useBrandSettings() {
@@ -64,6 +65,7 @@ export function useBrandSettings() {
           secondaryColor: data.secondary_color || defaultBrandSettings.secondaryColor,
           accentColor: data.accent_color || defaultBrandSettings.accentColor,
           reportFooter: (data as any).report_footer || defaultBrandSettings.reportFooter,
+          supportWhatsapp: (data as any).support_whatsapp || null,
         });
       }
     } catch (error) {

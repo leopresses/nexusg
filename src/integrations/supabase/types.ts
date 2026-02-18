@@ -24,6 +24,7 @@ export type Database = {
           primary_color: string | null
           report_footer: string | null
           secondary_color: string | null
+          support_whatsapp: string | null
           updated_at: string
           user_id: string
         }
@@ -36,6 +37,7 @@ export type Database = {
           primary_color?: string | null
           report_footer?: string | null
           secondary_color?: string | null
+          support_whatsapp?: string | null
           updated_at?: string
           user_id: string
         }
@@ -48,6 +50,7 @@ export type Database = {
           primary_color?: string | null
           report_footer?: string | null
           secondary_color?: string | null
+          support_whatsapp?: string | null
           updated_at?: string
           user_id?: string
         }
