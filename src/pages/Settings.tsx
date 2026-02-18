@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Save, Upload, Loader2, Image as ImageIcon, CheckCircle2, Trash2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Save,
+  Upload,
+  Loader2,
+  Image as ImageIcon,
+  CheckCircle2,
+  Trash2,
+  HelpCircle,
+  X,
+  ArrowRight,
+  Palette,
+} from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,9 +27,7 @@ type BrandSettings = {
   company_name?: string | null;
   support_whatsapp?: string | null;
   primary_color?: string | null;
-  // stored reference URL (not the signed display URL)
   logo_storage_url?: string | null;
-  // signed display URL for rendering
   logo_display_url?: string | null;
   report_footer?: string | null;
   enable_sounds?: boolean | null;
@@ -29,6 +38,9 @@ export default function Settings() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeletingLogo, setIsDeletingLogo] = useState(false);
+
+  // Estado para o tutorial
+  const [showTutorial, setShowTutorial] = useState(false);
 
   const [settings, setSettings] = useState<BrandSettings>({
     company_name: "",
@@ -46,13 +58,10 @@ export default function Settings() {
 
   const getSignedLogoUrl = async (storedUrl: string): Promise<string | null> => {
     if (!storedUrl) return null;
-    // Extract file path from stored URL
-    const parts = storedUrl.split('/brand-logos/');
+    const parts = storedUrl.split("/brand-logos/");
     if (parts.length < 2) return null;
     const filePath = parts[1];
-    const { data, error } = await supabase.storage
-      .from('brand-logos')
-      .createSignedUrl(filePath, 3600);
+    const { data, error } = await supabase.storage.from("brand-logos").createSignedUrl(filePath, 3600);
     if (error || !data) return null;
     return data.signedUrl;
   };
@@ -60,19 +69,18 @@ export default function Settings() {
   const fetchSettings = async () => {
     try {
       setIsLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setIsLoading(false); return; }
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
 
-      // Fetch brand_settings
-      const { data, error } = await supabase
-        .from("brand_settings")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const { data, error } = await supabase.from("brand_settings").select("*").eq("user_id", user.id).maybeSingle();
 
       if (error) throw error;
 
-      // Fetch sound preference from user_preferences
       const { data: prefData } = await supabase
         .from("user_preferences")
         .select("sound_enabled")
@@ -108,15 +116,30 @@ export default function Settings() {
 
   useEffect(() => {
     fetchSettings();
+    // Check tutorial on load
+    const hasSeenTutorial = localStorage.getItem("settings_tutorial_seen");
+    if (!hasSeenTutorial) {
+      setTimeout(() => setShowTutorial(true), 1000);
+    }
   }, []);
+
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem("settings_tutorial_seen", "true");
+  };
 
   const handleUploadLogo = async (file: File) => {
     try {
       setIsUploading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { toast.error("Sessão inválida.", toastStyle); return; }
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Sessão inválida.", toastStyle);
+        return;
+      }
 
-      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml'];
+      const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml"];
       if (!allowedTypes.includes(file.type)) {
         toast.error("Formato inválido. Use PNG, JPG, WebP ou SVG.", toastStyle);
         return;
@@ -129,10 +152,9 @@ export default function Settings() {
       const ext = file.name.split(".").pop() || "png";
       const path = `${user.id}/logo-${Date.now()}.${ext}`;
 
-      // Delete old logos first
       const { data: existingFiles } = await supabase.storage.from("brand-logos").list(user.id);
       if (existingFiles && existingFiles.length > 0) {
-        await supabase.storage.from("brand-logos").remove(existingFiles.map(f => `${user.id}/${f.name}`));
+        await supabase.storage.from("brand-logos").remove(existingFiles.map((f) => `${user.id}/${f.name}`));
       }
 
       const { error: uploadError } = await supabase.storage.from("brand-logos").upload(path, file, {
@@ -141,19 +163,16 @@ export default function Settings() {
       });
       if (uploadError) throw uploadError;
 
-      // Build the reference URL to store in DB
       const baseUrl = import.meta.env.VITE_SUPABASE_URL;
       const storedUrl = `${baseUrl}/storage/v1/object/public/brand-logos/${path}`;
 
-      // Update DB
       await supabase
         .from("brand_settings")
         .update({ logo_url: storedUrl, updated_at: new Date().toISOString() })
         .eq("user_id", user.id);
 
-      // Get signed URL for display
       const signedUrl = await getSignedLogoUrl(storedUrl);
-      setSettings(prev => ({
+      setSettings((prev) => ({
         ...prev,
         logo_storage_url: storedUrl,
         logo_display_url: signedUrl || "",
@@ -170,22 +189,22 @@ export default function Settings() {
   const handleDeleteLogo = async () => {
     try {
       setIsDeletingLogo(true);
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
-      // List and delete all logo files for this user
       const { data: files } = await supabase.storage.from("brand-logos").list(user.id);
       if (files && files.length > 0) {
-        await supabase.storage.from("brand-logos").remove(files.map(f => `${user.id}/${f.name}`));
+        await supabase.storage.from("brand-logos").remove(files.map((f) => `${user.id}/${f.name}`));
       }
 
-      // Clear logo_url in DB
       await supabase
         .from("brand_settings")
         .update({ logo_url: null, updated_at: new Date().toISOString() })
         .eq("user_id", user.id);
 
-      setSettings(prev => ({ ...prev, logo_storage_url: "", logo_display_url: "" }));
+      setSettings((prev) => ({ ...prev, logo_storage_url: "", logo_display_url: "" }));
       toast.success("Logo removido!", toastStyle);
     } catch (e) {
       console.error(e);
@@ -198,10 +217,14 @@ export default function Settings() {
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { toast.error("Sessão expirada", toastStyle); return; }
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Sessão expirada", toastStyle);
+        return;
+      }
 
-      // Save brand_settings with correct column names
       const brandPayload = {
         company_name: settings.company_name || null,
         support_whatsapp: settings.support_whatsapp || null,
@@ -210,13 +233,9 @@ export default function Settings() {
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
-        .from("brand_settings")
-        .update(brandPayload)
-        .eq("user_id", user.id);
+      const { error } = await supabase.from("brand_settings").update(brandPayload).eq("user_id", user.id);
       if (error) throw error;
 
-      // Save sound preference in user_preferences
       const { data: existingPref } = await supabase
         .from("user_preferences")
         .select("id")
@@ -229,9 +248,7 @@ export default function Settings() {
           .update({ sound_enabled: !!settings.enable_sounds, updated_at: new Date().toISOString() })
           .eq("user_id", user.id);
       } else {
-        await supabase
-          .from("user_preferences")
-          .insert({ user_id: user.id, sound_enabled: !!settings.enable_sounds });
+        await supabase.from("user_preferences").insert({ user_id: user.id, sound_enabled: !!settings.enable_sounds });
       }
 
       toast.success("Configurações salvas!", toastStyle);
@@ -243,7 +260,6 @@ export default function Settings() {
     }
   };
 
-  // Preview Helpers
   const companyName = (settings.company_name || "Gestão Nexus").toString().trim() || "Gestão Nexus";
   const primaryColor = (settings.primary_color || "#2563EB").toString();
   const secondaryColor = "#1D4ED8";
@@ -263,7 +279,63 @@ export default function Settings() {
 
   return (
     <AppLayout title="Configurações" subtitle="Personalize sua experiência e marca">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start relative">
+        {/* Tutorial Bubble positioned absolutely relative to grid container */}
+        <AnimatePresence>
+          {showTutorial && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              className="absolute right-0 top-14 z-50 w-80 bg-blue-600 text-white p-5 rounded-2xl shadow-xl shadow-blue-200 lg:right-auto lg:left-[50%]"
+            >
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="bg-white/20 p-1.5 rounded-lg">
+                    <Palette className="h-4 w-4 text-white" />
+                  </div>
+                  <h3 className="font-bold text-sm">Personalize sua Marca</h3>
+                </div>
+                <button
+                  onClick={closeTutorial}
+                  className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-sm text-blue-50">
+                <ul className="space-y-2 list-none">
+                  <li className="flex gap-2 items-start">
+                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">1</span>
+                    <span>Faça upload do seu logotipo para aparecer nos relatórios.</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">2</span>
+                    <span>Escolha a cor principal da sua marca para personalizar o PDF.</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">3</span>
+                    <span>Veja o resultado em tempo real na prévia ao lado (ou abaixo).</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={closeTutorial}
+                  className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1"
+                >
+                  Entendi <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+
+              {/* Seta do balão */}
+              <div className="absolute -top-2 left-8 w-4 h-4 bg-blue-600 rotate-45 transform" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* COLUNA ESQUERDA: Formulários */}
         <div className="space-y-6">
           <motion.div
@@ -276,14 +348,27 @@ export default function Settings() {
                 <h2 className="text-lg font-semibold text-slate-900">Identidade da Marca</h2>
                 <p className="text-sm text-slate-600">Altere os dados e veja o resultado.</p>
               </div>
-              <Button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="h-10 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700 shadow-lg shadow-blue-200"
-              >
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Salvar
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* Botão de Ajuda */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowTutorial(true)}
+                  className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
+                  title="Ajuda"
+                >
+                  <HelpCircle className="h-5 w-5" />
+                </Button>
+
+                <Button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="h-10 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700 shadow-lg shadow-blue-200"
+                >
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                  Salvar
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-6">
@@ -420,7 +505,10 @@ export default function Settings() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {settings.logo_display_url ? (
-                      <img src={settings.logo_display_url} className="h-10 w-10 rounded-lg object-contain bg-white/20 p-1" />
+                      <img
+                        src={settings.logo_display_url}
+                        className="h-10 w-10 rounded-lg object-contain bg-white/20 p-1"
+                      />
                     ) : (
                       <div
                         className="h-10 w-10 rounded-lg flex items-center justify-center"
@@ -431,9 +519,7 @@ export default function Settings() {
                     )}
                     <div>
                       <span className="font-bold text-white text-lg block">{companyName}</span>
-                      {whatsappText && (
-                        <span className="text-white/60 text-[10px]">WhatsApp: {whatsappText}</span>
-                      )}
+                      {whatsappText && <span className="text-white/60 text-[10px]">WhatsApp: {whatsappText}</span>}
                     </div>
                   </div>
                   <span className="text-white/60 text-[10px] uppercase tracking-wider">Relatório</span>
