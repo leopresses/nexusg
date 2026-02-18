@@ -17,7 +17,7 @@ import {
   HelpCircle,
   X,
   ArrowRight,
-  Zap
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,7 +56,7 @@ export default function Clients() {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
   const [linkingClient, setLinkingClient] = useState<Client | null>(null);
-  
+
   // Estado para o tutorial
   const [showTutorial, setShowTutorial] = useState(false);
 
@@ -81,7 +81,7 @@ export default function Clients() {
 
   useEffect(() => {
     fetchClients();
-    
+
     // Verifica se o usuário já viu o tutorial de clientes
     const hasSeenTutorial = localStorage.getItem("clients_tutorial_seen");
     if (!hasSeenTutorial) {
@@ -173,11 +173,7 @@ export default function Clients() {
           </Button>
 
           {/* Botão Principal Azul */}
-          <Button
-            onClick={() => navigate("/onboarding")}
-            variant="default"
-            className="rounded-xl shadow-md font-bold"
-          >
+          <Button onClick={() => navigate("/onboarding")} variant="default" className="rounded-xl shadow-md font-bold">
             <Plus className="h-4 w-4 mr-2" />
             Adicionar Cliente
           </Button>
@@ -198,40 +194,48 @@ export default function Clients() {
                     </div>
                     <h3 className="font-bold text-sm">Gerencie sua Carteira</h3>
                   </div>
-                  <button 
+                  <button
                     onClick={closeTutorial}
                     className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                
+
                 <div className="space-y-3 text-sm text-blue-50">
                   <ul className="space-y-2 list-none">
                     <li className="flex gap-2 items-start">
-                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">1</span>
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        1
+                      </span>
                       <span>Cadastre empresas clicando no botão "Adicionar Cliente".</span>
                     </li>
                     <li className="flex gap-2 items-start">
-                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">2</span>
-                      <span>Conecte o <strong>Google Places ID</strong> para sincronizar avaliações e dados.</span>
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        2
+                      </span>
+                      <span>
+                        Conecte o <strong>Google Places ID</strong> para sincronizar avaliações e dados.
+                      </span>
                     </li>
                     <li className="flex gap-2 items-start">
-                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">3</span>
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        3
+                      </span>
                       <span>Clique em um cliente para ver suas tarefas específicas.</span>
                     </li>
                   </ul>
                 </div>
 
                 <div className="mt-4 flex justify-end">
-                  <button 
+                  <button
                     onClick={closeTutorial}
                     className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1"
                   >
                     Entendi <ArrowRight className="h-3 w-3" />
                   </button>
                 </div>
-                
+
                 {/* Seta do balão apontando para cima (perto dos botões) */}
                 <div className="absolute -top-2 right-12 w-4 h-4 bg-blue-600 rotate-45 transform" />
               </motion.div>
@@ -324,22 +328,37 @@ export default function Clients() {
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="rounded-xl border-slate-200 !bg-white shadow-xl min-w-[180px]">
-                        <DropdownMenuItem onClick={(e) => handleEdit(client, e as any)} className="font-medium text-slate-600 focus:text-blue-600 focus:bg-blue-50">
+                      <DropdownMenuContent
+                        align="end"
+                        className="rounded-xl border-slate-200 !bg-white shadow-xl min-w-[180px]"
+                      >
+                        <DropdownMenuItem
+                          onClick={(e) => handleEdit(client, e as any)}
+                          className="font-medium text-slate-600 focus:text-blue-600 focus:bg-blue-50"
+                        >
                           <Pencil className="h-4 w-4 mr-2" /> Editar
                         </DropdownMenuItem>
 
                         {hasPlaceId ? (
                           <>
-                            <DropdownMenuItem onClick={(e) => handleLinkPlace(client, e as any)} className="font-medium text-slate-600 focus:text-blue-600 focus:bg-blue-50">
+                            <DropdownMenuItem
+                              onClick={(e) => handleLinkPlace(client, e as any)}
+                              className="font-medium text-slate-600 focus:text-blue-600 focus:bg-blue-50"
+                            >
                               <LinkIcon className="h-4 w-4 mr-2" /> Trocar Place ID
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => handleUnlinkPlace(client, e as any)} className="font-medium text-slate-600 focus:text-amber-600 focus:bg-amber-50">
+                            <DropdownMenuItem
+                              onClick={(e) => handleUnlinkPlace(client, e as any)}
+                              className="font-medium text-slate-600 focus:text-amber-600 focus:bg-amber-50"
+                            >
                               <Unlink className="h-4 w-4 mr-2" /> Desvincular
                             </DropdownMenuItem>
                           </>
                         ) : (
-                          <DropdownMenuItem onClick={(e) => handleLinkPlace(client, e as any)} className="font-medium text-slate-600 focus:text-blue-600 focus:bg-blue-50">
+                          <DropdownMenuItem
+                            onClick={(e) => handleLinkPlace(client, e as any)}
+                            className="font-medium text-slate-600 focus:text-blue-600 focus:bg-blue-50"
+                          >
                             <LinkIcon className="h-4 w-4 mr-2" /> Conectar Google
                           </DropdownMenuItem>
                         )}
@@ -381,7 +400,9 @@ export default function Clients() {
                   <div className="mb-4 p-3 rounded-xl !bg-slate-50 border border-slate-100">
                     <div className="flex items-center gap-2 mb-2">
                       <ListTodo className="h-4 w-4 text-blue-600" />
-                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">Progresso Semanal</span>
+                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                        Progresso Semanal
+                      </span>
                     </div>
                     <ClientTaskProgress
                       pending={stats.pending}
@@ -397,3 +418,45 @@ export default function Clients() {
                       className={
                         client.is_active
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-slate-100 text-slate-600 border-slate-200"
+                      }
+                    >
+                      {client.is_active ? "Ativo" : "Inativo"}
+                    </Badge>
+                    <span className="text-[10px] font-medium text-slate-400">
+                      Desde {new Date(client.created_at).toLocaleDateString("pt-BR")}
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </div>
+
+      <EditClientDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        client={editingClient}
+        onSuccess={fetchClients}
+      />
+
+      <DeleteClientDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        client={deletingClient}
+        onSuccess={fetchClients}
+      />
+
+      <PlaceSearchDialog
+        open={placeDialogOpen}
+        onOpenChange={setPlaceDialogOpen}
+        clientId={linkingClient?.id || ""}
+        clientName={linkingClient?.name || ""}
+        clientAddress={linkingClient?.address || ""}
+        currentPlaceId={(linkingClient as any)?.place_id}
+        onSuccess={fetchClients}
+      />
+    </AppLayout>
+  );
+}
