@@ -1,73 +1,95 @@
-# Welcome to your Lovable project
+🚀 Gestão Nexus — SaaS de Gestão e Automação para Negócios Locais
 
-## Project info
+Sistema SaaS completo para gestão de clientes, automação de tarefas,
+monitoramento de métricas do Google Business, geração de relatórios e
+otimização da presença digital de empresas locais.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+------------------------------------------------------------------------
 
-## How can I edit this code?
+✨ Visão Geral
 
-There are several ways of editing your application.
+O Gestão Nexus permite:
 
-**Use Lovable**
+-   Gerenciar múltiplos clientes (negócios locais)
+-   Automatizar tarefas semanais e diárias com templates
+-   Acompanhar métricas do Google Business (visualizações, chamadas,
+    rotas etc.)
+-   Gerar relatórios em PDF personalizados (white-label)
+-   Administrar usuários, planos e limites por assinatura
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+------------------------------------------------------------------------
 
-Changes made via Lovable will be committed automatically to this repo.
+🧱 Stack Tecnológica
 
-**Use your preferred IDE**
+Frontend: - React + Vite - TypeScript - Tailwind CSS - shadcn/ui -
+Framer Motion - React Router - Lucide Icons
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Backend: - Supabase (Auth, Database, Storage, Edge Functions)
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+Integrações: - Google Places API - Google Business Metrics - Exportação
+de relatórios em PDF
 
-Follow these steps:
+------------------------------------------------------------------------
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+🧩 Funcionalidades
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Autenticação: - Login e registro - Recuperação de senha - Proteção de
+rotas - Perfis e papéis (admin e usuário)
 
-# Step 3: Install the necessary dependencies.
-npm i
+Clientes: - Cadastro e gestão de clientes - Tipos de negócio
+personalizados - Vinculação com Google Place ID - Limite de clientes por
+plano
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+Tarefas: - Templates diários e semanais - Geração automática de
+tarefas - Checklist e status de progresso
 
-**Edit a file directly in GitHub**
+Relatórios: - Relatórios por período - Métricas e tarefas incluídas -
+White-label com logo e cores personalizadas
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Configurações: - Nome da empresa - Logo - Cor primária - Rodapé do
+relatório - Preferências do sistema
 
-**Use GitHub Codespaces**
+Admin: - Gestão de usuários e planos - Gestão de templates de tarefas
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+------------------------------------------------------------------------
 
-## What technologies are used for this project?
+📂 Estrutura do Projeto
 
-This project is built with:
+src/ components/ → Componentes reutilizáveis e UI pages/ → Páginas
+principais do sistema hooks/ → Hooks customizados integrations/ →
+Integrações externas (Supabase) lib/ → Utilitários gerais config/ →
+Configurações globais
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+------------------------------------------------------------------------
 
-## How can I deploy this project?
+🗄️ Banco de Dados (Supabase)
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+Principais tabelas: - profiles - user_roles - clients - task_templates -
+tasks - reports - brand_settings - google_metrics_daily
 
-## Can I connect a custom domain to my Lovable project?
+RPC Functions: - can_add_client - generate_tasks_for_client -
+generate_weekly_tasks_for_all_clients
 
-Yes, you can!
+------------------------------------------------------------------------
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+▶️ Instalação e Execução
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Instalar dependências: npm install
+
+Executar projeto: npm run dev
+
+Build produção: npm run build
+
+------------------------------------------------------------------------
+
+🔐 Segurança
+
+-   RLS habilitado no Supabase
+-   Dados isolados por usuário
+-   Controle de acesso por perfil
+
+------------------------------------------------------------------------
+
+👨‍💻 Autor
+
+Leonardo Presses
