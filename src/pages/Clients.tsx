@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
   Users,
@@ -14,6 +14,10 @@ import {
   Link as LinkIcon,
   Unlink,
   Star,
+  HelpCircle,
+  X,
+  ArrowRight,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +57,9 @@ export default function Clients() {
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
   const [linkingClient, setLinkingClient] = useState<Client | null>(null);
 
+  // Estado para o tutorial
+  const [showTutorial, setShowTutorial] = useState(false);
+
   const navigate = useNavigate();
 
   const clientIds = useMemo(() => clients.map((c) => c.id), [clients]);
@@ -74,7 +81,18 @@ export default function Clients() {
 
   useEffect(() => {
     fetchClients();
+
+    // Verifica se o usuário já viu o tutorial de clientes
+    const hasSeenTutorial = localStorage.getItem("clients_tutorial_seen");
+    if (!hasSeenTutorial) {
+      setTimeout(() => setShowTutorial(true), 1000);
+    }
   }, [user]);
+
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem("clients_tutorial_seen", "true");
+  };
 
   const handleClientClick = (clientId: string) => {
     navigate(`/tasks?client=${clientId}`);
@@ -142,11 +160,88 @@ export default function Clients() {
       title="Meus Clientes"
       subtitle="Gerencie todos os seus clientes em um só lugar"
       headerActions={
-        // BOTÃO AJUSTADO: Usa variant="default" para herdar o azul global
-        <Button onClick={() => navigate("/onboarding")} variant="default" className="rounded-xl shadow-md font-bold">
-          <Plus className="h-4 w-4 mr-2" />
-          Adicionar Cliente
-        </Button>
+        <div className="flex items-center gap-2 relative">
+          {/* Botão de Ajuda */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowTutorial(true)}
+            className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
+            title="Como funciona?"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </Button>
+
+          {/* Botão Principal Azul */}
+          <Button onClick={() => navigate("/onboarding")} variant="default" className="rounded-xl shadow-md font-bold">
+            <Plus className="h-4 w-4 mr-2" />
+            Adicionar Cliente
+          </Button>
+
+          {/* Tutorial Bubble */}
+          <AnimatePresence>
+            {showTutorial && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                className="absolute right-0 top-14 z-50 w-80 bg-blue-600 text-white p-5 rounded-2xl shadow-xl shadow-blue-200"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-white/20 p-1.5 rounded-lg">
+                      <Zap className="h-4 w-4 text-white" />
+                    </div>
+                    <h3 className="font-bold text-sm">Gerencie sua Carteira</h3>
+                  </div>
+                  <button
+                    onClick={closeTutorial}
+                    className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 text-sm text-blue-50">
+                  <ul className="space-y-2 list-none">
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        1
+                      </span>
+                      <span>Cadastre empresas clicando no botão "Adicionar Cliente".</span>
+                    </li>
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        2
+                      </span>
+                      <span>
+                        Conecte o <strong>Google Places ID</strong> para sincronizar avaliações e dados.
+                      </span>
+                    </li>
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        3
+                      </span>
+                      <span>Clique em um cliente para ver suas tarefas específicas.</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={closeTutorial}
+                    className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1"
+                  >
+                    Entendi <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
+
+                {/* Seta do balão apontando para cima (perto dos botões) */}
+                <div className="absolute -top-2 right-12 w-4 h-4 bg-blue-600 rotate-45 transform" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       }
     >
       <div className="space-y-6">
