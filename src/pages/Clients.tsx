@@ -55,18 +55,14 @@ export default function Clients() {
 
   const navigate = useNavigate();
 
-  // ✅ FIX: passa os IDs dos clientes (evita undefined/join e carrega stats corretamente)
   const clientIds = useMemo(() => clients.map((c) => c.id), [clients]);
   const { getStatsForClient } = useClientTasks(clientIds);
 
   const fetchClients = async () => {
     try {
       setIsLoading(true);
-
       const { data, error } = await supabase.from("clients").select("*").order("created_at", { ascending: false });
-
       if (error) throw error;
-
       setClients(data || []);
     } catch (error) {
       console.error("Error fetching clients:", error);
@@ -111,7 +107,6 @@ export default function Clients() {
         .eq("id", client.id);
 
       if (error) throw error;
-
       toast.success("Place ID removido com sucesso!");
       fetchClients();
     } catch (error) {
@@ -147,40 +142,35 @@ export default function Clients() {
       title="Meus Clientes"
       subtitle="Gerencie todos os seus clientes em um só lugar"
       headerActions={
-        <Button
-          onClick={() => navigate("/onboarding")}
-          className="h-10 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700"
-        >
+        // BOTÃO AJUSTADO: Usa variant="default" para herdar o azul global
+        <Button onClick={() => navigate("/onboarding")} variant="default" className="rounded-xl shadow-md font-bold">
           <Plus className="h-4 w-4 mr-2" />
           Adicionar Cliente
         </Button>
       }
     >
       <div className="space-y-6">
-        {/* Search Bar */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
           <Input
             placeholder="Buscar clientes..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-10 rounded-full !bg-white !text-slate-900 border border-slate-200 shadow-sm
-            focus-visible:ring-2 focus-visible:ring-blue-500 placeholder:text-slate-500"
+            className="pl-10 h-10 rounded-full !bg-white !text-slate-900 border border-slate-200 shadow-sm focus-visible:ring-blue-600 placeholder:text-slate-500"
           />
         </div>
 
-        {/* Clients Grid */}
         {filteredClients.length === 0 ? (
           <motion.div
             className="rounded-2xl !bg-white border border-slate-200 shadow-sm p-12 text-center"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <Users className="h-16 w-16 text-slate-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2 text-slate-900">
+            <Users className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+            <h3 className="text-xl font-bold mb-2 text-slate-900">
               {searchQuery ? "Nenhum cliente encontrado" : "Nenhum cliente ainda"}
             </h3>
-            <p className="text-slate-600 mb-6 max-w-md mx-auto">
+            <p className="text-slate-500 mb-6 max-w-md mx-auto">
               {searchQuery
                 ? "Tente ajustar sua busca para encontrar o cliente desejado."
                 : "Adicione seu primeiro cliente para começar a gerenciar seus negócios de forma eficiente."}
@@ -188,7 +178,8 @@ export default function Clients() {
             {!searchQuery && (
               <Button
                 onClick={() => navigate("/onboarding")}
-                className="h-10 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700"
+                variant="default"
+                className="rounded-xl shadow-md font-bold"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar Primeiro Cliente
@@ -209,7 +200,7 @@ export default function Clients() {
               return (
                 <motion.div
                   key={client.id}
-                  className="rounded-2xl !bg-white !text-slate-900 border border-slate-200 shadow-sm p-5 hover:border-blue-200 transition-all duration-200 cursor-pointer group"
+                  className="rounded-2xl !bg-white !text-slate-900 border border-slate-200 shadow-sm p-5 hover:border-blue-300 hover:shadow-md transition-all duration-200 cursor-pointer group"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
@@ -217,16 +208,16 @@ export default function Clients() {
                 >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 rounded-2xl !bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-900 font-bold text-lg overflow-hidden">
+                      <div className="h-12 w-12 rounded-2xl !bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-900 font-bold text-lg overflow-hidden group-hover:border-blue-200 transition-colors">
                         <ClientAvatar avatarUrl={(client as any).avatar_url} clientName={client.name} />
                       </div>
                       <div>
-                        <h3 className="font-semibold group-hover:text-blue-600 transition-colors text-slate-900">
+                        <h3 className="font-bold group-hover:text-blue-600 transition-colors text-slate-900 line-clamp-1">
                           {client.name}
                         </h3>
                         <div className="flex items-center gap-1 text-sm text-slate-500">
                           <Building2 className="h-3 w-3" />
-                          <span>{getBusinessTypeLabel(client.business_type)}</span>
+                          <span className="capitalize">{getBusinessTypeLabel(client.business_type)}</span>
                         </div>
                       </div>
                     </div>
@@ -236,76 +227,87 @@ export default function Clients() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="rounded-xl hover:bg-slate-100"
+                          className="rounded-xl hover:bg-slate-100 text-slate-400 hover:text-blue-600"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <MoreVertical className="h-4 w-4 text-slate-700" />
+                          <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="rounded-xl border-slate-200 !bg-white">
-                        <DropdownMenuItem onClick={(e) => handleEdit(client, e as any)}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Editar
+                      <DropdownMenuContent
+                        align="end"
+                        className="rounded-xl border-slate-200 !bg-white shadow-xl min-w-[180px]"
+                      >
+                        <DropdownMenuItem
+                          onClick={(e) => handleEdit(client, e as any)}
+                          className="font-medium text-slate-600 focus:text-blue-600 focus:bg-blue-50"
+                        >
+                          <Pencil className="h-4 w-4 mr-2" /> Editar
                         </DropdownMenuItem>
 
                         {hasPlaceId ? (
                           <>
-                            <DropdownMenuItem onClick={(e) => handleLinkPlace(client, e as any)}>
-                              <LinkIcon className="h-4 w-4 mr-2" />
-                              Trocar Place ID
+                            <DropdownMenuItem
+                              onClick={(e) => handleLinkPlace(client, e as any)}
+                              className="font-medium text-slate-600 focus:text-blue-600 focus:bg-blue-50"
+                            >
+                              <LinkIcon className="h-4 w-4 mr-2" /> Trocar Place ID
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => handleUnlinkPlace(client, e as any)}>
-                              <Unlink className="h-4 w-4 mr-2" />
-                              Remover Place ID
+                            <DropdownMenuItem
+                              onClick={(e) => handleUnlinkPlace(client, e as any)}
+                              className="font-medium text-slate-600 focus:text-amber-600 focus:bg-amber-50"
+                            >
+                              <Unlink className="h-4 w-4 mr-2" /> Desvincular
                             </DropdownMenuItem>
                           </>
                         ) : (
-                          <DropdownMenuItem onClick={(e) => handleLinkPlace(client, e as any)}>
-                            <LinkIcon className="h-4 w-4 mr-2" />
-                            Vincular Google Place ID
+                          <DropdownMenuItem
+                            onClick={(e) => handleLinkPlace(client, e as any)}
+                            className="font-medium text-slate-600 focus:text-blue-600 focus:bg-blue-50"
+                          >
+                            <LinkIcon className="h-4 w-4 mr-2" /> Conectar Google
                           </DropdownMenuItem>
                         )}
 
-                        <DropdownMenuSeparator />
+                        <DropdownMenuSeparator className="bg-slate-100" />
                         <DropdownMenuItem
                           onClick={(e) => handleDelete(client, e as any)}
-                          className="text-destructive focus:text-destructive"
+                          className="text-red-600 focus:text-red-700 focus:bg-red-50 font-medium"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir
+                          <Trash2 className="h-4 w-4 mr-2" /> Excluir
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
 
                   {client.address && (
-                    <div className="flex items-start gap-2 text-sm text-slate-600 mb-4">
-                      <MapPin className="h-4 w-4 flex-shrink-0 mt-0.5 text-slate-500" />
-                      <span className="line-clamp-2">{client.address}</span>
+                    <div className="flex items-start gap-2 text-sm text-slate-500 mb-4 h-10">
+                      <MapPin className="h-4 w-4 flex-shrink-0 mt-0.5 text-slate-400" />
+                      <span className="line-clamp-2 leading-tight">{client.address}</span>
                     </div>
                   )}
 
-                  {/* Google Place Badge */}
                   {hasPlaceId && placeSnapshot && (
-                    <div className="mb-4 p-2 rounded-2xl !bg-blue-50 border border-blue-200 flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-blue-600" />
-                      <span className="text-xs text-blue-700 font-medium flex-1 truncate">
-                        {placeSnapshot.name || "Google vinculado"}
+                    <div className="mb-4 p-2.5 rounded-xl !bg-blue-50 border border-blue-100 flex items-center gap-2.5">
+                      <div className="bg-white p-1 rounded-lg border border-blue-100 shadow-sm">
+                        <img src="https://www.google.com/favicon.ico" alt="Google" className="w-3 h-3" />
+                      </div>
+                      <span className="text-xs text-blue-700 font-bold flex-1 truncate">
+                        {placeSnapshot.name || "Google Vinculado"}
                       </span>
                       {placeSnapshot.rating && (
-                        <span className="flex items-center gap-0.5 text-xs text-blue-700">
-                          <Star className="h-3 w-3 fill-current" />
-                          {placeSnapshot.rating}
+                        <span className="flex items-center gap-1 text-xs font-bold text-amber-600 bg-white px-1.5 py-0.5 rounded border border-amber-100">
+                          {placeSnapshot.rating} <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
                         </span>
                       )}
                     </div>
                   )}
 
-                  {/* Task Progress Section */}
-                  <div className="mb-4 p-3 rounded-2xl !bg-slate-50 border border-slate-200">
+                  <div className="mb-4 p-3 rounded-xl !bg-slate-50 border border-slate-100">
                     <div className="flex items-center gap-2 mb-2">
                       <ListTodo className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-medium text-slate-900">Tarefas da Semana</span>
+                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                        Progresso Semanal
+                      </span>
                     </div>
                     <ClientTaskProgress
                       pending={stats.pending}
@@ -315,7 +317,7 @@ export default function Clients() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                     <Badge
                       variant="outline"
                       className={
@@ -326,8 +328,8 @@ export default function Clients() {
                     >
                       {client.is_active ? "Ativo" : "Inativo"}
                     </Badge>
-                    <span className="text-xs text-slate-500">
-                      {new Date(client.created_at).toLocaleDateString("pt-BR")}
+                    <span className="text-[10px] font-medium text-slate-400">
+                      Desde {new Date(client.created_at).toLocaleDateString("pt-BR")}
                     </span>
                   </div>
                 </motion.div>
