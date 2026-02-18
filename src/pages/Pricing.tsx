@@ -1,5 +1,6 @@
-import { motion } from "framer-motion";
-import { Check, MessageCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, MessageCircle, Star, HelpCircle, X, ArrowRight, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AppLayout } from "@/components/AppLayout";
@@ -10,6 +11,22 @@ export default function Pricing() {
   const { profile, user } = useAuth();
   const currentPlan = profile?.plan || "starter";
   const userEmail = user?.email || "";
+
+  // Estado para o tutorial
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  // Check tutorial on load
+  useEffect(() => {
+    const hasSeenTutorial = localStorage.getItem("pricing_tutorial_seen");
+    if (!hasSeenTutorial) {
+      setTimeout(() => setShowTutorial(true), 1000);
+    }
+  }, []);
+
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem("pricing_tutorial_seen", "true");
+  };
 
   const handleUpgrade = (planId: string, planName: string, planPrice: string, clientsLimit: string) => {
     const message = encodeURIComponent(
@@ -24,32 +41,117 @@ export default function Pricing() {
   };
 
   return (
-    <AppLayout title="Planos e Assinaturas" subtitle="Escolha o plano ideal para o seu negócio">
+    <AppLayout
+      title="Planos e Assinaturas"
+      subtitle="Escolha o plano ideal para o seu negócio"
+      headerActions={
+        <div className="flex items-center gap-2 relative">
+          {/* Botão de Ajuda */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowTutorial(true)}
+            className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
+            title="Como funciona?"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </Button>
+
+          {/* Tutorial Bubble */}
+          <AnimatePresence>
+            {showTutorial && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                className="absolute right-0 top-14 z-50 w-80 bg-blue-600 text-white p-5 rounded-2xl shadow-xl shadow-blue-200"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-white/20 p-1.5 rounded-lg">
+                      <CreditCard className="h-4 w-4 text-white" />
+                    </div>
+                    <h3 className="font-bold text-sm">Entenda seus Planos</h3>
+                  </div>
+                  <button
+                    onClick={closeTutorial}
+                    className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 text-sm text-blue-50">
+                  <ul className="space-y-2 list-none">
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        1
+                      </span>
+                      <span>Seu plano atual aparece em destaque no topo da página.</span>
+                    </li>
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        2
+                      </span>
+                      <span>Compare os limites de clientes e recursos entre as opções.</span>
+                    </li>
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        3
+                      </span>
+                      <span>Para fazer upgrade, clique em "Contratar" e fale com nosso suporte.</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={closeTutorial}
+                    className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1"
+                  >
+                    Entendi <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
+
+                {/* Seta do balão */}
+                <div className="absolute -top-2 right-3 w-4 h-4 bg-blue-600 rotate-45 transform" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      }
+    >
       <div className="space-y-8">
         {/* Current Plan Banner */}
         <motion.div
-          className="rounded-2xl !bg-white border border-slate-200 p-6 shadow-sm"
+          className="rounded-3xl !bg-white border border-slate-200 p-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-blue-50 flex items-center justify-center border border-blue-100">
+              <Star className="h-6 w-6 text-blue-600 fill-blue-600" />
+            </div>
             <div>
-              <h3 className="font-semibold text-lg mb-1 text-slate-900">Seu plano atual</h3>
-              <p className="text-slate-600">
-                Você está no plano <span className="text-blue-600 font-semibold uppercase">{currentPlan}</span>
-                {profile?.clients_limit && <span className="ml-2">({formatClientLimit(profile.clients_limit)})</span>}
+              <h3 className="font-bold text-xl text-slate-900">Seu plano atual</h3>
+              <p className="text-slate-600 mt-1">
+                Você está no plano{" "}
+                <span className="text-blue-600 font-bold uppercase tracking-wide">{currentPlan}</span>
+                {profile?.clients_limit && (
+                  <span className="ml-2 text-slate-400">({formatClientLimit(profile.clients_limit)})</span>
+                )}
               </p>
             </div>
-
-            <Badge className="!bg-blue-50 !text-blue-700 border border-blue-200 text-sm px-4 py-1 rounded-full">
-              {currentPlan === "starter" ? "Gratuito" : "Ativo"}
-            </Badge>
           </div>
+
+          <Badge className="!bg-emerald-50 !text-emerald-700 border border-emerald-200 text-sm px-4 py-1.5 rounded-full font-bold">
+            {currentPlan === "starter" ? "Gratuito" : "Assinatura Ativa"}
+          </Badge>
         </motion.div>
 
         {/* Plans Grid */}
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
@@ -61,43 +163,52 @@ export default function Pricing() {
             return (
               <motion.div
                 key={plan.id}
-                className={`rounded-2xl border p-5 flex flex-col shadow-sm !bg-white border-slate-200 relative ${
-                  plan.highlighted ? "ring-2 ring-emerald-300" : ""
-                } ${isCurrentPlan ? "ring-2 ring-blue-300" : ""}`}
+                className={`relative rounded-3xl border p-6 flex flex-col shadow-sm !bg-white transition-all duration-300 hover:shadow-md ${
+                  plan.highlighted
+                    ? "border-emerald-200 shadow-emerald-100/50 ring-1 ring-emerald-100"
+                    : "border-slate-200"
+                } ${isCurrentPlan ? "ring-2 ring-blue-500 border-blue-500 shadow-blue-100" : ""}`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + index * 0.1 }}
               >
                 {plan.highlighted && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="!bg-emerald-500 !text-white border border-emerald-400 rounded-full">
+                    <Badge className="!bg-emerald-500 !text-white border-none rounded-full px-3 py-0.5 text-[10px] font-bold uppercase tracking-widest shadow-md shadow-emerald-200">
                       Mais Popular
                     </Badge>
                   </div>
                 )}
 
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-3 mb-4">
                   <div
-                    className={`h-9 w-9 rounded-xl flex items-center justify-center border ${
-                      plan.highlighted ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-200"
+                    className={`h-10 w-10 rounded-xl flex items-center justify-center border ${
+                      plan.highlighted ? "bg-emerald-50 border-emerald-100" : "bg-slate-50 border-slate-100"
                     }`}
                   >
-                    <PlanIcon className={`h-4 w-4 ${plan.highlighted ? "text-emerald-600" : "text-slate-600"}`} />
+                    <PlanIcon className={`h-5 w-5 ${plan.highlighted ? "text-emerald-600" : "text-slate-600"}`} />
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
+                  <h3 className="text-lg font-bold text-slate-900 leading-tight">{plan.name}</h3>
                 </div>
 
-                <div className="mb-3">
-                  <span className="text-2xl font-bold text-slate-900">{plan.price}</span>
-                  <span className="text-slate-500 text-sm">{plan.period}</span>
+                <div className="mb-4 pb-4 border-b border-slate-100">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-black text-slate-900">{plan.price}</span>
+                    <span className="text-slate-400 text-xs font-medium uppercase">{plan.period}</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2 leading-relaxed min-h-[40px]">{plan.description}</p>
                 </div>
 
-                <p className="text-xs text-slate-600 mb-4">{plan.description}</p>
-
-                <ul className="space-y-2 mb-4 flex-1">
+                <ul className="space-y-3 mb-6 flex-1">
                   {plan.features.map((feature, featureIndex) => (
-                    <li key={featureIndex} className="flex items-start gap-2 text-xs text-slate-700">
-                      <Check className="h-3 w-3 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <li key={featureIndex} className="flex items-start gap-2.5 text-xs font-medium text-slate-600">
+                      <div
+                        className={`mt-0.5 h-4 w-4 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          plan.highlighted ? "bg-emerald-100" : "bg-blue-50"
+                        }`}
+                      >
+                        <Check className={`h-2.5 w-2.5 ${plan.highlighted ? "text-emerald-600" : "text-blue-600"}`} />
+                      </div>
                       <span>{feature}</span>
                     </li>
                   ))}
@@ -106,8 +217,7 @@ export default function Pricing() {
                 {isCurrentPlan ? (
                   <Button
                     variant="outline"
-                    className="w-full h-9 rounded-xl !bg-white !text-slate-700 border !border-slate-200"
-                    size="sm"
+                    className="w-full h-10 rounded-xl bg-slate-50 text-slate-400 border-slate-200 cursor-default hover:bg-slate-50"
                     disabled
                   >
                     Plano Atual
@@ -115,25 +225,22 @@ export default function Pricing() {
                 ) : plan.id === "starter" ? (
                   <Button
                     variant="outline"
-                    className="w-full h-9 rounded-xl !bg-white !text-slate-700 border !border-slate-200"
-                    size="sm"
+                    className="w-full h-10 rounded-xl border-slate-200 text-slate-600 bg-white"
                     disabled
                   >
                     Plano Gratuito
                   </Button>
                 ) : (
                   <Button
-                    variant={plan.highlighted ? "default" : "outline"}
-                    className={`w-full gap-2 h-9 rounded-xl ${
-                      plan.highlighted
-                        ? "!bg-emerald-500 !text-white hover:!bg-emerald-600"
-                        : "!bg-white !text-slate-700 border !border-slate-200 hover:!bg-slate-50"
-                    }`}
-                    size="sm"
                     onClick={() => handleUpgrade(plan.id, plan.name, plan.price, plan.clientsLimit)}
+                    className={`w-full h-10 rounded-xl gap-2 font-bold shadow-md transition-all ${
+                      plan.highlighted
+                        ? "!bg-emerald-500 !text-white hover:!bg-emerald-600 shadow-emerald-100"
+                        : "!bg-blue-600 !text-white hover:!bg-blue-700 shadow-blue-100"
+                    }`}
                   >
-                    <MessageCircle className="h-3 w-3" />
-                    Upgrade
+                    <MessageCircle className="h-4 w-4" />
+                    Contratar
                   </Button>
                 )}
               </motion.div>
@@ -143,18 +250,18 @@ export default function Pricing() {
 
         {/* FAQ or Additional Info */}
         <motion.div
-          className="rounded-2xl !bg-white border border-slate-200 p-6 text-center shadow-sm"
+          className="rounded-3xl !bg-white border border-slate-200 p-8 text-center shadow-sm"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <p className="text-slate-600">
-            Precisa de ajuda para escolher o plano ideal?{" "}
+          <p className="text-slate-600 font-medium">
+            Precisa de um plano personalizado para sua agência?{" "}
             <a
               href={`https://wa.me/${WHATSAPP_NUMBER}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
+              className="text-blue-600 hover:text-blue-700 hover:underline font-bold inline-flex items-center gap-1 transition-colors"
             >
               Fale conosco pelo WhatsApp
             </a>
