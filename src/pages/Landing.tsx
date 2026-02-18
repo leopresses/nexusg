@@ -1,320 +1,290 @@
-import { motion } from "framer-motion";
-import { CheckCircle2, BarChart3, Users, Calendar, FileText, Zap, ArrowRight, Star } from "lucide-react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, MessageCircle, Star, HelpCircle, X, ArrowRight, CreditCard, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/Logo";
-import { Link } from "react-router-dom";
-import { SIMPLE_PLANS, WHATSAPP_NUMBER } from "@/config/plans";
+import { Badge } from "@/components/ui/badge";
+import { AppLayout } from "@/components/AppLayout";
+import { useAuth } from "@/hooks/useAuth";
+import { PLANS, WHATSAPP_NUMBER, formatClientLimit } from "@/config/plans";
 
-const features = [
-  {
-    icon: Calendar,
-    title: "Tarefas Automatizadas",
-    description: "Templates semanais que geram tarefas automaticamente para todos os seus clientes.",
-  },
-  {
-    icon: BarChart3,
-    title: "Google Place ID",
-    description:
-      "Conecte o estabelecimento ao Google para sincronizar métricas, dados e presença digital automaticamente.",
-  },
-  {
-    icon: FileText,
-    title: "Relatórios em PDF",
-    description: "Gere relatórios profissionais automaticamente para apresentar aos clientes.",
-  },
-  {
-    icon: Users,
-    title: "Multi-clientes",
-    description: "Gerencie múltiplos estabelecimentos de forma organizada e eficiente.",
-  },
-];
+export default function Pricing() {
+  const { profile, user } = useAuth();
+  const currentPlan = profile?.plan || "starter";
+  const userEmail = user?.email || "";
 
-const fadeInUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-};
+  const [showTutorial, setShowTutorial] = useState(false);
 
-const stagger = {
-  visible: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
+  useEffect(() => {
+    const hasSeenTutorial = localStorage.getItem("pricing_tutorial_seen");
+    if (!hasSeenTutorial) {
+      setTimeout(() => setShowTutorial(true), 1000);
+    }
+  }, []);
 
-export default function Landing() {
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem("pricing_tutorial_seen", "true");
+  };
+
+  const handleUpgrade = (planId: string, planName: string, planPrice: string, clientsLimit: string) => {
+    const message = encodeURIComponent(
+      `Olá! Quero contratar/upgrade no Gestão Nexus.\n\n` +
+        `Plano de interesse: ${planName}\n` +
+        `Preço: ${planPrice}/mês\n` +
+        `Limite: ${clientsLimit}\n` +
+        `Meu e-mail: ${userEmail}\n\n` +
+        `Pode me ajudar com o processo?`,
+    );
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, "_blank");
+  };
+
   return (
-    <div className="min-h-screen bg-[#f6f8fc] overflow-hidden text-slate-900">
-      {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          {/* força o texto do Logo (inclui “Gestão”) sem mexer no componente */}
-          <div className="text-slate-900 [&_*]:!text-slate-900">
-            <Logo size="sm" />
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Link to="/login">
-              <Button variant="ghost" size="sm" className="!text-slate-700 hover:!bg-slate-100">
-                Entrar
-              </Button>
-            </Link>
-            <Link to="/register">
-              <Button
-                variant="default"
-                size="sm"
-                className="rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700 shadow-sm"
-              >
-                Começar Grátis
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-6">
-        {/* Background effects */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white via-[#f6f8fc] to-white" />
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[680px] h-[680px] bg-gradient-to-r from-blue-500/20 via-indigo-500/10 to-transparent rounded-full blur-[120px]" />
-        <div className="absolute bottom-10 right-10 w-72 h-72 bg-blue-600/10 rounded-full blur-3xl" />
-
-        <div className="container mx-auto relative">
-          <motion.div className="max-w-4xl mx-auto text-center" initial="hidden" animate="visible" variants={stagger}>
-            <motion.div
-              variants={fadeInUp}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 backdrop-blur border border-slate-200 shadow-sm mb-8"
-            >
-              <Zap className="h-4 w-4 text-blue-600" />
-              <span className="text-sm text-slate-600">A plataforma #1 para gestão de Google Business</span>
-            </motion.div>
-
-            <motion.h1 variants={fadeInUp} className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-              Cresça no Google com{" "}
-              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                Gestão Nexus
-              </span>
-            </motion.h1>
-
-            <motion.p variants={fadeInUp} className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
-              Automatize tarefas, acompanhe métricas e gere relatórios profissionais para restaurantes e negócios
-              locais.
-            </motion.p>
-
-            <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/register">
-                <Button
-                  variant="hero"
-                  size="xl"
-                  className="w-full sm:w-auto h-12 rounded-xl relative overflow-hidden group
-                  !bg-gradient-to-r !from-blue-600 !to-indigo-600 !text-white hover:opacity-95 shadow-lg hover:shadow-xl transition-all"
-                >
-                  <span className="relative z-10 flex items-center gap-2">
-                    Começar Gratuitamente
-                    <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-                  </span>
-                  <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.35),transparent_55%)]" />
-                </Button>
-              </Link>
-              <Link to="/demo">
-                <Button
-                  variant="glass"
-                  size="xl"
-                  className="w-full sm:w-auto h-12 rounded-xl !bg-white !text-slate-700 border !border-slate-200 hover:!bg-slate-50 shadow-sm transition-all"
-                >
-                  Ver Demonstração
-                </Button>
-              </Link>
-            </motion.div>
-
-            <motion.div
-              variants={fadeInUp}
-              className="mt-10 flex items-center justify-center gap-6 text-sm text-slate-600"
-            >
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span>Sem cartão de crédito</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span>Setup em 2 minutos</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span>Suporte via WhatsApp</span>
-              </div>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-20 px-6 relative">
-        <div className="container mx-auto">
-          <motion.div
-            className="text-center mb-16"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+    <AppLayout
+      title="Planos e Assinaturas"
+      subtitle="Escolha o plano ideal para o seu negócio"
+      headerActions={
+        <div className="flex items-center gap-2 relative">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowTutorial(true)}
+            className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
+            title="Como funciona?"
           >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Tudo que você precisa para{" "}
-              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                dominar o Google
-              </span>
-            </h2>
-            <p className="text-slate-600 max-w-2xl mx-auto">
-              Ferramentas poderosas para agências e gestores que querem resultados reais.
-            </p>
-          </motion.div>
+            <HelpCircle className="h-5 w-5" />
+          </Button>
 
-          <motion.div
-            className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={stagger}
-          >
-            {features.map((feature, index) => (
+          <AnimatePresence>
+            {showTutorial && (
               <motion.div
-                key={index}
-                variants={fadeInUp}
-                whileHover={{ y: -6 }}
-                transition={{ type: "spring", stiffness: 260, damping: 22 }}
-                className="p-6 rounded-2xl bg-white border border-slate-200
-                shadow-[0_8px_30px_rgba(0,0,0,0.04)]
-                hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)]
-                transition-all duration-300 group"
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                className="absolute right-0 top-14 z-50 w-80 bg-blue-600 text-white p-5 rounded-2xl shadow-xl shadow-blue-200"
               >
-                <div className="h-12 w-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-4">
-                  <feature.icon className="h-6 w-6 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-                <p className="text-slate-600 text-sm">{feature.description}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section className="py-20 px-6 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-600/5 to-transparent" />
-        <div className="container mx-auto relative">
-          <motion.div
-            className="text-center mb-16"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Planos para cada{" "}
-              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                tamanho de negócio
-              </span>
-            </h2>
-            <p className="text-slate-600 max-w-2xl mx-auto">Comece grátis e escale conforme sua operação cresce.</p>
-          </motion.div>
-
-          <motion.div
-            className="grid md:grid-cols-2 lg:grid-cols-5 gap-4 max-w-6xl mx-auto"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={stagger}
-          >
-            {SIMPLE_PLANS.map((plan, index) => (
-              <motion.div
-                key={index}
-                variants={fadeInUp}
-                whileHover={{ y: -6, scale: plan.popular ? 1.03 : 1.01 }}
-                transition={{ type: "spring", stiffness: 260, damping: 22 }}
-                className={`relative p-5 rounded-2xl border transition-all duration-300 bg-white
-                shadow-[0_6px_25px_rgba(0,0,0,0.04)]
-                hover:shadow-[0_12px_35px_rgba(0,0,0,0.08)]
-                ${plan.popular ? "border-blue-600 ring-2 ring-blue-200/60" : "border-slate-200 hover:border-blue-200"}`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-blue-600 text-xs font-semibold text-white flex items-center gap-1 shadow-md">
-                    <Star className="h-3 w-3" />
-                    Popular
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-white/20 p-1.5 rounded-lg">
+                      <CreditCard className="h-4 w-4 text-white" />
+                    </div>
+                    <h3 className="font-bold text-sm">Entenda seus Planos</h3>
                   </div>
-                )}
-                <div className="text-center">
-                  <h3 className="text-lg font-semibold mb-1">{plan.name}</h3>
-                  <p className="text-sm text-slate-600 mb-3">{plan.clients}</p>
-                  <div className="text-xl font-bold mb-4">{plan.price}</div>
-                  <Link to="/register">
-                    <Button
-                      variant={plan.popular ? "default" : "outline"}
-                      className={`w-full rounded-xl ${
-                        plan.popular
-                          ? "!bg-blue-600 !text-white hover:!bg-blue-700"
-                          : "!bg-white !text-slate-700 border !border-slate-200 hover:!bg-slate-50"
-                      }`}
-                      size="sm"
-                    >
-                      Escolher Plano
-                    </Button>
-                  </Link>
+                  <button
+                    onClick={closeTutorial}
+                    className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
+                <div className="space-y-3 text-sm text-blue-50">
+                  <ul className="space-y-2 list-none">
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        1
+                      </span>
+                      <span>Seu plano atual aparece em destaque no topo da página.</span>
+                    </li>
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        2
+                      </span>
+                      <span>Compare os limites de clientes e recursos entre as opções.</span>
+                    </li>
+                    <li className="flex gap-2 items-start">
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
+                        3
+                      </span>
+                      <span>Para fazer upgrade, clique em "Contratar" e fale com nosso suporte.</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={closeTutorial}
+                    className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1"
+                  >
+                    Entendi <ArrowRight className="h-3 w-3" />
+                  </button>
+                </div>
+                <div className="absolute -top-2 right-3 w-4 h-4 bg-blue-600 rotate-45 transform" />
               </motion.div>
-            ))}
-          </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 px-6">
-        <div className="container mx-auto">
-          <motion.div
-            className="max-w-4xl mx-auto text-center p-12 rounded-3xl bg-white border border-slate-200
-            shadow-[0_10px_40px_rgba(0,0,0,0.06)]"
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            transition={{ type: "spring", stiffness: 240, damping: 22 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Pronto para voar mais alto?</h2>
-            <p className="text-slate-600 mb-8 max-w-xl mx-auto">
-              Junte-se a centenas de agências e gestores que já estão transformando a presença digital dos seus
-              clientes.
-            </p>
-            <Link to="/register">
-              <Button
-                variant="hero"
-                size="xl"
-                className="h-12 rounded-xl relative overflow-hidden group
-                !bg-gradient-to-r !from-blue-600 !to-indigo-600 !text-white hover:opacity-95 shadow-lg hover:shadow-xl transition-all"
-              >
-                <span className="relative z-10 flex items-center gap-2">
-                  Criar Conta Gratuita
-                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-                </span>
-                <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.35),transparent_55%)]" />
-              </Button>
-            </Link>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-8 px-6 border-t border-slate-200 bg-white">
-        <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-slate-900 [&_*]:!text-slate-900">
-            <Logo size="sm" />
+      }
+    >
+      <div className="space-y-8 pb-12">
+        {/* Banner do Plano Atual */}
+        <motion.div
+          className="rounded-3xl !bg-white border border-slate-200 p-6 md:p-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-blue-50 flex items-center justify-center border border-blue-100 flex-shrink-0">
+              <Star className="h-6 w-6 text-blue-600 fill-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-xl text-slate-900">Seu plano atual</h3>
+              <p className="text-slate-600 mt-1">
+                Você está no plano{" "}
+                <span className="text-blue-600 font-bold uppercase tracking-wide">{currentPlan}</span>
+                {profile?.clients_limit && (
+                  <span className="ml-2 text-slate-400">({formatClientLimit(profile.clients_limit)})</span>
+                )}
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-slate-600">© 2026 Gestão Nexus. Todos os direitos reservados.</p>
-          <a
-            href={`https://wa.me/${WHATSAPP_NUMBER}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-blue-600 hover:underline"
+          <Badge className="!bg-emerald-50 !text-emerald-700 border border-emerald-200 text-sm px-4 py-1.5 rounded-full font-bold whitespace-nowrap">
+            {currentPlan === "starter" ? "Gratuito" : "Assinatura Ativa"}
+          </Badge>
+        </motion.div>
+
+        {/* Grid de Planos Otimizado */}
+        <div className="relative">
+          {/* Ajuste de Grid para caber tudo sem scroll horizontal excessivo em desktop */}
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-stretch"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
           >
-            Suporte via WhatsApp
-          </a>
+            {PLANS.map((plan, index) => {
+              const isCurrentPlan = plan.id === currentPlan;
+              const PlanIcon = plan.icon;
+
+              return (
+                <motion.div
+                  key={plan.id}
+                  className={`
+                    group relative flex flex-col rounded-2xl border bg-white transition-all duration-300
+                    ${
+                      plan.highlighted
+                        ? "border-emerald-500 ring-1 ring-emerald-500 shadow-emerald-50/50 scale-[1.02] z-10"
+                        : "border-slate-200 hover:border-blue-300 hover:shadow-md"
+                    } 
+                    ${isCurrentPlan ? "ring-2 ring-blue-500 border-blue-500 shadow-blue-50" : ""}
+                  `}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + index * 0.1 }}
+                >
+                  {plan.highlighted && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max z-20">
+                      <Badge className="!bg-emerald-500 !text-white border-none rounded-full px-3 py-0.5 text-[10px] font-bold uppercase tracking-widest shadow-md">
+                        Mais Popular
+                      </Badge>
+                    </div>
+                  )}
+
+                  <div className="p-5 flex flex-col h-full">
+                    {/* Header do Card */}
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div
+                          className={`h-10 w-10 rounded-xl flex items-center justify-center border transition-colors ${
+                            plan.highlighted
+                              ? "bg-emerald-50 border-emerald-100 group-hover:bg-emerald-100"
+                              : "bg-slate-50 border-slate-100 group-hover:bg-blue-50 group-hover:border-blue-100"
+                          }`}
+                        >
+                          <PlanIcon
+                            className={`h-5 w-5 ${plan.highlighted ? "text-emerald-600" : "text-slate-600 group-hover:text-blue-600"}`}
+                          />
+                        </div>
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-900 leading-tight">{plan.name}</h3>
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-2 h-8">{plan.description}</p>
+                    </div>
+
+                    {/* Preço */}
+                    <div className="mb-4 pb-4 border-b border-slate-100">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-black text-slate-900">{plan.price}</span>
+                        <span className="text-slate-400 text-[10px] font-bold uppercase">{plan.period}</span>
+                      </div>
+                    </div>
+
+                    {/* Lista de Features Compacta */}
+                    <ul className="space-y-2.5 mb-6 flex-1">
+                      {plan.features.map((feature, featureIndex) => (
+                        <li key={featureIndex} className="flex items-start gap-2 text-xs font-medium text-slate-600">
+                          <div
+                            className={`mt-0.5 h-3.5 w-3.5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                              plan.highlighted ? "bg-emerald-100" : "bg-blue-50"
+                            }`}
+                          >
+                            <Check className={`h-2 w-2 ${plan.highlighted ? "text-emerald-600" : "text-blue-600"}`} />
+                          </div>
+                          <span className="leading-tight">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {/* Botão de Ação */}
+                    <div className="mt-auto">
+                      {isCurrentPlan ? (
+                        <Button
+                          variant="outline"
+                          className="w-full h-9 rounded-xl bg-slate-50 text-slate-400 border-slate-200 cursor-default hover:bg-slate-50 font-bold text-xs"
+                          disabled
+                        >
+                          Plano Atual
+                        </Button>
+                      ) : plan.id === "starter" ? (
+                        <Button
+                          variant="outline"
+                          className="w-full h-9 rounded-xl border-slate-200 text-slate-600 bg-white font-bold text-xs hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300"
+                          disabled
+                        >
+                          Plano Gratuito
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => handleUpgrade(plan.id, plan.name, plan.price, plan.clientsLimit)}
+                          className={`w-full h-9 rounded-xl gap-2 font-bold text-xs shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                            plan.highlighted
+                              ? "!bg-emerald-600 !text-white hover:!bg-emerald-700 shadow-emerald-100"
+                              : "!bg-blue-600 !text-white hover:!bg-blue-700 shadow-blue-100"
+                          }`}
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          Contratar
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
         </div>
-      </footer>
-    </div>
+
+        {/* FAQ Area */}
+        <motion.div
+          className="rounded-3xl !bg-white border border-slate-200 p-6 text-center shadow-sm"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-1">
+              <Zap className="h-5 w-5" />
+            </div>
+            <p className="text-slate-600 font-medium text-sm">
+              Precisa de um plano personalizado para sua agência?{" "}
+              <a
+                href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-700 hover:underline font-bold inline-flex items-center gap-1 transition-colors"
+              >
+                Fale conosco pelo WhatsApp
+              </a>
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    </AppLayout>
   );
 }
