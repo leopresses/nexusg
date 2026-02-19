@@ -15,10 +15,6 @@ import {
   HelpCircle,
   X,
   ArrowRight,
-  FileBarChart,
-  RefreshCw,
-  Clock,
-  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +70,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchData();
+    // Check if user has seen tutorial
     const hasSeenTutorial = localStorage.getItem("dashboard_tutorial_seen");
     if (!hasSeenTutorial) {
       setTimeout(() => setShowTutorial(true), 1000);
@@ -121,20 +118,21 @@ export default function Dashboard() {
       const dailyTasks = allTasks.filter((t: any) => (t.frequency || "weekly") === "daily");
       const weeklyTasks = allTasks.filter((t: any) => (t.frequency || "weekly") === "weekly");
 
-      setDayStats({
-        daily: {
-          pending: dailyTasks.filter((t: any) => t.status === "pending").length,
-          in_progress: dailyTasks.filter((t: any) => t.status === "in_progress").length,
-          completed: dailyTasks.filter((t: any) => t.status === "completed").length,
-          total: dailyTasks.length,
-        },
-        weekly: {
-          pending: weeklyTasks.filter((t: any) => t.status === "pending").length,
-          in_progress: weeklyTasks.filter((t: any) => t.status === "in_progress").length,
-          completed: weeklyTasks.filter((t: any) => t.status === "completed").length,
-          total: weeklyTasks.length,
-        },
-      });
+      const daily: TaskStats = {
+        pending: dailyTasks.filter((t: any) => t.status === "pending").length,
+        in_progress: dailyTasks.filter((t: any) => t.status === "in_progress").length,
+        completed: dailyTasks.filter((t: any) => t.status === "completed").length,
+        total: dailyTasks.length,
+      };
+
+      const weekly: TaskStats = {
+        pending: weeklyTasks.filter((t: any) => t.status === "pending").length,
+        in_progress: weeklyTasks.filter((t: any) => t.status === "in_progress").length,
+        completed: weeklyTasks.filter((t: any) => t.status === "completed").length,
+        total: weeklyTasks.length,
+      };
+
+      setDayStats({ daily, weekly });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -146,23 +144,20 @@ export default function Dashboard() {
   const clientLimit = formatClientLimit((profile as any)?.clients_limit);
 
   const stats = [
-    { label: "Clientes Ativos", value: clients.length, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
-    {
-      label: "Tarefas Pendentes",
-      value: taskStats.pending,
-      icon: CheckSquare,
-      color: "text-amber-600",
-      bg: "bg-amber-50",
-    },
-    { label: "Visualizações", value: "—", icon: Eye, color: "text-indigo-600", bg: "bg-indigo-50" },
-    { label: "Chamadas", value: "—", icon: Phone, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Clientes Ativos", value: clients.length, icon: Users, change: "Ativos no momento" },
+    { label: "Tarefas Pendentes", value: taskStats.pending, icon: CheckSquare, change: "Precisam de atenção" },
+    { label: "Visualizações (mock)", value: "—", icon: Eye, change: "Placeholder" },
+    { label: "Chamadas (mock)", value: "—", icon: Phone, change: "Placeholder" },
   ];
 
   if (isLoading) {
     return (
       <AppLayout title="Carregando..." subtitle="">
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <span className="text-sm text-slate-600">Carregando painel…</span>
+          </div>
         </div>
       </AppLayout>
     );
@@ -170,238 +165,271 @@ export default function Dashboard() {
 
   return (
     <AppLayout
-      title={`Olá, ${profile?.full_name?.split(" ")[0] || "Usuário"}! 👋`}
-      subtitle="Veja o resumo da performance de seus clientes."
+      title={`Olá, ${profile?.full_name || "Usuário"}! 👋`}
+      subtitle={`Semana de ${new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} - Visão geral`}
       headerActions={
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setShowTutorial(true)}
-            className="text-slate-500 rounded-xl"
+            className="text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+            title="Ver tutorial"
           >
             <HelpCircle className="h-5 w-5" />
           </Button>
-          <Button onClick={() => navigate("/onboarding")} className="h-10 rounded-xl bg-blue-600 text-white font-bold">
-            <Plus className="h-4 w-4 mr-2" /> Novo Cliente
+          <Button
+            onClick={() => navigate("/onboarding")}
+            className="h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Cliente
           </Button>
         </div>
       }
     >
-      <div className="space-y-8 relative">
+      <div className="space-y-6 relative">
+        {/* Tutorial Bubble */}
         <AnimatePresence>
           {showTutorial && (
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute right-0 top-0 z-50 w-80 bg-blue-600 text-white p-6 rounded-2xl shadow-xl shadow-blue-200"
+              className="absolute right-0 top-0 z-50 w-80 bg-blue-600 text-white p-5 rounded-2xl shadow-xl shadow-blue-200"
             >
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  <h3 className="font-bold text-sm">Resumo da Agência</h3>
+                  <div className="bg-white/20 p-1.5 rounded-lg">
+                    <TrendingUp className="h-4 w-4 text-white" />
+                  </div>
+                  <h3 className="font-bold text-sm">Bem-vindo ao Painel!</h3>
                 </div>
-                <button onClick={closeTutorial} className="hover:bg-white/10 rounded-full p-1">
+                <button
+                  onClick={closeTutorial}
+                  className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"
+                >
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <p className="text-xs text-blue-50 leading-relaxed mb-4">
-                Acompanhe métricas, gerencie tarefas diárias e gere relatórios profissionais para seus clientes do
-                Google Business.
-              </p>
-              <Button
-                onClick={closeTutorial}
-                className="w-full bg-white text-blue-600 hover:bg-blue-50 text-xs font-bold h-8 rounded-lg"
-              >
-                Entendi
-              </Button>
-              <div className="absolute -top-2 right-12 w-4 h-4 bg-blue-600 rotate-45" />
+
+              <div className="space-y-3 text-sm text-blue-50">
+                <p>Aqui você tem uma visão geral do seu negócio:</p>
+                <ul className="space-y-2 list-none">
+                  <li className="flex gap-2 items-start">
+                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">1</span>
+                    <span>Acompanhe o progresso das suas tarefas diárias e semanais.</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">2</span>
+                    <span>Veja estatísticas rápidas dos seus clientes.</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">3</span>
+                    <span>Adicione novos clientes rapidamente no botão acima.</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={closeTutorial}
+                  className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1"
+                >
+                  Entendi <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+
+              {/* Seta do balão */}
+              <div className="absolute -top-2 right-12 w-4 h-4 bg-blue-600 rotate-45 transform" />
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
           {stats.map((stat, index) => (
             <motion.div
               key={index}
+              className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-blue-200 transition-colors"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="p-6 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all group"
+              transition={{ duration: 0.3, delay: index * 0.1 }}
             >
-              <div className="flex justify-between items-start mb-4">
-                <div
-                  className={`h-12 w-12 rounded-xl ${stat.bg} flex items-center justify-center transition-transform group-hover:scale-110`}
-                >
-                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
+              <div className="flex items-start justify-between mb-3">
+                <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                  <stat.icon className="h-5 w-5 text-blue-600" />
                 </div>
+                <TrendingUp className="h-4 w-4 text-emerald-600" />
               </div>
-              <div className="text-2xl font-black text-slate-900">{stat.value}</div>
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">{stat.label}</div>
+              <div className="text-2xl font-bold mb-1">{stat.value}</div>
+              <div className="text-sm text-slate-500">{stat.label}</div>
+              <div className="text-xs text-emerald-600 mt-2">{stat.change}</div>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
 
-        {/* Ações Rápidas - Remodelado */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Button
-            variant="outline"
-            onClick={() => navigate("/tasks")}
-            className="h-16 rounded-2xl border-dashed border-slate-200 flex justify-start gap-4 px-6 hover:bg-blue-50 hover:border-blue-200 transition-all group"
-          >
-            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-              <CheckSquare className="h-5 w-5" />
+        {/* Progress Bars */}
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.15 }}
+        >
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              <h3 className="font-semibold">Tarefas de Hoje</h3>
             </div>
-            <div className="text-left">
-              <div className="text-sm font-bold text-slate-900">Ver Checklist</div>
-              <div className="text-[10px] text-slate-500 font-medium">Tarefas da semana</div>
+            <ProgressBar
+              pending={dayStats.daily.pending}
+              inProgress={dayStats.daily.in_progress}
+              completed={dayStats.daily.completed}
+              total={dayStats.daily.total}
+              label="Diárias"
+            />
+          </div>
+          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <CalendarDays className="h-5 w-5 text-blue-600" />
+              <h3 className="font-semibold">Tarefas da Semana</h3>
             </div>
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => window.location.reload()}
-            className="h-16 rounded-2xl border-dashed border-slate-200 flex justify-start gap-4 px-6 hover:bg-indigo-50 hover:border-indigo-200 transition-all group"
-          >
-            <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-              <RefreshCw className="h-5 w-5" />
-            </div>
-            <div className="text-left">
-              <div className="text-sm font-bold text-slate-900">Sincronizar Dados</div>
-              <div className="text-[10px] text-slate-500 font-medium">Atualizar métricas Google</div>
-            </div>
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => navigate("/reports")}
-            className="h-16 rounded-2xl border-dashed border-slate-200 flex justify-start gap-4 px-6 hover:bg-emerald-50 hover:border-emerald-200 transition-all group"
-          >
-            <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-              <FileBarChart className="h-5 w-5" />
-            </div>
-            <div className="text-left">
-              <div className="text-sm font-bold text-slate-900">Novo Relatório</div>
-              <div className="text-[10px] text-slate-500 font-medium">Gerar PDF de performance</div>
-            </div>
-          </Button>
-        </div>
+            <ProgressBar
+              pending={dayStats.weekly.pending}
+              inProgress={dayStats.weekly.in_progress}
+              completed={dayStats.weekly.completed}
+              total={dayStats.weekly.total}
+              label="Semanais"
+            />
+          </div>
+        </motion.div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Progress Section */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="rounded-3xl bg-white border border-slate-100 shadow-sm p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
-                    <Calendar className="h-5 w-5" />
-                  </div>
-                  <h3 className="font-bold text-slate-900">Tarefas de Hoje</h3>
-                </div>
-                <ProgressBar
-                  pending={dayStats.daily.pending}
-                  inProgress={dayStats.daily.in_progress}
-                  completed={dayStats.daily.completed}
-                  total={dayStats.daily.total}
-                  label="Diárias"
-                />
-              </div>
-              <div className="rounded-3xl bg-white border border-slate-100 shadow-sm p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-                    <CalendarDays className="h-5 w-5" />
-                  </div>
-                  <h3 className="font-bold text-slate-900">Progresso Semanal</h3>
-                </div>
-                <ProgressBar
-                  pending={dayStats.weekly.pending}
-                  inProgress={dayStats.weekly.in_progress}
-                  completed={dayStats.weekly.completed}
-                  total={dayStats.weekly.total}
-                  label="Semanais"
-                />
-              </div>
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Clients List */}
+          <motion.div
+            className="lg:col-span-2 rounded-2xl bg-white border border-slate-200 shadow-sm"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+          >
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="font-semibold text-lg">Clientes</h2>
+              <Link to="/clients" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                Ver todos <ChevronRight className="h-4 w-4" />
+              </Link>
             </div>
-
-            {/* Clientes Section */}
-            <div className="rounded-3xl bg-white border border-slate-100 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-slate-50 flex items-center justify-between">
-                <h2 className="font-bold text-lg text-slate-900">Clientes Recentes</h2>
-                <Link to="/clients" className="text-xs font-bold text-blue-600 hover:underline flex items-center">
-                  Ver todos <ChevronRight className="h-4 w-4" />
-                </Link>
-              </div>
-              <div className="divide-y divide-slate-50">
-                {clients.slice(0, 4).map((client) => (
-                  <div
-                    key={client.id}
-                    className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors"
+            <div className="divide-y divide-slate-100">
+              {clients.length === 0 ? (
+                <div className="p-8 text-center">
+                  <Users className="h-12 w-12 text-slate-500 mx-auto mb-4" />
+                  <h3 className="font-medium mb-2">Nenhum cliente ainda</h3>
+                  <p className="text-sm text-slate-500 mb-4">Adicione seu primeiro cliente para começar</p>
+                  <Button
+                    onClick={() => navigate("/onboarding")}
+                    className="h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
                   >
-                    <div className="flex items-center gap-4">
-                      <ClientAvatar avatarUrl={(client as any).avatar_url} clientName={client.name} />
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-900">{client.name}</h4>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                          {getBusinessTypeLabel(client.business_type)}
-                        </p>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar Cliente
+                  </Button>
+                </div>
+              ) : (
+                clients.slice(0, 5).map((client) => (
+                  <div key={client.id} className="p-4 hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center font-bold text-lg overflow-hidden">
+                          <ClientAvatar avatarUrl={(client as any).avatar_url} clientName={client.name} />
+                        </div>
+                        <div>
+                          <h3 className="font-medium">{client.name}</h3>
+                          <p className="text-sm text-slate-500 capitalize">
+                            {getBusinessTypeLabel(client.business_type)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className="text-center">
+                          <div className="text-sm font-medium">{client.address ? "✓" : "—"}</div>
+                          <div className="text-xs text-slate-500">Endereço</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-sm font-medium flex items-center gap-1">
+                            {client.google_business_id ? "✓" : "—"}
+                          </div>
+                          <div className="text-xs text-slate-500">Google</div>
+                        </div>
                       </div>
                     </div>
-                    <Badge className="bg-slate-50 text-slate-500 border-0 text-[10px] font-bold px-2 py-0.5">
-                      Ativo
-                    </Badge>
                   </div>
-                ))}
-              </div>
+                ))
+              )}
             </div>
-          </div>
+          </motion.div>
 
-          {/* Atividades Recentes */}
-          <div className="space-y-6">
-            <div className="rounded-3xl bg-white border border-slate-100 shadow-sm p-6">
-              <h2 className="font-bold text-lg text-slate-900 mb-6 flex items-center gap-2">
-                <Clock className="h-5 w-5 text-slate-400" /> Atividades
-              </h2>
-              <div className="space-y-4">
-                {recentTasks.map((task) => (
-                  <div key={task.id} className="flex gap-4 group">
-                    <div className="flex flex-col items-center">
-                      <div
-                        className={`h-2 w-2 rounded-full mt-1.5 ${task.status === "completed" ? "bg-emerald-500" : "bg-blue-600"}`}
-                      />
-                      <div className="w-px h-full bg-slate-100 group-last:hidden" />
-                    </div>
-                    <div className="pb-6">
-                      <p className="text-sm font-bold text-slate-900 line-clamp-1">{task.title}</p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
-                        {task.clients?.name}
-                      </p>
+          {/* Recent Tasks */}
+          <motion.div
+            className="rounded-2xl bg-white border border-slate-200 shadow-sm"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+          >
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="font-semibold text-lg">Tarefas Recentes</h2>
+              <Link to="/tasks" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                Ver todas <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+            <div className="p-4 space-y-3">
+              {recentTasks.length === 0 ? (
+                <div className="text-center py-8">
+                  <CheckSquare className="h-10 w-10 text-slate-500 mx-auto mb-3" />
+                  <p className="text-sm text-slate-500">Nenhuma tarefa recente</p>
+                </div>
+              ) : (
+                recentTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="p-3 rounded-2xl border border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium text-sm">{task.title}</div>
+                        <div className="text-xs text-slate-500 mt-1">{task.clients?.name || "Cliente"}</div>
+                      </div>
+                      <Badge
+                        className={`border rounded-full ${statusColors[task.status as keyof typeof statusColors]}`}
+                      >
+                        {statusLabels[task.status as keyof typeof statusLabels]}
+                      </Badge>
                     </div>
                   </div>
-                ))}
-              </div>
+                ))
+              )}
             </div>
-
-            {/* Card de Assinatura */}
-            <div className="rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 p-6 text-white shadow-lg relative overflow-hidden">
-              <Star className="absolute -right-4 -bottom-4 h-32 w-32 opacity-10 rotate-12" />
-              <div className="flex justify-between items-start mb-8 relative z-10">
-                <Badge className="bg-white/20 text-white border-0 font-bold px-3 py-1 rounded-lg uppercase tracking-wider text-[10px]">
-                  {planLabel}
-                </Badge>
-              </div>
-              <p className="text-xs font-bold text-blue-100 uppercase tracking-widest mb-1">Capacidade Total</p>
-              <h4 className="text-3xl font-black mb-4">
-                {clients.length} / {clientLimit}
-              </h4>
-              <div className="w-full h-2 bg-white/20 rounded-full relative z-10">
-                <div
-                  className="h-full bg-white rounded-full transition-all duration-500"
-                  style={{ width: `${(clients.length / (parseInt(clientLimit) || 1)) * 100}%` }}
-                />
-              </div>
-            </div>
-          </div>
+          </motion.div>
         </div>
+
+        {/* Plan Card */}
+        <motion.div
+          className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.35 }}
+        >
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h3 className="font-semibold text-lg">Seu plano</h3>
+              <p className="text-sm text-slate-500">
+                {planLabel} • Limite: {clientLimit}
+              </p>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </AppLayout>
   );
