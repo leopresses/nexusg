@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 /**
@@ -6,15 +6,22 @@ import { useAuth } from "@/hooks/useAuth";
  * - Abre automaticamente na primeira visita do usuário à página.
  * - Persiste o estado "já visto" por user + rota no localStorage.
  * - Permite reabrir manualmente via `open()`.
+ * - Aguarda o carregamento do auth para evitar falsos positivos com "anon".
  */
 export function useHelpTutorial(pageKey: string) {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  const storageKey = `help_seen:${user?.id ?? "anon"}:${pageKey}`;
+  const storageKey = user?.id
+    ? `help_seen:${user.id}:${pageKey}`
+    : null;
 
   useEffect(() => {
-    // Aguarda um momento para não disputar com o render inicial
+    // Não faz nada enquanto auth ainda está carregando
+    if (isLoading) return;
+    // Sem usuário logado, não abre tutorial
+    if (!storageKey) return;
+
     const timer = setTimeout(() => {
       const hasSeen = localStorage.getItem(storageKey);
       if (!hasSeen) {
@@ -23,16 +30,18 @@ export function useHelpTutorial(pageKey: string) {
     }, 1000);
 
     return () => clearTimeout(timer);
+  }, [storageKey, isLoading]);
+
+  const close = useCallback(() => {
+    setIsOpen(false);
+    if (storageKey) {
+      localStorage.setItem(storageKey, "true");
+    }
   }, [storageKey]);
 
-  const close = () => {
-    setIsOpen(false);
-    localStorage.setItem(storageKey, "true");
-  };
-
-  const open = () => {
+  const open = useCallback(() => {
     setIsOpen(true);
-  };
+  }, []);
 
   return { isOpen, open, close };
 }
