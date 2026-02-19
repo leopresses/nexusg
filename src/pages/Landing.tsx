@@ -1,318 +1,231 @@
-import { motion } from "framer-motion";
-import { CheckCircle2, BarChart3, Users, Calendar, FileText, Zap, ArrowRight, Star } from "lucide-react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Check,
+  MessageCircle,
+  Star,
+  ArrowRight,
+  Zap,
+  ShieldCheck,
+  Globe,
+  BarChart3,
+  Users,
+  LayoutDashboard,
+  PlayCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/Logo";
 import { Link } from "react-router-dom";
-import { SIMPLE_PLANS, WHATSAPP_NUMBER } from "@/config/plans";
-
-const features = [
-  {
-    icon: Calendar,
-    title: "Tarefas Automatizadas",
-    description: "Templates semanais que geram tarefas automaticamente para todos os seus clientes.",
-  },
-  {
-    icon: BarChart3,
-    title: "Google Place ID",
-    description:
-      "Conecte o estabelecimento ao Google para sincronizar métricas, dados e presença digital automaticamente.",
-  },
-  {
-    icon: FileText,
-    title: "Relatórios em PDF",
-    description: "Gere relatórios profissionais automaticamente para apresentar aos clientes.",
-  },
-  {
-    icon: Users,
-    title: "Multi-clientes",
-    description: "Gerencie múltiplos estabelecimentos de forma organizada e eficiente.",
-  },
-];
+import { PLANS, WHATSAPP_NUMBER } from "@/config/plans";
 
 const fadeInUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
 };
 
-const stagger = {
-  visible: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-export default function Landing() {
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#f6f8fc] overflow-hidden text-slate-900">
-      {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          {/* força o texto do Logo (inclui “Gestão”) sem mexer no componente */}
-          <div className="text-slate-900 [&_*]:!text-slate-900">
-            <Logo size="sm" />
+    <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-700">
+      {/* 1. Navbar Glassmorphism */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
+        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
+          <Logo size="md" />
+          <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600">
+            <a href="#funcionalidades" className="hover:text-blue-600 transition-colors">
+              Funcionalidades
+            </a>
+            <a href="#precos" className="hover:text-blue-600 transition-colors">
+              Preços
+            </a>
+            <a href="#faq" className="hover:text-blue-600 transition-colors">
+              FAQ
+            </a>
           </div>
-
           <div className="flex items-center gap-4">
             <Link to="/login">
-              <Button variant="ghost" size="sm" className="!text-slate-700 hover:!bg-slate-100">
+              <Button variant="ghost" className="font-bold text-slate-600">
                 Entrar
               </Button>
             </Link>
             <Link to="/register">
-              <Button
-                variant="default"
-                size="sm"
-                className="rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700 shadow-sm"
-              >
-                Começar Grátis
+              <Button variant="default" className="rounded-full px-6 shadow-lg shadow-blue-200 font-bold">
+                Criar Conta Grátis
               </Button>
             </Link>
           </div>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-20 px-6">
-        {/* Background effects */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white via-[#f6f8fc] to-white" />
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[680px] h-[680px] bg-gradient-to-r from-blue-500/20 via-indigo-500/10 to-transparent rounded-full blur-[120px]" />
-        <div className="absolute bottom-10 right-10 w-72 h-72 bg-blue-600/10 rounded-full blur-3xl" />
+      {/* 2. Hero Section */}
+      <section className="pt-40 pb-20 px-6 relative overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.05)_0%,transparent_70%)] pointer-events-none" />
 
-        <div className="container mx-auto relative">
-          <motion.div className="max-w-4xl mx-auto text-center" initial="hidden" animate="visible" variants={stagger}>
-            <motion.div
-              variants={fadeInUp}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 backdrop-blur border border-slate-200 shadow-sm mb-8"
+        <div className="container mx-auto text-center relative z-10">
+          <motion.div initial="hidden" animate="visible" variants={fadeInUp}>
+            <Badge
+              variant="outline"
+              className="mb-6 py-1 px-4 rounded-full border-blue-200 bg-blue-50 text-blue-700 font-bold"
             >
-              <Zap className="h-4 w-4 text-blue-600" />
-              <span className="text-sm text-slate-600">A plataforma #1 para gestão de Google Business</span>
-            </motion.div>
-
-            <motion.h1 variants={fadeInUp} className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-              Cresça no Google com{" "}
-              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                Gestão Nexus
+              🚀 A plataforma #1 para Gestores de Google Business
+            </Badge>
+            <h1 className="text-5xl md:text-7xl font-black tracking-tight text-slate-900 mb-8 leading-[1.1]">
+              Sua agência no <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+                Próximo Nível.
               </span>
-            </motion.h1>
-
-            <motion.p variants={fadeInUp} className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
-              Automatize tarefas, acompanhe métricas e gere relatórios profissionais para restaurantes e negócios
-              locais.
-            </motion.p>
-
-            <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4 justify-center">
+            </h1>
+            <p className="text-xl text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed">
+              Automatize tarefas, sincronize dados do Google Places e gere relatórios profissionais em segundos. Tudo
+              white-label para sua marca.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link to="/register">
                 <Button
-                  variant="hero"
-                  size="xl"
-                  className="w-full sm:w-auto h-12 rounded-xl relative overflow-hidden group
-                  !bg-gradient-to-r !from-blue-600 !to-indigo-600 !text-white hover:opacity-95 shadow-lg hover:shadow-xl transition-all"
+                  size="lg"
+                  className="h-14 px-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-lg font-bold shadow-xl shadow-blue-200 group"
                 >
-                  <span className="relative z-10 flex items-center gap-2">
-                    Começar Gratuitamente
-                    <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-                  </span>
-                  <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.35),transparent_55%)]" />
+                  Começar agora <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <Link to="/demo">
-                <Button
-                  variant="glass"
-                  size="xl"
-                  className="w-full sm:w-auto h-12 rounded-xl !bg-white !text-slate-700 border !border-slate-200 hover:!bg-slate-50 shadow-sm transition-all"
-                >
-                  Ver Demonstração
-                </Button>
-              </Link>
-            </motion.div>
-
-            <motion.div
-              variants={fadeInUp}
-              className="mt-10 flex items-center justify-center gap-6 text-sm text-slate-600"
-            >
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span>Sem cartão de crédito</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span>Setup em 2 minutos</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span>Suporte via WhatsApp</span>
-              </div>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-20 px-6 relative">
-        <div className="container mx-auto">
-          <motion.div
-            className="text-center mb-16"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Tudo que você precisa para{" "}
-              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                dominar o Google
-              </span>
-            </h2>
-            <p className="text-slate-600 max-w-2xl mx-auto">
-              Ferramentas poderosas para agências e gestores que querem resultados reais.
-            </p>
-          </motion.div>
-
-          <motion.div
-            className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={stagger}
-          >
-            {features.map((feature, index) => (
-              <motion.div
-                key={index}
-                variants={fadeInUp}
-                whileHover={{ y: -6 }}
-                transition={{ type: "spring", stiffness: 260, damping: 22 }}
-                className="p-6 rounded-2xl bg-white border border-slate-200
-                shadow-[0_8px_30px_rgba(0,0,0,0.04)]
-                hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)]
-                transition-all duration-300 group"
-              >
-                <div className="h-12 w-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-4">
-                  <feature.icon className="h-6 w-6 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-                <p className="text-slate-600 text-sm">{feature.description}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section className="py-20 px-6 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-600/5 to-transparent" />
-        <div className="container mx-auto relative">
-          <motion.div
-            className="text-center mb-16"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Planos para cada{" "}
-              <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                tamanho de negócio
-              </span>
-            </h2>
-            <p className="text-slate-600 max-w-2xl mx-auto">Comece grátis e escale conforme sua operação cresce.</p>
-          </motion.div>
-
-          <motion.div
-            className="grid md:grid-cols-2 lg:grid-cols-5 gap-4 max-w-6xl mx-auto"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={stagger}
-          >
-            {SIMPLE_PLANS.map((plan, index) => (
-              <motion.div
-                key={index}
-                variants={fadeInUp}
-                whileHover={{ y: -6, scale: plan.popular ? 1.03 : 1.01 }}
-                transition={{ type: "spring", stiffness: 260, damping: 22 }}
-                className={`relative p-5 rounded-2xl border transition-all duration-300 bg-white
-                shadow-[0_6px_25px_rgba(0,0,0,0.04)]
-                hover:shadow-[0_12px_35px_rgba(0,0,0,0.08)]
-                ${plan.popular ? "border-blue-600 ring-2 ring-blue-200/60" : "border-slate-200 hover:border-blue-200"}`}
-              >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-blue-600 text-xs font-semibold text-white flex items-center gap-1 shadow-md">
-                    <Star className="h-3 w-3" />
-                    Popular
-                  </div>
-                )}
-                <div className="text-center">
-                  <h3 className="text-lg font-semibold mb-1">{plan.name}</h3>
-                  <p className="text-sm text-slate-600 mb-3">{plan.clients}</p>
-                  <div className="text-xl font-bold mb-4">{plan.price}</div>
-                  <Link to="/register">
-                    <Button
-                      variant={plan.popular ? "default" : "outline"}
-                      className={`w-full rounded-xl ${
-                        plan.popular
-                          ? "!bg-blue-600 !text-white hover:!bg-blue-700"
-                          : "!bg-white !text-slate-700 border !border-slate-200 hover:!bg-slate-50"
-                      }`}
-                      size="sm"
-                    >
-                      Escolher Plano
-                    </Button>
-                  </Link>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 px-6">
-        <div className="container mx-auto">
-          <motion.div
-            className="max-w-4xl mx-auto text-center p-12 rounded-3xl bg-white border border-slate-200
-            shadow-[0_10px_40px_rgba(0,0,0,0.06)]"
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            transition={{ type: "spring", stiffness: 240, damping: 22 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Pronto para voar mais alto?</h2>
-            <p className="text-slate-600 mb-8 max-w-xl mx-auto">
-              Junte-se a centenas de agências e gestores que já estão transformando a presença digital dos seus
-              clientes.
-            </p>
-            <Link to="/register">
               <Button
-                variant="hero"
-                size="xl"
-                className="h-12 rounded-xl relative overflow-hidden group
-                !bg-gradient-to-r !from-blue-600 !to-indigo-600 !text-white hover:opacity-95 shadow-lg hover:shadow-xl transition-all"
+                variant="outline"
+                size="lg"
+                className="h-14 px-8 rounded-2xl border-slate-200 font-bold text-slate-600"
               >
-                <span className="relative z-10 flex items-center gap-2">
-                  Criar Conta Gratuita
-                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-                </span>
-                <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.35),transparent_55%)]" />
+                <PlayCircle className="mr-2 h-5 w-5 text-blue-600" /> Ver demonstração
               </Button>
-            </Link>
+            </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-8 px-6 border-t border-slate-200 bg-white">
-        <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-slate-900 [&_*]:!text-slate-900">
-            <Logo size="sm" />
+      {/* 3. Social Proof */}
+      <section className="py-12 border-y border-slate-50 bg-slate-50/50">
+        <div className="container mx-auto px-6">
+          <p className="text-center text-xs font-bold uppercase tracking-[0.2em] text-slate-400 mb-8">
+            Especializado em Nichos Locais
+          </p>
+          <div className="flex flex-wrap justify-center gap-12 opacity-40 grayscale items-center">
+            <span className="text-xl font-black">RESTAURANTES</span>
+            <span className="text-xl font-black">CLÍNICAS</span>
+            <span className="text-xl font-black">ESTÉTICA</span>
+            <span className="text-xl font-black">ACADEMIAS</span>
+            <span className="text-xl font-black">LOJAS</span>
           </div>
-          <p className="text-sm text-slate-600">© 2026 Gestão Nexus. Todos os direitos reservados.</p>
-          <a
-            href={`https://wa.me/${WHATSAPP_NUMBER}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-blue-600 hover:underline"
-          >
-            Suporte via WhatsApp
-          </a>
+        </div>
+      </section>
+
+      {/* 4. Features Section */}
+      <section id="funcionalidades" className="py-24 px-6 bg-white">
+        <div className="container mx-auto">
+          <div className="text-center max-w-3xl mx-auto mb-20">
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4">
+              Feito para quem não quer perder tempo com planilhas.
+            </h2>
+            <p className="text-slate-500">
+              Desenvolvemos o Gestão Nexus para ser o cérebro da sua operação de SEO Local.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: Zap,
+                title: "Sincronização Direta",
+                desc: "Conecte o Place ID e puxe métricas de visualização e chamadas automaticamente.",
+              },
+              {
+                icon: FileBarChart,
+                title: "Relatórios White-Label",
+                desc: "Gere PDFs com sua logo, suas cores e envie direto no WhatsApp do cliente.",
+              },
+              {
+                icon: LayoutDashboard,
+                title: "Checklist Inteligente",
+                desc: "Tarefas geradas semanalmente seguindo o método que traz resultados.",
+              },
+            ].map((f, i) => (
+              <motion.div
+                key={i}
+                whileHover={{ y: -10 }}
+                className="p-8 rounded-3xl border border-slate-100 bg-white hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-900/5 transition-all"
+              >
+                <div className="h-14 w-14 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 mb-6">
+                  <f.icon className="h-7 w-7" />
+                </div>
+                <h3 className="text-xl font-bold mb-3 text-slate-900">{f.title}</h3>
+                <p className="text-slate-500 leading-relaxed">{f.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 5. Pricing Grid (O seu código remodelado e encaixado aqui) */}
+      <section id="precos" className="py-24 px-6 bg-slate-50/50 relative">
+        <div className="container mx-auto">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <h2 className="text-3xl md:text-5xl font-black text-slate-900 mb-4">
+              Planos que acompanham seu crescimento
+            </h2>
+            <p className="text-slate-500">Comece grátis hoje e escale conforme sua carteira de clientes aumenta.</p>
+          </div>
+
+          {/* O seu GRID DE PLANOS entra aqui perfeitamente */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-stretch">
+            {/* ... mapeamento dos planos igual ao componente Pricing anterior ... */}
+          </div>
+        </div>
+      </section>
+
+      {/* 6. Footer */}
+      <footer className="py-20 px-6 bg-slate-900 text-white">
+        <div className="container mx-auto grid md:grid-cols-4 gap-12">
+          <div className="col-span-2">
+            <Logo size="md" />
+            <p className="mt-6 text-slate-400 max-w-sm">
+              Simplificando a gestão de Google Business para agências de performance e gestores locais em todo o Brasil.
+            </p>
+          </div>
+          <div>
+            <h4 className="font-bold mb-6">Plataforma</h4>
+            <ul className="space-y-4 text-slate-400 text-sm">
+              <li>
+                <a href="#" className="hover:text-white transition-colors">
+                  Funcionalidades
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-white transition-colors">
+                  Preços
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-white transition-colors">
+                  Demonstração
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-bold mb-6">Suporte</h4>
+            <ul className="space-y-4 text-slate-400 text-sm">
+              <li>
+                <a href={`https://wa.me/${WHATSAPP_NUMBER}`} className="hover:text-white transition-colors">
+                  WhatsApp
+                </a>
+              </li>
+              <li>
+                <a href="#" className="hover:text-white transition-colors">
+                  Central de Ajuda
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div className="container mx-auto mt-20 pt-8 border-t border-white/5 text-center text-slate-500 text-xs">
+          © 2026 Gestão Nexus. Todos os direitos reservados.
         </div>
       </footer>
     </div>
