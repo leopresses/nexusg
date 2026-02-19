@@ -19,9 +19,10 @@ import { AppLayout } from "@/components/AppLayout";
 import { GenerateReportDialog } from "@/components/reports/GenerateReportDialog";
 import { DeleteReportDialog } from "@/components/reports/DeleteReportDialog";
 import { useReports, type Report } from "@/hooks/useReports";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { WHATSAPP_NUMBER } from "@/config/plans";
 import { toast } from "sonner";
+import { useHelpTutorial } from "@/hooks/useHelpTutorial";
 
 export default function Reports() {
   const { reports, isLoading, deleteReport } = useReports();
@@ -29,21 +30,7 @@ export default function Reports() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [reportToDelete, setReportToDelete] = useState<Report | null>(null);
 
-  // Estado para o tutorial
-  const [showTutorial, setShowTutorial] = useState(false);
-
-  // Check tutorial on load
-  useEffect(() => {
-    const hasSeenTutorial = localStorage.getItem("reports_tutorial_seen");
-    if (!hasSeenTutorial) {
-      setTimeout(() => setShowTutorial(true), 1000);
-    }
-  }, []);
-
-  const closeTutorial = () => {
-    setShowTutorial(false);
-    localStorage.setItem("reports_tutorial_seen", "true");
-  };
+  const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/reports");
 
   const handleDeleteClick = (report: Report) => {
     setReportToDelete(report);
@@ -109,7 +96,7 @@ export default function Reports() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setShowTutorial(true)}
+            onClick={openTutorial}
             className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
             title="Como funciona?"
           >

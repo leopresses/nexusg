@@ -34,6 +34,7 @@ import {
 import { toast } from "sonner";
 import { TemplateDialog } from "@/components/templates/TemplateDialog";
 import { DeleteTemplateDialog } from "@/components/templates/DeleteTemplateDialog";
+import { useHelpTutorial } from "@/hooks/useHelpTutorial";
 
 type TaskTemplate = Database["public"]["Tables"]["task_templates"]["Row"];
 type BusinessType = Database["public"]["Enums"]["business_type"];
@@ -63,22 +64,11 @@ export default function AdminTemplates() {
   const [deletingTemplate, setDeletingTemplate] = useState<TaskTemplate | null>(null);
   const [isSendingTasks, setIsSendingTasks] = useState(false);
 
-  // Estado para o tutorial
-  const [showTutorial, setShowTutorial] = useState(false);
+  const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/admin/templates");
 
   useEffect(() => {
     fetchTemplates();
-    // Check tutorial on load
-    const hasSeenTutorial = localStorage.getItem("admin_templates_tutorial_seen");
-    if (!hasSeenTutorial) {
-      setTimeout(() => setShowTutorial(true), 1000);
-    }
   }, []);
-
-  const closeTutorial = () => {
-    setShowTutorial(false);
-    localStorage.setItem("admin_templates_tutorial_seen", "true");
-  };
 
   const fetchTemplates = async () => {
     try {
@@ -205,7 +195,7 @@ export default function AdminTemplates() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setShowTutorial(true)}
+            onClick={openTutorial}
             className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
             title="Como usar templates?"
           >

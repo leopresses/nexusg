@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useHelpTutorial } from "@/hooks/useHelpTutorial";
 
 type BrandSettings = {
   id?: string;
@@ -39,8 +40,7 @@ export default function Settings() {
   const [isUploading, setIsUploading] = useState(false);
   const [isDeletingLogo, setIsDeletingLogo] = useState(false);
 
-  // Estado para o tutorial
-  const [showTutorial, setShowTutorial] = useState(false);
+  const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/settings");
 
   const [settings, setSettings] = useState<BrandSettings>({
     company_name: "",
@@ -116,17 +116,7 @@ export default function Settings() {
 
   useEffect(() => {
     fetchSettings();
-    // Check tutorial on load
-    const hasSeenTutorial = localStorage.getItem("settings_tutorial_seen");
-    if (!hasSeenTutorial) {
-      setTimeout(() => setShowTutorial(true), 1000);
-    }
   }, []);
-
-  const closeTutorial = () => {
-    setShowTutorial(false);
-    localStorage.setItem("settings_tutorial_seen", "true");
-  };
 
   const handleUploadLogo = async (file: File) => {
     try {
@@ -353,7 +343,7 @@ export default function Settings() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setShowTutorial(true)}
+                  onClick={openTutorial}
                   className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
                   title="Ajuda"
                 >
