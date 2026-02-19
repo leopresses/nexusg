@@ -45,6 +45,14 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
   const location = useLocation();
   const isMobile = useIsMobile();
 
+  const navItems = [...baseNavItems, ...(isAdmin ? adminNavItems : [])];
+
+  const isActive = (href: string) => location.pathname === href;
+
+  const handleNavClick = () => {
+    if (isMobile) setSidebarOpen(false);
+  };
+
   // Close sidebar on route change (mobile)
   useEffect(() => {
     if (isMobile) setSidebarOpen(false);
