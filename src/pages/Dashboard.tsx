@@ -25,6 +25,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { ProgressBar } from "@/components/dashboard/ProgressBar";
 import { ClientAvatar } from "@/components/clients/ClientAvatar";
 import { getBusinessTypeLabel, formatClientLimit, getPlanLabel } from "@/config/plans";
+import { useHelpTutorial } from "@/hooks/useHelpTutorial";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
@@ -64,23 +65,13 @@ export default function Dashboard() {
     weekly: { pending: 0, in_progress: 0, completed: 0, total: 0 },
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [showTutorial, setShowTutorial] = useState(false);
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/dashboard");
 
   useEffect(() => {
     fetchData();
-    // Check if user has seen tutorial
-    const hasSeenTutorial = localStorage.getItem("dashboard_tutorial_seen");
-    if (!hasSeenTutorial) {
-      setTimeout(() => setShowTutorial(true), 1000);
-    }
   }, []);
-
-  const closeTutorial = () => {
-    setShowTutorial(false);
-    localStorage.setItem("dashboard_tutorial_seen", "true");
-  };
 
   const fetchData = async () => {
     try {
@@ -172,7 +163,7 @@ export default function Dashboard() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setShowTutorial(true)}
+            onClick={openTutorial}
             className="text-slate-500 hover:text-blue-600 hover:bg-blue-50"
             title="Ver tutorial"
           >

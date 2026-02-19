@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { getBusinessTypeLabel } from "@/config/plans";
+import { useHelpTutorial } from "@/hooks/useHelpTutorial";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 
@@ -57,8 +58,7 @@ export default function Clients() {
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
   const [linkingClient, setLinkingClient] = useState<Client | null>(null);
 
-  // Estado para o tutorial
-  const [showTutorial, setShowTutorial] = useState(false);
+  const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/clients");
 
   const navigate = useNavigate();
 
@@ -81,18 +81,7 @@ export default function Clients() {
 
   useEffect(() => {
     fetchClients();
-
-    // Verifica se o usuário já viu o tutorial de clientes
-    const hasSeenTutorial = localStorage.getItem("clients_tutorial_seen");
-    if (!hasSeenTutorial) {
-      setTimeout(() => setShowTutorial(true), 1000);
-    }
   }, [user]);
-
-  const closeTutorial = () => {
-    setShowTutorial(false);
-    localStorage.setItem("clients_tutorial_seen", "true");
-  };
 
   const handleClientClick = (clientId: string) => {
     navigate(`/tasks?client=${clientId}`);
@@ -165,7 +154,7 @@ export default function Clients() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setShowTutorial(true)}
+            onClick={openTutorial}
             className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
             title="Como funciona?"
           >

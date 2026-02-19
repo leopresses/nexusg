@@ -22,6 +22,7 @@ import { TaskFilters } from "@/components/tasks/TaskFilters";
 import { CreateCustomTaskDialog } from "@/components/tasks/CreateCustomTaskDialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useHelpTutorial } from "@/hooks/useHelpTutorial";
 
 export default function Tasks() {
   const [searchParams] = useSearchParams();
@@ -36,8 +37,7 @@ export default function Tasks() {
   const [frequencyTab, setFrequencyTab] = useState<"all" | "daily" | "weekly">("all");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  // Estado para o tutorial
-  const [showTutorial, setShowTutorial] = useState(false);
+  const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/tasks");
 
   // Update filter when URL changes
   useEffect(() => {
@@ -45,19 +45,6 @@ export default function Tasks() {
       setFilterClient(clientFromUrl);
     }
   }, [clientFromUrl]);
-
-  // Check tutorial on load
-  useEffect(() => {
-    const hasSeenTutorial = localStorage.getItem("tasks_tutorial_seen");
-    if (!hasSeenTutorial) {
-      setTimeout(() => setShowTutorial(true), 1000);
-    }
-  }, []);
-
-  const closeTutorial = () => {
-    setShowTutorial(false);
-    localStorage.setItem("tasks_tutorial_seen", "true");
-  };
 
   // Handle status change with sound
   const handleStatusChange = async (taskId: string, status: "pending" | "in_progress" | "completed") => {
@@ -145,7 +132,7 @@ export default function Tasks() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setShowTutorial(true)}
+            onClick={openTutorial}
             className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
             title="Como funciona?"
           >
