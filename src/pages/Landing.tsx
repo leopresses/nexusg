@@ -136,7 +136,7 @@ export default function LandingPage() {
                 desc: "Conecte o Place ID e puxe métricas de visualização e chamadas automaticamente.",
               },
               {
-                icon: FileBarChart,
+                icon: BarChart3,
                 title: "Relatórios White-Label",
                 desc: "Gere PDFs com sua logo, suas cores e envie direto no WhatsApp do cliente.",
               },
