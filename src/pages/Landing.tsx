@@ -192,7 +192,7 @@ export default function LandingPage() {
           >
             {PLANS.map((plan, index) => {
               const PlanIcon = plan.icon;
-              const formattedLimit = formatClientLimit(plan.clientsLimit);
+              const formattedLimit = formatClientLimit(plan.clientsLimitValue);
 
               return (
                 <motion.div
