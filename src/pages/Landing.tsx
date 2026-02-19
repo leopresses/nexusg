@@ -98,13 +98,16 @@ export default function LandingPage() {
                   Começar agora <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-14 px-8 rounded-2xl border-slate-200 font-bold text-slate-600"
-              >
-                <PlayCircle className="mr-2 h-5 w-5 text-blue-600" /> Ver demonstração
-              </Button>
+              <Link to="/demo">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-14 px-8 rounded-2xl border-slate-200 font-bold text-slate-600"
+                  aria-label="Ver demonstração do Gestão Nexus"
+                >
+                  <PlayCircle className="mr-2 h-5 w-5 text-blue-600" /> Ver demonstração
+                </Button>
+              </Link>
             </div>
           </motion.div>
         </div>
