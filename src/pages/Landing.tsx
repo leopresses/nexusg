@@ -6,25 +6,38 @@ import {
   Star,
   ArrowRight,
   Zap,
-  ShieldCheck,
-  Globe,
   BarChart3,
-  Users,
   LayoutDashboard,
   PlayCircle,
+  FileBarChart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/Logo";
 import { Link } from "react-router-dom";
-import { PLANS, WHATSAPP_NUMBER } from "@/config/plans";
+import { PLANS, WHATSAPP_NUMBER, formatClientLimit } from "@/config/plans";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6 } },
 };
 
+const stagger = {
+  visible: { transition: { staggerChildren: 0.1 } },
+};
+
 export default function LandingPage() {
+  // Lógica para o botão de contratação (WhatsApp)
+  const handleUpgrade = (planName: string, planPrice: string, clientsLimit: string) => {
+    const message = encodeURIComponent(
+      `Olá! Estive vendo a Landing Page do Gestão Nexus e tenho interesse no plano: ${planName}.\n` +
+        `Preço: ${planPrice}/mês\n` +
+        `Limite: ${clientsLimit}\n` +
+        `Pode me ajudar a começar?`,
+    );
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, "_blank");
+  };
+
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-700">
       {/* 1. Navbar Glassmorphism */}
@@ -37,9 +50,6 @@ export default function LandingPage() {
             </a>
             <a href="#precos" className="hover:text-blue-600 transition-colors">
               Preços
-            </a>
-            <a href="#faq" className="hover:text-blue-600 transition-colors">
-              FAQ
             </a>
           </div>
           <div className="flex items-center gap-4">
@@ -106,12 +116,12 @@ export default function LandingPage() {
           <p className="text-center text-xs font-bold uppercase tracking-[0.2em] text-slate-400 mb-8">
             Especializado em Nichos Locais
           </p>
-          <div className="flex flex-wrap justify-center gap-12 opacity-40 grayscale items-center">
-            <span className="text-xl font-black">RESTAURANTES</span>
-            <span className="text-xl font-black">CLÍNICAS</span>
-            <span className="text-xl font-black">ESTÉTICA</span>
-            <span className="text-xl font-black">ACADEMIAS</span>
-            <span className="text-xl font-black">LOJAS</span>
+          <div className="flex flex-wrap justify-center gap-12 opacity-40 grayscale items-center font-black text-xl">
+            <span>RESTAURANTES</span>
+            <span>CLÍNICAS</span>
+            <span>ESTÉTICA</span>
+            <span>ACADEMIAS</span>
+            <span>LOJAS</span>
           </div>
         </div>
       </section>
@@ -123,7 +133,7 @@ export default function LandingPage() {
             <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4">
               Feito para quem não quer perder tempo com planilhas.
             </h2>
-            <p className="text-slate-500">
+            <p className="text-slate-500 text-lg">
               Desenvolvemos o Gestão Nexus para ser o cérebro da sua operação de SEO Local.
             </p>
           </div>
@@ -136,7 +146,7 @@ export default function LandingPage() {
                 desc: "Conecte o Place ID e puxe métricas de visualização e chamadas automaticamente.",
               },
               {
-                icon: BarChart3,
+                icon: FileBarChart,
                 title: "Relatórios White-Label",
                 desc: "Gere PDFs com sua logo, suas cores e envie direto no WhatsApp do cliente.",
               },
@@ -162,7 +172,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 5. Pricing Grid (O seu código remodelado e encaixado aqui) */}
+      {/* 5. Pricing Section (AGORA COM OS PLANOS RENDERIZADOS) */}
       <section id="precos" className="py-24 px-6 bg-slate-50/50 relative">
         <div className="container mx-auto">
           <div className="text-center max-w-3xl mx-auto mb-16">
@@ -172,19 +182,122 @@ export default function LandingPage() {
             <p className="text-slate-500">Comece grátis hoje e escale conforme sua carteira de clientes aumenta.</p>
           </div>
 
-          {/* O seu GRID DE PLANOS entra aqui perfeitamente */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-stretch">
-            {/* ... mapeamento dos planos igual ao componente Pricing anterior ... */}
-          </div>
+          {/* Grid de 5 colunas real */}
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-stretch"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={stagger}
+          >
+            {PLANS.map((plan, index) => {
+              const PlanIcon = plan.icon;
+              const formattedLimit = formatClientLimit(plan.clientsLimit);
+
+              return (
+                <motion.div
+                  key={plan.id}
+                  variants={fadeInUp}
+                  className={`
+                    group relative flex flex-col rounded-2xl border bg-white transition-all duration-300 hover:shadow-xl
+                    ${
+                      plan.highlighted
+                        ? "border-emerald-500 ring-1 ring-emerald-500 shadow-emerald-50/50 scale-[1.03] z-10"
+                        : "border-slate-200 hover:border-blue-300"
+                    }
+                  `}
+                >
+                  {plan.highlighted && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max z-20">
+                      <Badge className="!bg-emerald-500 !text-white border-none rounded-full px-3 py-0.5 text-[10px] font-bold uppercase tracking-widest shadow-md">
+                        Mais Popular
+                      </Badge>
+                    </div>
+                  )}
+
+                  <div className="p-5 flex flex-col h-full">
+                    {/* Header do Card */}
+                    <div className="mb-4">
+                      <div
+                        className={`h-10 w-10 rounded-xl flex items-center justify-center border mb-4 transition-colors ${
+                          plan.highlighted
+                            ? "bg-emerald-50 border-emerald-100"
+                            : "bg-slate-50 border-slate-100 group-hover:bg-blue-50"
+                        }`}
+                      >
+                        <PlanIcon
+                          className={`h-5 w-5 ${plan.highlighted ? "text-emerald-600" : "text-slate-600 group-hover:text-blue-600"}`}
+                        />
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-900 leading-tight">{plan.name}</h3>
+                    </div>
+
+                    {/* Preço */}
+                    <div className="mb-4 pb-4 border-b border-slate-100">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-black text-slate-900">{plan.price}</span>
+                        <span className="text-slate-400 text-[10px] font-bold uppercase">{plan.period}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-2 leading-relaxed h-8 line-clamp-2">
+                        {plan.description}
+                      </p>
+                    </div>
+
+                    {/* Features */}
+                    <ul className="space-y-2.5 mb-8 flex-1">
+                      {plan.features.map((feature, fIndex) => (
+                        <li key={fIndex} className="flex items-start gap-2 text-[11px] font-medium text-slate-600">
+                          <div
+                            className={`mt-0.5 h-3.5 w-3.5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                              plan.highlighted ? "bg-emerald-100" : "bg-blue-50"
+                            }`}
+                          >
+                            <Check className={`h-2 w-2 ${plan.highlighted ? "text-emerald-600" : "text-blue-600"}`} />
+                          </div>
+                          <span className="leading-tight">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {/* Botão de Ação */}
+                    <div className="mt-auto">
+                      {plan.id === "starter" ? (
+                        <Link to="/register" className="w-full">
+                          <Button
+                            variant="outline"
+                            className="w-full h-9 rounded-xl border-slate-200 text-slate-600 bg-white font-bold text-xs hover:bg-slate-50"
+                          >
+                            Começar Grátis
+                          </Button>
+                        </Link>
+                      ) : (
+                        <Button
+                          onClick={() => handleUpgrade(plan.name, plan.price, formattedLimit)}
+                          className={`w-full h-9 rounded-xl gap-2 font-bold text-xs shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                            plan.highlighted
+                              ? "!bg-emerald-600 !text-white hover:!bg-emerald-700"
+                              : "!bg-blue-600 !text-white hover:!bg-blue-700"
+                          }`}
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          Contratar
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
         </div>
       </section>
 
       {/* 6. Footer */}
       <footer className="py-20 px-6 bg-slate-900 text-white">
-        <div className="container mx-auto grid md:grid-cols-4 gap-12">
+        <div className="container mx-auto grid md:grid-cols-4 gap-12 text-center md:text-left">
           <div className="col-span-2">
             <Logo size="md" />
-            <p className="mt-6 text-slate-400 max-w-sm">
+            <p className="mt-6 text-slate-400 max-w-sm mx-auto md:mx-0">
               Simplificando a gestão de Google Business para agências de performance e gestores locais em todo o Brasil.
             </p>
           </div>
@@ -192,18 +305,13 @@ export default function LandingPage() {
             <h4 className="font-bold mb-6">Plataforma</h4>
             <ul className="space-y-4 text-slate-400 text-sm">
               <li>
-                <a href="#" className="hover:text-white transition-colors">
+                <a href="#funcionalidades" className="hover:text-white transition-colors">
                   Funcionalidades
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-white transition-colors">
+                <a href="#precos" className="hover:text-white transition-colors">
                   Preços
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-white transition-colors">
-                  Demonstração
                 </a>
               </li>
             </ul>
@@ -214,11 +322,6 @@ export default function LandingPage() {
               <li>
                 <a href={`https://wa.me/${WHATSAPP_NUMBER}`} className="hover:text-white transition-colors">
                   WhatsApp
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-white transition-colors">
-                  Central de Ajuda
                 </a>
               </li>
             </ul>
