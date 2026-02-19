@@ -56,19 +56,18 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
   }, [isMobile]);
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
-  };
+    try {
+      await signOut();
 
-  const handleNavClick = () => {
-    if (isMobile) setSidebarOpen(false);
-  };
+      // limpa qualquer cache de sessão
+      localStorage.clear();
+      sessionStorage.clear();
 
-  const navItems = isAdmin ? [...baseNavItems, ...adminNavItems] : baseNavItems;
-
-  const isActive = (href: string) => {
-    if (href === "/dashboard") return location.pathname === "/dashboard";
-    return location.pathname.startsWith(href);
+      // força refresh e volta para landing
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Erro ao sair:", error);
+    }
   };
 
   return (
