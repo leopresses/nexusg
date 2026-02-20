@@ -67,7 +67,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("dashboard"););
+  const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("dashboard");
 
   useEffect(() => {
     fetchData();

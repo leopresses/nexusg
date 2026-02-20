@@ -51,9 +51,9 @@ export function useHelpTutorial(pageKey: string): UseHelpTutorialReturn {
   }, []);
 
   const storageKey = useMemo(() => {
-    // se não tiver userId, usa "anon" (mas em app autenticado, normalmente terá)
     const uid = userId ?? "anon";
-    return `tutorial_seen:${uid}:${pageKey}`;
+    // formato: tutorial_seen_{pageKey}_{userId}
+    return `tutorial_seen_${pageKey}_${uid}`;
   }, [userId, pageKey]);
 
   // Ler persistência e decidir abertura automática
@@ -61,7 +61,7 @@ export function useHelpTutorial(pageKey: string): UseHelpTutorialReturn {
     if (!ready) return;
 
     const raw = localStorage.getItem(storageKey);
-    const seen = raw === "1";
+    const seen = raw === "true" || raw === "1"; // suporte a formato legado
 
     setHasSeen(seen);
 
@@ -82,7 +82,7 @@ export function useHelpTutorial(pageKey: string): UseHelpTutorialReturn {
   const close = useCallback(() => {
     // fechar deve marcar como visto
     try {
-      localStorage.setItem(storageKey, "1");
+      localStorage.setItem(storageKey, "true");
       setHasSeen(true);
     } catch {
       // se falhar storage, ao menos fecha
@@ -99,4 +99,33 @@ export function useHelpTutorial(pageKey: string): UseHelpTutorialReturn {
   }, [storageKey]);
 
   return { isOpen, open, close, resetSeen, hasSeen };
+}
+
+/**
+ * Limpa todo o histórico de tutoriais de um usuário específico no localStorage.
+ * Se userId for omitido, limpa tutoriais de TODOS os usuários.
+ * Deve ser chamado no logout para evitar vazamento de estado entre contas.
+ */
+export function clearTutorialHistory(userId?: string): void {
+  try {
+    const TUTORIAL_PREFIX = "tutorial_seen_";
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(TUTORIAL_PREFIX)) continue;
+      if (!userId) {
+        // sem userId → remove todos os tutoriais
+        keysToRemove.push(key);
+      } else {
+        // com userId → remove apenas os do usuário especificado
+        // formato: tutorial_seen_{page}_{userId}
+        if (key.endsWith(`_${userId}`)) {
+          keysToRemove.push(key);
+        }
+      }
+    }
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
+  } catch {
+    // falha silenciosa
+  }
 }
