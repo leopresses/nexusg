@@ -80,8 +80,8 @@ Deno.serve(async (req) => {
     if (!apiKey) {
       console.error("[places-details] GOOGLE_PLACES_API_KEY not configured");
       return new Response(
-        JSON.stringify({ error: "CONFIG_ERROR", message: "API do Google Places não configurada." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "SERVICE_UNAVAILABLE", message: "Serviço temporariamente indisponível. Tente novamente mais tarde." }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -104,28 +104,47 @@ Deno.serve(async (req) => {
       console.error("[places-details] Google API error:", data.status, data.error_message);
       return new Response(
         JSON.stringify({ 
-          error: "GOOGLE_API_ERROR", 
-          message: `Erro na API do Google: ${data.error_message || data.status}` 
+          error: "PLACE_NOT_FOUND", 
+          message: "Não foi possível obter os detalhes do lugar. Verifique o Place ID e tente novamente." 
         }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    // Sanitize URLs to prevent javascript: and data: URI injection
+    const sanitizeUrl = (url: string | undefined): string | undefined => {
+      if (!url) return undefined;
+      const lower = url.toLowerCase().trim();
+      if (lower.startsWith("javascript:") || lower.startsWith("data:") || lower.startsWith("vbscript:")) {
+        console.warn("[places-details] Rejected unsafe URL scheme");
+        return undefined;
+      }
+      return url;
+    };
+
+    // Sanitize and validate string fields
+    const sanitizeStr = (val: unknown, maxLen = 1000): string | undefined => {
+      if (typeof val !== "string") return undefined;
+      return val.slice(0, maxLen);
+    };
+
     const result = data.result;
     const placeDetails: PlaceDetails = {
-      place_id: result.place_id,
-      name: result.name,
-      formatted_address: result.formatted_address,
-      formatted_phone_number: result.formatted_phone_number,
-      international_phone_number: result.international_phone_number,
-      website: result.website,
-      url: result.url,
-      rating: result.rating,
-      user_ratings_total: result.user_ratings_total,
-      types: result.types || [],
-      opening_hours: result.opening_hours,
+      place_id: sanitizeStr(result.place_id, 255) ?? "",
+      name: sanitizeStr(result.name, 500) ?? "",
+      formatted_address: sanitizeStr(result.formatted_address, 1000) ?? "",
+      formatted_phone_number: sanitizeStr(result.formatted_phone_number, 50),
+      international_phone_number: sanitizeStr(result.international_phone_number, 50),
+      website: sanitizeUrl(result.website),
+      url: sanitizeUrl(result.url) ?? "",
+      rating: typeof result.rating === "number" ? Math.max(0, Math.min(5, result.rating)) : undefined,
+      user_ratings_total: typeof result.user_ratings_total === "number" ? Math.max(0, result.user_ratings_total) : undefined,
+      types: Array.isArray(result.types) ? result.types.filter((t: unknown) => typeof t === "string").slice(0, 20) : [],
+      opening_hours: result.opening_hours && Array.isArray(result.opening_hours.weekday_text)
+        ? { weekday_text: result.opening_hours.weekday_text.slice(0, 7), open_now: result.opening_hours.open_now }
+        : undefined,
       photos: result.photos?.slice(0, 3).map((p: any) => ({ photo_reference: p.photo_reference })),
-      business_status: result.business_status,
+      business_status: sanitizeStr(result.business_status, 50),
     };
 
     // If client_id provided, update the client with place data

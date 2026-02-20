@@ -72,11 +72,11 @@ Deno.serve(async (req) => {
       console.error("[places-search] GOOGLE_PLACES_API_KEY not configured");
       return new Response(
         JSON.stringify({ 
-          error: "CONFIG_ERROR", 
-          message: "API do Google Places não configurada. Contate o suporte.",
+          error: "SERVICE_UNAVAILABLE", 
+          message: "Serviço temporariamente indisponível. Tente novamente mais tarde.",
           candidates: []
         }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -98,11 +98,11 @@ Deno.serve(async (req) => {
       console.error("[places-search] Google API error:", data.status, data.error_message);
       return new Response(
         JSON.stringify({ 
-          error: "GOOGLE_API_ERROR", 
-          message: `Erro na API do Google: ${data.error_message || data.status}`,
+          error: "SEARCH_ERROR", 
+          message: "Erro ao buscar lugares. Tente novamente.",
           candidates: []
         }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
