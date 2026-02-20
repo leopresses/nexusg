@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Users,
@@ -12,6 +12,9 @@ import {
   Loader2,
   Calendar,
   CalendarDays,
+  HelpCircle,
+  X,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,9 +25,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { ProgressBar } from "@/components/dashboard/ProgressBar";
 import { ClientAvatar } from "@/components/clients/ClientAvatar";
 import { getBusinessTypeLabel, formatClientLimit, getPlanLabel } from "@/config/plans";
-import { useHelpTour } from "@/hooks/useHelpTour";
-import { HelpFab } from "@/components/help/HelpFab";
-import { HelpModal } from "@/components/help/HelpModal";
+import { useHelpTutorial } from "@/hooks/useHelpTutorial";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
@@ -55,13 +56,6 @@ interface DayStats {
   weekly: TaskStats;
 }
 
-const HELP_STEPS = [
-  { text: "Acompanhe o progresso das suas tarefas diárias e semanais nos cards de progresso." },
-  { text: "Veja estatísticas rápidas de clientes ativos e tarefas pendentes no topo." },
-  { text: "Adicione novos clientes clicando no botão \"Novo Cliente\" no canto superior direito." },
-  { text: "Clique em um cliente para ver suas tarefas específicas da semana." },
-];
-
 export default function Dashboard() {
   const [clients, setClients] = useState<Client[]>([]);
   const [recentTasks, setRecentTasks] = useState<Task[]>([]);
@@ -73,7 +67,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const { isOpen, open, close } = useHelpTour("dashboard");
+  const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/dashboard");
 
   useEffect(() => {
     fetchData();
@@ -165,16 +159,84 @@ export default function Dashboard() {
       title={`Olá, ${profile?.full_name || "Usuário"}! 👋`}
       subtitle={`Semana de ${new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} - Visão geral`}
       headerActions={
-        <Button
-          onClick={() => navigate("/onboarding")}
-          className="h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Cliente
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={openTutorial}
+            className="text-slate-500 hover:text-blue-600 hover:bg-blue-50"
+            title="Ver tutorial"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </Button>
+          <Button
+            onClick={() => navigate("/onboarding")}
+            className="h-10 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Cliente
+          </Button>
+        </div>
       }
     >
-      <div className="space-y-6">
+      <div className="space-y-6 relative">
+        {/* Tutorial Bubble */}
+        <AnimatePresence>
+          {showTutorial && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              className="absolute right-0 top-0 z-50 w-80 bg-blue-600 text-white p-5 rounded-2xl shadow-xl shadow-blue-200"
+            >
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="bg-white/20 p-1.5 rounded-lg">
+                    <TrendingUp className="h-4 w-4 text-white" />
+                  </div>
+                  <h3 className="font-bold text-sm">Bem-vindo ao Painel!</h3>
+                </div>
+                <button
+                  onClick={closeTutorial}
+                  className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-sm text-blue-50">
+                <p>Aqui você tem uma visão geral do seu negócio:</p>
+                <ul className="space-y-2 list-none">
+                  <li className="flex gap-2 items-start">
+                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">1</span>
+                    <span>Acompanhe o progresso das suas tarefas diárias e semanais.</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">2</span>
+                    <span>Veja estatísticas rápidas dos seus clientes.</span>
+                  </li>
+                  <li className="flex gap-2 items-start">
+                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">3</span>
+                    <span>Adicione novos clientes rapidamente no botão acima.</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={closeTutorial}
+                  className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1"
+                >
+                  Entendi <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+
+              {/* Seta do balão */}
+              <div className="absolute -top-2 right-12 w-4 h-4 bg-blue-600 rotate-45 transform" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Stats Grid */}
         <motion.div
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
@@ -360,16 +422,6 @@ export default function Dashboard() {
           </div>
         </motion.div>
       </div>
-
-      {/* Help System */}
-      <HelpFab onOpen={open} />
-      <HelpModal
-        isOpen={isOpen}
-        onClose={close}
-        title="Bem-vindo ao Painel!"
-        subtitle="Veja uma visão geral do seu negócio aqui."
-        steps={HELP_STEPS}
-      />
     </AppLayout>
   );
 }
