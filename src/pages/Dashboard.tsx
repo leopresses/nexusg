@@ -25,7 +25,6 @@ import { AppLayout } from "@/components/AppLayout";
 import { ProgressBar } from "@/components/dashboard/ProgressBar";
 import { ClientAvatar } from "@/components/clients/ClientAvatar";
 import { getBusinessTypeLabel, formatClientLimit, getPlanLabel } from "@/config/plans";
-import { useHelpTutorial } from "@/hooks/useHelpTutorial";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
@@ -65,13 +64,30 @@ export default function Dashboard() {
     weekly: { pending: 0, in_progress: 0, completed: 0, total: 0 },
   });
   const [isLoading, setIsLoading] = useState(true);
+
+  // CORREÇÃO: Gerenciamento manual do estado do tutorial para persistência
+  const [showTutorial, setShowTutorial] = useState(false);
+
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/dashboard");
 
   useEffect(() => {
     fetchData();
+
+    // CORREÇÃO: Verifica no localStorage se o usuário já viu o tutorial
+    const tutorialSeen = localStorage.getItem("dashboard_tutorial_seen");
+    if (!tutorialSeen) {
+      // Pequeno delay para uma entrada mais suave
+      const timer = setTimeout(() => setShowTutorial(true), 800);
+      return () => clearTimeout(timer);
+    }
   }, []);
+
+  // CORREÇÃO: Função para fechar e salvar permanentemente no navegador
+  const handleCloseTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem("dashboard_tutorial_seen", "true");
+  };
 
   const fetchData = async () => {
     try {
@@ -109,21 +125,20 @@ export default function Dashboard() {
       const dailyTasks = allTasks.filter((t: any) => (t.frequency || "weekly") === "daily");
       const weeklyTasks = allTasks.filter((t: any) => (t.frequency || "weekly") === "weekly");
 
-      const daily: TaskStats = {
-        pending: dailyTasks.filter((t: any) => t.status === "pending").length,
-        in_progress: dailyTasks.filter((t: any) => t.status === "in_progress").length,
-        completed: dailyTasks.filter((t: any) => t.status === "completed").length,
-        total: dailyTasks.length,
-      };
-
-      const weekly: TaskStats = {
-        pending: weeklyTasks.filter((t: any) => t.status === "pending").length,
-        in_progress: weeklyTasks.filter((t: any) => t.status === "in_progress").length,
-        completed: weeklyTasks.filter((t: any) => t.status === "completed").length,
-        total: weeklyTasks.length,
-      };
-
-      setDayStats({ daily, weekly });
+      setDayStats({
+        daily: {
+          pending: dailyTasks.filter((t: any) => t.status === "pending").length,
+          in_progress: dailyTasks.filter((t: any) => t.status === "in_progress").length,
+          completed: dailyTasks.filter((t: any) => t.status === "completed").length,
+          total: dailyTasks.length,
+        },
+        weekly: {
+          pending: weeklyTasks.filter((t: any) => t.status === "pending").length,
+          in_progress: weeklyTasks.filter((t: any) => t.status === "in_progress").length,
+          completed: weeklyTasks.filter((t: any) => t.status === "completed").length,
+          total: weeklyTasks.length,
+        },
+      });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -160,10 +175,11 @@ export default function Dashboard() {
       subtitle={`Semana de ${new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} - Visão geral`}
       headerActions={
         <div className="flex items-center gap-2">
+          {/* Botão de ajuda para reabrir o tutorial se necessário */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={openTutorial}
+            onClick={() => setShowTutorial(true)}
             className="text-slate-500 hover:text-blue-600 hover:bg-blue-50"
             title="Ver tutorial"
           >
@@ -197,7 +213,7 @@ export default function Dashboard() {
                   <h3 className="font-bold text-sm">Bem-vindo ao Painel!</h3>
                 </div>
                 <button
-                  onClick={closeTutorial}
+                  onClick={handleCloseTutorial}
                   className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"
                 >
                   <X className="h-4 w-4" />
@@ -224,14 +240,13 @@ export default function Dashboard() {
 
               <div className="mt-4 flex justify-end">
                 <button
-                  onClick={closeTutorial}
+                  onClick={handleCloseTutorial}
                   className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1"
                 >
                   Entendi <ArrowRight className="h-3 w-3" />
                 </button>
               </div>
 
-              {/* Seta do balão */}
               <div className="absolute -top-2 right-12 w-4 h-4 bg-blue-600 rotate-45 transform" />
             </motion.div>
           )}
@@ -372,7 +387,7 @@ export default function Dashboard() {
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <h2 className="font-semibold text-lg">Tarefas Recentes</h2>
               <Link to="/tasks" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
-                Ver todas <ChevronRight className="h-4 w-4" />
+                Ver todos <ChevronRight className="h-4 w-4" />
               </Link>
             </div>
             <div className="p-4 space-y-3">
