@@ -2,77 +2,66 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 /**
- * Controle de tutoriais contextuais.
+ * Hook robusto para controlar tutoriais contextuais por página.
  *
  * Regras:
- * - Abre apenas na primeira visita por usuário + página.
- * - Após aparecer uma vez → nunca mais abre sozinho.
- * - Pode reabrir manualmente via open().
- * - Persistência por usuário + página.
+ * - Abre automaticamente APENAS na primeira visita (por usuário + página).
+ * - Após fechar → nunca mais abre sozinho.
+ * - Só reabre ao clicar manualmente em open().
+ * - Persistência via localStorage, chave: tutorial_seen_{pageKey}_{userId}
+ * - Aguarda auth estar resolvido antes de qualquer verificação.
+ * - Imune a re-renders e ao React StrictMode.
  */
 export function useHelpTutorial(pageKey: string) {
   const { user, isLoading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
+  // Ref para evitar que o efeito abra o tutorial mais de uma vez
+  // mesmo que as dependências mudem (ex: StrictMode, re-renders de auth)
   const hasCheckedRef = useRef(false);
 
+  // Chave única por usuário + página
   const storageKey = user?.id ? `tutorial_seen_${pageKey}_${user.id}` : null;
 
   useEffect(() => {
+    // Aguarda auth resolver completamente
     if (isLoading) return;
-    if (!storageKey) return;
-    if (hasCheckedRef.current) return;
 
+    // Se não tiver usuário, não faz auto-open (tutoriais são do app logado)
+    if (!storageKey) return;
+
+    // Evita re-abrir por re-render/StrictMode
+    if (hasCheckedRef.current) return;
     hasCheckedRef.current = true;
 
-    const timer = setTimeout(() => {
-      const hasSeen = localStorage.getItem(storageKey);
-
-      // 🔥 NOVO: marca como visto imediatamente ao abrir
-      if (!hasSeen) {
-        setIsOpen(true);
-        localStorage.setItem(storageKey, "true");
-      }
-    }, 600);
-
-    return () => clearTimeout(timer);
-  }, [storageKey, isLoading]);
-
-  const close = useCallback(() => {
-    setIsOpen(false);
-
-    if (storageKey) {
-      localStorage.setItem(storageKey, "true");
+    const hasSeen = localStorage.getItem(storageKey) === "true";
+    if (!hasSeen) {
+      setIsOpen(true);
     }
-  }, [storageKey]);
+  }, [isLoading, storageKey]);
 
   const open = useCallback(() => {
     setIsOpen(true);
   }, []);
 
+  const close = useCallback(() => {
+    if (storageKey) {
+      localStorage.setItem(storageKey, "true");
+    }
+    setIsOpen(false);
+  }, [storageKey]);
+
   return { isOpen, open, close };
 }
 
-/**
- * Limpa histórico de tutorial (opcional para logout)
- */
+// Limpa todas as chaves de tutorial do usuário (use apenas para reset manual / suporte)
 export function clearTutorialHistory(userId?: string) {
-  const keysToRemove: string[] = [];
+  if (!userId) return;
 
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key) continue;
-
-    if (userId) {
-      if (key.startsWith("tutorial_seen_") && key.endsWith(`_${userId}`)) {
-        keysToRemove.push(key);
-      }
-    } else {
-      if (key.startsWith("tutorial_seen_")) {
-        keysToRemove.push(key);
-      }
+  const prefix = `tutorial_seen_`;
+  Object.keys(localStorage).forEach((key) => {
+    if (key.startsWith(prefix) && key.endsWith(`_${userId}`)) {
+      localStorage.removeItem(key);
     }
-  }
-
-  keysToRemove.forEach((k) => localStorage.removeItem(k));
+  });
 }
