@@ -1,8 +1,10 @@
 /**
  * HelpModal.tsx
  * Premium SaaS-style help modal with step list.
- * Renders as a Dialog (desktop) with mobile-friendly sizing.
+ * Renders in a Portal to avoid "fixed inside transformed parent" issues.
  */
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, ArrowRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -19,7 +21,15 @@ interface HelpModalProps {
 }
 
 export function HelpModal({ isOpen, onClose, title, subtitle, steps }: HelpModalProps) {
-  return (
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -30,7 +40,7 @@ export function HelpModal({ isOpen, onClose, title, subtitle, steps }: HelpModal
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-50 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[999] bg-black/30 backdrop-blur-[2px]"
             onClick={onClose}
           />
 
@@ -42,7 +52,7 @@ export function HelpModal({ isOpen, onClose, title, subtitle, steps }: HelpModal
             exit={{ opacity: 0, scale: 0.95, y: 16 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             className="
-              fixed z-50
+              fixed z-[1000]
               left-1/2 top-1/2
               -translate-x-1/2 -translate-y-1/2
               w-[90vw] max-w-md
@@ -115,6 +125,7 @@ export function HelpModal({ isOpen, onClose, title, subtitle, steps }: HelpModal
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
