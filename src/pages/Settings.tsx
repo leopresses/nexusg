@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Save,
   Upload,
@@ -7,10 +7,6 @@ import {
   Image as ImageIcon,
   CheckCircle2,
   Trash2,
-  HelpCircle,
-  X,
-  ArrowRight,
-  Palette,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -20,7 +16,16 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useHelpTutorial } from "@/hooks/useHelpTutorial";
+import { useHelpTour } from "@/hooks/useHelpTour";
+import { HelpFab } from "@/components/help/HelpFab";
+import { HelpModal } from "@/components/help/HelpModal";
+
+const HELP_STEPS = [
+  { text: "Faça upload do seu logotipo para que ele apareça nos relatórios PDF." },
+  { text: "Escolha a cor de destaque da sua marca para personalizar os relatórios." },
+  { text: "Adicione o texto de rodapé e o número de WhatsApp de suporte." },
+  { text: "Clique em \"Salvar\" para aplicar todas as configurações de marca." },
+];
 
 type BrandSettings = {
   id?: string;
@@ -40,7 +45,7 @@ export default function Settings() {
   const [isUploading, setIsUploading] = useState(false);
   const [isDeletingLogo, setIsDeletingLogo] = useState(false);
 
-  const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/settings");
+  const { isOpen, open, close } = useHelpTour("settings");
 
   const [settings, setSettings] = useState<BrandSettings>({
     company_name: "",
@@ -269,63 +274,7 @@ export default function Settings() {
 
   return (
     <AppLayout title="Configurações" subtitle="Personalize sua experiência e marca">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start relative">
-        {/* Tutorial Bubble positioned absolutely relative to grid container */}
-        <AnimatePresence>
-          {showTutorial && (
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute right-0 top-14 z-50 w-80 bg-blue-600 text-white p-5 rounded-2xl shadow-xl shadow-blue-200 lg:right-auto lg:left-[50%]"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="bg-white/20 p-1.5 rounded-lg">
-                    <Palette className="h-4 w-4 text-white" />
-                  </div>
-                  <h3 className="font-bold text-sm">Personalize sua Marca</h3>
-                </div>
-                <button
-                  onClick={closeTutorial}
-                  className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="space-y-3 text-sm text-blue-50">
-                <ul className="space-y-2 list-none">
-                  <li className="flex gap-2 items-start">
-                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">1</span>
-                    <span>Faça upload do seu logotipo para aparecer nos relatórios.</span>
-                  </li>
-                  <li className="flex gap-2 items-start">
-                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">2</span>
-                    <span>Escolha a cor principal da sua marca para personalizar o PDF.</span>
-                  </li>
-                  <li className="flex gap-2 items-start">
-                    <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">3</span>
-                    <span>Veja o resultado em tempo real na prévia ao lado (ou abaixo).</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={closeTutorial}
-                  className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1"
-                >
-                  Entendi <ArrowRight className="h-3 w-3" />
-                </button>
-              </div>
-
-              {/* Seta do balão */}
-              <div className="absolute -top-2 left-8 w-4 h-4 bg-blue-600 rotate-45 transform" />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         {/* COLUNA ESQUERDA: Formulários */}
         <div className="space-y-6">
           <motion.div
@@ -338,27 +287,14 @@ export default function Settings() {
                 <h2 className="text-lg font-semibold text-slate-900">Identidade da Marca</h2>
                 <p className="text-sm text-slate-600">Altere os dados e veja o resultado.</p>
               </div>
-              <div className="flex items-center gap-2">
-                {/* Botão de Ajuda */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={openTutorial}
-                  className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
-                  title="Ajuda"
-                >
-                  <HelpCircle className="h-5 w-5" />
-                </Button>
-
-                <Button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="h-10 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700 shadow-lg shadow-blue-200"
-                >
-                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                  Salvar
-                </Button>
-              </div>
+              <Button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="h-10 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700 shadow-lg shadow-blue-200"
+              >
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Salvar
+              </Button>
             </div>
 
             <div className="space-y-6">
@@ -449,35 +385,30 @@ export default function Settings() {
                     />
                   </div>
                 </div>
+                <div className="space-y-2 flex flex-col justify-end">
+                  <Label className="text-slate-700 font-bold">Sons de notificação</Label>
+                  <div className="flex items-center gap-3 h-10">
+                    <Switch
+                      checked={!!settings.enable_sounds}
+                      onCheckedChange={(v) => setSettings((p) => ({ ...p, enable_sounds: v }))}
+                    />
+                    <span className="text-sm text-slate-600">
+                      {settings.enable_sounds ? "Ativado" : "Desativado"}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-slate-700 font-bold">Texto do Rodapé</Label>
+                <Label className="text-slate-700 font-bold">Texto do Rodapé (PDF)</Label>
                 <Textarea
                   value={settings.report_footer || ""}
                   onChange={(e) => setSettings((p) => ({ ...p, report_footer: e.target.value }))}
-                  className="min-h-[80px] !bg-white !text-slate-900 border-slate-200"
+                  rows={2}
+                  className="!bg-white !text-slate-900 border-slate-200 resize-none"
+                  placeholder="Relatório gerado por Gestão Nexus"
                 />
               </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            className="rounded-2xl !bg-white border border-slate-200 p-6 shadow-sm"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Preferências</h2>
-            <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50">
-              <div>
-                <div className="font-medium text-slate-900">Notificações Sonoras</div>
-                <div className="text-xs text-slate-500">Tocar som ao concluir tarefas.</div>
-              </div>
-              <Switch
-                checked={!!settings.enable_sounds}
-                onCheckedChange={(v) => setSettings((p) => ({ ...p, enable_sounds: v }))}
-              />
             </div>
           </motion.div>
         </div>
@@ -562,6 +493,16 @@ export default function Settings() {
           </motion.div>
         </div>
       </div>
+
+      {/* Help System */}
+      <HelpFab onOpen={open} />
+      <HelpModal
+        isOpen={isOpen}
+        onClose={close}
+        title="Configurações de Marca"
+        subtitle="Personalize os relatórios com a identidade da sua empresa."
+        steps={HELP_STEPS}
+      />
     </AppLayout>
   );
 }
