@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext, ReactNode } from "react
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { clearTutorialHistory } from "@/hooks/useHelpTutorial";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type AppRole = Database["public"]["Enums"]["app_role"];
@@ -136,6 +137,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // Limpa histórico de tutoriais do usuário atual antes do logout
+    if (user?.id) {
+      clearTutorialHistory(user.id);
+    }
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
