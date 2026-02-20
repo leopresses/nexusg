@@ -1,95 +1,102 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useAuth } from "@/hooks/useAuth";
+// src/hooks/useHelpTutorial.ts
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+type UseHelpTutorialReturn = {
+  isOpen: boolean;
+  open: () => void; // abre manualmente (não marca como visto)
+  close: () => void; // fecha e marca como visto
+  resetSeen: () => void; // opcional: para testes/admin
+  hasSeen: boolean;
+};
 
 /**
- * Hook robusto para controlar tutoriais contextuais por página.
+ * Persistência por usuário + página:
+ *  tutorial_seen:<userId>:<pageKey>
  *
  * Regras:
- * - Abre automaticamente APENAS na primeira visita (por usuário + página).
- * - Após fechar → nunca mais abre sozinho.
- * - Só reabre ao clicar manualmente em open().
- * - Persistência via localStorage, chave: tutorial_seen_{pageKey}_{userId}
- * - Aguarda auth estar resolvido antes de qualquer verificação.
- * - Imune a re-renders e ao React StrictMode.
+ * - Abre automaticamente SOMENTE se ainda não viu.
+ * - Ao fechar, marca como visto (persistente).
+ * - Ao clicar no ícone de ajuda, abre manualmente mesmo já tendo visto.
+ * - Não depende de estado em memória; resiste a refresh, logout/login.
  */
-export function useHelpTutorial(pageKey: string) {
-  const { user, isLoading } = useAuth();
+export function useHelpTutorial(pageKey: string): UseHelpTutorialReturn {
+  const [userId, setUserId] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [hasSeen, setHasSeen] = useState(false);
+  const [ready, setReady] = useState(false);
 
-  // Ref para evitar que o efeito abra o tutorial mais de uma vez
-  // mesmo que as dependências mudem (ex: StrictMode, re-renders de auth)
-  const hasCheckedRef = useRef(false);
-
-  // Chave única por usuário + página
-  const storageKey = user?.id
-    ? `tutorial_seen_${pageKey}_${user.id}`
-    : null;
-
+  // Buscar user id (e reagir a login/logout)
   useEffect(() => {
-    // Aguarda auth resolver completamente
-    if (isLoading) return;
+    let mounted = true;
 
-    // Sem usuário logado, não abre tutorial
-    if (!storageKey) return;
+    const init = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!mounted) return;
+      setUserId(data.user?.id ?? null);
+      setReady(true);
+    };
 
-    // Garante que a verificação só ocorre UMA vez por montagem do componente,
-    // evitando que re-renders (isLoading alternando, StrictMode) reabram o tutorial
-    if (hasCheckedRef.current) return;
-    hasCheckedRef.current = true;
+    init();
 
-    // Delay para garantir que o componente está completamente renderizado
-    const timer = setTimeout(() => {
-      const hasSeen = localStorage.getItem(storageKey);
-      if (!hasSeen) {
-        setIsOpen(true);
-      }
-    }, 800);
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      // sempre que logar/deslogar, atualiza userId
+      setUserId(session?.user?.id ?? null);
+    });
 
-    return () => clearTimeout(timer);
-    // ⚠️ INTENCIONALMENTE não inclui isLoading nas deps:
-    // storageKey só tem valor quando user existe (isLoading=false implícito).
-    // Incluir isLoading causaria re-execução e reabertura indevida do tutorial.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storageKey]);
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
 
-  const close = useCallback(() => {
-    setIsOpen(false);
-    if (storageKey) {
-      localStorage.setItem(storageKey, "true");
+  const storageKey = useMemo(() => {
+    // se não tiver userId, usa "anon" (mas em app autenticado, normalmente terá)
+    const uid = userId ?? "anon";
+    return `tutorial_seen:${uid}:${pageKey}`;
+  }, [userId, pageKey]);
+
+  // Ler persistência e decidir abertura automática
+  useEffect(() => {
+    if (!ready) return;
+
+    const raw = localStorage.getItem(storageKey);
+    const seen = raw === "1";
+
+    setHasSeen(seen);
+
+    // Abre automaticamente somente se NÃO viu ainda
+    // (e fecha caso esteja aberto e trocou de usuário)
+    if (!seen) {
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
     }
-  }, [storageKey]);
+  }, [storageKey, ready]);
 
   const open = useCallback(() => {
+    // abertura manual NÃO marca como visto
     setIsOpen(true);
   }, []);
 
-  return { isOpen, open, close };
-}
-
-/**
- * Limpa TODAS as chaves de tutorial do localStorage para um usuário específico.
- * Deve ser chamado no logout para evitar que resíduos de sessão afutem novos usuários.
- */
-export function clearTutorialHistory(userId?: string) {
-  const prefix = userId
-    ? `tutorial_seen_`  // filtramos por userId abaixo
-    : `tutorial_seen_`;
-
-  const keysToRemove: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key) continue;
-    if (userId) {
-      // Remove apenas chaves deste usuário específico
-      if (key.startsWith(prefix) && key.endsWith(`_${userId}`)) {
-        keysToRemove.push(key);
-      }
-    } else {
-      // Remove todas as chaves de tutorial (logout sem userId)
-      if (key.startsWith(prefix)) {
-        keysToRemove.push(key);
-      }
+  const close = useCallback(() => {
+    // fechar deve marcar como visto
+    try {
+      localStorage.setItem(storageKey, "1");
+      setHasSeen(true);
+    } catch {
+      // se falhar storage, ao menos fecha
     }
-  }
-  keysToRemove.forEach((k) => localStorage.removeItem(k));
+    setIsOpen(false);
+  }, [storageKey]);
+
+  const resetSeen = useCallback(() => {
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {}
+    setHasSeen(false);
+    setIsOpen(true);
+  }, [storageKey]);
+
+  return { isOpen, open, close, resetSeen, hasSeen };
 }
