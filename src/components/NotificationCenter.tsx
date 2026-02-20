@@ -135,11 +135,14 @@ export function NotificationCenter({ isOpen, onClose }: NotificationCenterProps)
     setNotifications(notifications.map(n => ({ ...n, read: true })));
   };
 
-  const deleteNotification = (id: string) => {
+  const deleteNotification = async (id: string) => {
+    await supabase.from("notifications").delete().eq("id", id);
     setNotifications(notifications.filter(n => n.id !== id));
   };
 
-  const clearAll = () => {
+  const clearAll = async () => {
+    if (!user) return;
+    await supabase.from("notifications").delete().eq("user_id", user.id);
     setNotifications([]);
   };
 
