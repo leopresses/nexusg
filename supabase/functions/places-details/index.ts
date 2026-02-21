@@ -65,8 +65,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Parse request body
-    const { place_id, client_id } = await req.json();
+    // Parse and validate request body
+    const body = await req.json();
+    const place_id = typeof body.place_id === "string" ? body.place_id.slice(0, 255).replace(/[<>"'&;]/g, '') : "";
+    const client_id = typeof body.client_id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.client_id) ? body.client_id : undefined;
 
     if (!place_id) {
       return new Response(
@@ -85,7 +87,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`[places-details] Fetching details for place_id: ${place_id}, user: ${user.id}`);
+    console.log(`[places-details] Fetching details for user: ${user.id}`);
 
     // Call Google Places Details API
     const detailsUrl = new URL("https://maps.googleapis.com/maps/api/place/details/json");

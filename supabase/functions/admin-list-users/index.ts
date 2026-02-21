@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
       .order("created_at", { ascending: false });
 
     if (profilesError) {
-      console.error("Error fetching profiles:", profilesError);
+      console.error("[admin-list-users] Failed to fetch profiles");
       throw new Error("Database operation failed");
     }
 
@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     const { data: roles, error: rolesError } = await supabaseAdmin.from("user_roles").select("*");
 
     if (rolesError) {
-      console.error("Error fetching roles:", rolesError);
+      console.error("[admin-list-users] Failed to fetch roles");
       throw new Error("Database operation failed");
     }
 
@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.listUsers();
 
     if (authError) {
-      console.error("Error fetching auth users:", authError);
+      console.error("[admin-list-users] Failed to fetch auth users");
       // Continue without emails if this fails
     }
 
@@ -120,8 +120,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
-    console.error("Error in admin-list-users:", error);
-    return new Response(JSON.stringify({ error: "Operation failed" }), {
+    console.error("[admin-list-users] Internal error occurred");
+    return new Response(JSON.stringify({ error: "INTERNAL_ERROR", message: "Operação falhou. Tente novamente." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
