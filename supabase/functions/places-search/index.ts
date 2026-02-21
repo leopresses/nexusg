@@ -56,8 +56,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Parse request body
-    const { name, address } = await req.json();
+    // Parse and validate request body
+    const body = await req.json();
+    const name = typeof body.name === "string" ? body.name.slice(0, 200).replace(/[<>"'&;]/g, '').trim() : "";
+    const address = typeof body.address === "string" ? body.address.slice(0, 500).replace(/[<>"'&;]/g, '').trim() : "";
 
     if (!name && !address) {
       return new Response(
@@ -82,7 +84,7 @@ Deno.serve(async (req) => {
 
     // Build search query
     const searchQuery = [name, address].filter(Boolean).join(" ");
-    console.log(`[places-search] Searching for: "${searchQuery}" by user ${user.id}`);
+    console.log(`[places-search] Search request by user ${user.id}`);
 
     // Call Google Places Text Search API
     const searchUrl = new URL("https://maps.googleapis.com/maps/api/place/textsearch/json");
