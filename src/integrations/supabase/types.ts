@@ -230,13 +230,11 @@ export type Database = {
       }
       google_user_connections: {
         Row: {
-          access_token: string | null
           created_at: string
           error_message: string | null
           google_email: string | null
           is_active: boolean | null
           last_sync_at: string | null
-          refresh_token: string | null
           scopes: string | null
           status: string
           token_expires_at: string | null
@@ -244,13 +242,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          access_token?: string | null
           created_at?: string
           error_message?: string | null
           google_email?: string | null
           is_active?: boolean | null
           last_sync_at?: string | null
-          refresh_token?: string | null
           scopes?: string | null
           status?: string
           token_expires_at?: string | null
@@ -258,13 +254,11 @@ export type Database = {
           user_id: string
         }
         Update: {
-          access_token?: string | null
           created_at?: string
           error_message?: string | null
           google_email?: string | null
           is_active?: boolean | null
           last_sync_at?: string | null
-          refresh_token?: string | null
           scopes?: string | null
           status?: string
           token_expires_at?: string | null
