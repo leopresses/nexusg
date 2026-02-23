@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`[places-details] Fetching details for user: ${user.id}`);
+    console.log('[places-details] Fetching place details');
 
     // Call Google Places Details API
     const detailsUrl = new URL("https://maps.googleapis.com/maps/api/place/details/json");
@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
 
     // If client_id provided, update the client with place data
     if (client_id) {
-      console.log(`[places-details] Updating client ${client_id} with place data`);
+      console.log('[places-details] Updating client with place data');
       
       // Verify client belongs to user via RLS (only owner can read)
       const { data: clientData, error: clientError } = await supabase
@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      console.log(`[places-details] Client ${client_id} updated successfully`);
+      console.log('[places-details] Client updated successfully');
     }
 
     return new Response(

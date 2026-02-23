@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
 
     // Build search query
     const searchQuery = [name, address].filter(Boolean).join(" ");
-    console.log(`[places-search] Search request by user ${user.id}`);
+    console.log('[places-search] Search request received');
 
     // Call Google Places Text Search API
     const searchUrl = new URL("https://maps.googleapis.com/maps/api/place/textsearch/json");
@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
         business_status: place.business_status,
       }));
 
-    console.log(`[places-search] Found ${candidates.length} candidates`);
+    console.log('[places-search]', { event: 'search_complete', count: candidates.length });
 
     return new Response(
       JSON.stringify({ candidates }),
