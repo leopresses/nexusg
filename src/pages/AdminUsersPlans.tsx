@@ -123,19 +123,20 @@ export default function AdminUsersPlans() {
 
   const toggleAdminRole = async (userId: string, currentlyAdmin: boolean) => {
     try {
-      if (currentlyAdmin) {
-        const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "admin");
-        if (error) throw error;
-        toast.success("Permissão de admin removida");
-      } else {
-        const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: "admin" });
-        if (error) throw error;
-        toast.success("Permissão de admin concedida");
-      }
+      const { error } = await supabase.rpc("admin_manage_role", {
+        _target_user_id: userId,
+        _role: "admin",
+        _operation: currentlyAdmin ? "revoke" : "grant",
+      });
+      if (error) throw error;
+      toast.success(currentlyAdmin ? "Permissão de admin removida" : "Permissão de admin concedida");
       fetchUsers();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error toggling admin:", error);
-      toast.error("Erro ao alterar permissões");
+      const msg = error?.message?.includes("Cannot modify your own roles")
+        ? "Você não pode alterar suas próprias permissões"
+        : "Erro ao alterar permissões";
+      toast.error(msg);
     }
   };
 
