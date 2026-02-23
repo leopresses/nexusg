@@ -538,6 +538,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_manage_role: {
+        Args: {
+          _operation: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _target_user_id: string
+        }
+        Returns: undefined
+      }
       admin_update_user_plan: {
         Args: {
           _clients_limit: number
