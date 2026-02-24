@@ -101,7 +101,7 @@ export default function Demo() {
               funciona
             </motion.h1>
             <motion.p variants={fadeInUp} className="text-lg text-slate-600 mb-8">
-              Uma plataforma completa para gerenciar múltiplos clientes de Google Business com tarefas automatizadas,
+              Uma plataforma completa para gerenciar múltiplos clientes com dados do Google Places, tarefas automatizadas,
               relatórios profissionais e métricas em tempo real.
             </motion.p>
           </motion.div>
@@ -393,7 +393,7 @@ export default function Demo() {
                 </li>
                 <li className="flex items-center gap-3">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                  <span>Métricas do Google Business</span>
+                  <span>Dados públicos do Google Places</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600" />

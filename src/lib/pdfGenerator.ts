@@ -208,14 +208,14 @@ export async function generateClientReport(
     doc.text(metric.label, xPos + taskCardWidth / 2, yPos + 26, { align: 'center' });
   });
   
-  // ===== GOOGLE BUSINESS METRICS (if available) =====
+  // ===== GOOGLE PLACES METRICS (if available) =====
   if (hasGoogleMetrics) {
     yPos += cardHeight + 15;
     
     doc.setTextColor(40, 40, 40);
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('Métricas do Google Business', margin, yPos);
+    doc.text('Dados do Google Places', margin, yPos);
     
     yPos += 10;
     

@@ -77,7 +77,7 @@ export default function LandingPage() {
               variant="outline"
               className="mb-6 py-1 px-4 rounded-full border-blue-200 bg-blue-50 text-blue-700 font-bold"
             >
-              🚀 A plataforma #1 para Gestores de Google Business
+              🚀 A plataforma #1 para Gestores de Google Places
             </Badge>
             <h1 className="text-5xl md:text-7xl font-black tracking-tight text-slate-900 mb-8 leading-[1.1]">
               Sua agência no <br />
@@ -301,7 +301,7 @@ export default function LandingPage() {
           <div className="col-span-2">
             <Logo size="md" />
             <p className="mt-6 text-slate-400 max-w-sm mx-auto md:mx-0">
-              Simplificando a gestão de Google Business para agências de performance e gestores locais em todo o Brasil.
+              Simplificando a gestão de Google Places para agências de performance e gestores locais em todo o Brasil.
             </p>
           </div>
           <div>
