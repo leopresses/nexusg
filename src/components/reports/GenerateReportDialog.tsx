@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getClientAvatarSignedUrl } from '@/hooks/useClientAvatarUrl';
 import { FileText, Loader2, Calendar as CalendarIcon, TrendingUp } from 'lucide-react';
 import {
   Dialog,
@@ -66,7 +67,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
     try {
       const { data, error } = await supabase
         .from('clients')
-        .select('id, name, business_type, address, is_active')
+        .select('id, name, business_type, address, is_active, avatar_url, place_snapshot, google_maps_url')
         .eq('is_active', true)
         .order('name');
 
@@ -221,8 +222,45 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
         console.log('No Google metrics available:', error);
       }
 
+      // Get client avatar signed URL for the PDF
+      let avatarSignedUrl: string | null = null;
+      try {
+        avatarSignedUrl = await getClientAvatarSignedUrl((selectedClient as any).avatar_url);
+      } catch { /* ignore */ }
+
+      // Get agency/brand logo signed URL
+      let agencyLogoUrl: string | null = null;
+      if (brandSettings.logo) {
+        try {
+          // brandSettings.logo may be a storage path or signed URL
+          const logoPath = brandSettings.logo.split('/brand-logos/')[1];
+          if (logoPath) {
+            const { data: logoData } = await supabase.storage
+              .from('brand-logos')
+              .createSignedUrl(logoPath, 3600);
+            agencyLogoUrl = logoData?.signedUrl || brandSettings.logo;
+          } else {
+            agencyLogoUrl = brandSettings.logo;
+          }
+        } catch { agencyLogoUrl = brandSettings.logo; }
+      }
+
+      // Build place snapshot from client data
+      const placeSnapshot = (selectedClient as any).place_snapshot || null;
+
       const reportData: ReportData = {
-        client: selectedClient,
+        client: {
+          ...selectedClient,
+          avatarSignedUrl,
+          placeSnapshot: placeSnapshot ? {
+            rating: placeSnapshot.rating,
+            user_ratings_total: placeSnapshot.user_ratings_total,
+            formatted_phone_number: placeSnapshot.formatted_phone_number,
+            website: placeSnapshot.website,
+            url: placeSnapshot.url || (selectedClient as any).google_maps_url,
+            opening_hours: placeSnapshot.opening_hours,
+          } : null,
+        },
         tasks,
         period: periodDates,
         metrics: {
@@ -233,6 +271,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
           completionRate,
         },
         googleMetrics,
+        agencyLogoUrl,
       };
 
       // Generate PDF

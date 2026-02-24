@@ -17,6 +17,15 @@ export interface ClientData {
   business_type: string;
   address: string | null;
   is_active: boolean;
+  avatarSignedUrl?: string | null;
+  placeSnapshot?: {
+    rating?: number;
+    user_ratings_total?: number;
+    formatted_phone_number?: string;
+    website?: string;
+    url?: string;
+    opening_hours?: { weekday_text?: string[] };
+  } | null;
 }
 
 export interface TaskData {
@@ -50,6 +59,7 @@ export interface ReportData {
     completionRate: number;
   };
   googleMetrics?: GoogleMetrics;
+  agencyLogoUrl?: string | null;
 }
 
 // Convert hex to RGB
@@ -110,10 +120,11 @@ export async function generateClientReport(
   doc.setFillColor(secondaryRgb.r, secondaryRgb.g, secondaryRgb.b);
   doc.rect(0, 0, pageWidth, 40, 'F');
   
-  // Logo placeholder or initial
-  if (brandSettings.logo) {
+  // Logo - prefer agency signed URL, fall back to brandSettings.logo
+  const logoUrl = reportData.agencyLogoUrl || brandSettings.logo;
+  if (logoUrl) {
     try {
-      doc.addImage(brandSettings.logo, 'PNG', margin, 8, 24, 24);
+      doc.addImage(logoUrl, 'PNG', margin, 8, 24, 24);
     } catch {
       // If logo fails, draw initial
       doc.setFillColor(primaryRgb.r, primaryRgb.g, primaryRgb.b);
@@ -144,23 +155,93 @@ export async function generateClientReport(
   doc.setTextColor(200, 200, 200);
   doc.text('Relatório de Desempenho', pageWidth - margin, 22, { align: 'right' });
   
-  // ===== CLIENT INFO =====
+  // ===== CLIENT INFO (with photo) =====
   let yPos = 55;
   
-  doc.setTextColor(40, 40, 40);
-  doc.setFontSize(20);
-  doc.setFont('helvetica', 'bold');
-  doc.text(reportData.client.name, margin, yPos);
+  const clientInfoX = margin;
   
-  yPos += 8;
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 100, 100);
-  doc.text(`${translateBusinessType(reportData.client.business_type)} • ${reportData.client.address || 'Endereço não informado'}`, margin, yPos);
+  // Client photo (if available)
+  if (reportData.client.avatarSignedUrl) {
+    try {
+      doc.addImage(reportData.client.avatarSignedUrl, 'JPEG', margin, yPos - 5, 20, 20);
+      // Shift text to the right of the photo
+      doc.setTextColor(40, 40, 40);
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text(reportData.client.name, margin + 26, yPos + 4);
+      
+      yPos += 12;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 100);
+      doc.text(`${translateBusinessType(reportData.client.business_type)} • ${reportData.client.address || 'Endereço não informado'}`, margin + 26, yPos);
+    } catch {
+      // If image fails, render text only
+      doc.setTextColor(40, 40, 40);
+      doc.setFontSize(20);
+      doc.setFont('helvetica', 'bold');
+      doc.text(reportData.client.name, margin, yPos);
+      
+      yPos += 8;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 100);
+      doc.text(`${translateBusinessType(reportData.client.business_type)} • ${reportData.client.address || 'Endereço não informado'}`, margin, yPos);
+    }
+  } else {
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text(reportData.client.name, margin, yPos);
+    
+    yPos += 8;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(`${translateBusinessType(reportData.client.business_type)} • ${reportData.client.address || 'Endereço não informado'}`, margin, yPos);
+  }
   
   yPos += 8;
   doc.setFontSize(10);
   doc.text(`Período: ${formatDate(reportData.period.start)} a ${formatDate(reportData.period.end)}`, margin, yPos);
+  
+  // ===== GOOGLE PLACES SNAPSHOT (public data) =====
+  const snapshot = reportData.client.placeSnapshot;
+  if (snapshot) {
+    yPos += 12;
+    doc.setFillColor(235, 243, 254);
+    const snapshotHeight = 28;
+    doc.roundedRect(margin, yPos, pageWidth - margin * 2, snapshotHeight, 3, 3, 'F');
+    doc.setDrawColor(66, 133, 244);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin, yPos, pageWidth - margin * 2, snapshotHeight, 3, 3, 'S');
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 64, 175);
+    doc.text('Dados Públicos do Google Places', margin + 4, yPos + 7);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    doc.setFontSize(8);
+    
+    const infoItems: string[] = [];
+    if (snapshot.rating) infoItems.push(`⭐ ${snapshot.rating}/5 (${snapshot.user_ratings_total || 0} avaliações)`);
+    if (snapshot.formatted_phone_number) infoItems.push(`📞 ${snapshot.formatted_phone_number}`);
+    if (snapshot.website) infoItems.push(`🌐 ${snapshot.website.substring(0, 40)}${snapshot.website.length > 40 ? '...' : ''}`);
+    
+    if (infoItems.length > 0) {
+      doc.text(infoItems.join('  •  '), margin + 4, yPos + 16);
+    }
+    
+    if (snapshot.url) {
+      doc.setTextColor(66, 133, 244);
+      doc.setFontSize(7);
+      doc.text(`Google Maps: ${snapshot.url.substring(0, 60)}${snapshot.url.length > 60 ? '...' : ''}`, margin + 4, yPos + 23);
+    }
+    
+    yPos += snapshotHeight;
+  }
   
   // ===== METRICS CARDS =====
   yPos += 20;

@@ -93,21 +93,39 @@ export default function Dashboard() {
       if (tasksRes.error) throw tasksRes.error;
       setRecentTasks((tasksRes.data as any) || []);
 
-      const allTasksRes = await supabase.from("tasks").select("status, frequency");
-      if (allTasksRes.error) throw allTasksRes.error;
+      // Get current week start (Monday) and today's date for filtering
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() + mondayOffset);
+      const weekStartStr = weekStart.toISOString().split('T')[0];
+      const todayStr = now.toISOString().split('T')[0];
 
-      const allTasks = allTasksRes.data || [];
+      // Fetch weekly tasks for current week
+      const weeklyTasksRes = await supabase
+        .from("tasks")
+        .select("status, frequency")
+        .eq("week_start", weekStartStr);
+      
+      // Fetch daily tasks for today
+      const dailyTasksRes = await supabase
+        .from("tasks")
+        .select("status, frequency")
+        .eq("task_date", todayStr)
+        .eq("frequency", "daily");
+
+      const weeklyTasks = weeklyTasksRes.data || [];
+      const dailyTasks = dailyTasksRes.data || [];
+      const allCurrentTasks = [...weeklyTasks, ...dailyTasks];
 
       const overall: TaskStats = {
-        pending: allTasks.filter((t: any) => t.status === "pending").length,
-        in_progress: allTasks.filter((t: any) => t.status === "in_progress").length,
-        completed: allTasks.filter((t: any) => t.status === "completed").length,
-        total: allTasks.length,
+        pending: allCurrentTasks.filter((t: any) => t.status === "pending").length,
+        in_progress: allCurrentTasks.filter((t: any) => t.status === "in_progress").length,
+        completed: allCurrentTasks.filter((t: any) => t.status === "completed").length,
+        total: allCurrentTasks.length,
       };
       setTaskStats(overall);
-
-      const dailyTasks = allTasks.filter((t: any) => (t.frequency || "weekly") === "daily");
-      const weeklyTasks = allTasks.filter((t: any) => (t.frequency || "weekly") === "weekly");
 
       const daily: TaskStats = {
         pending: dailyTasks.filter((t: any) => t.status === "pending").length,
@@ -116,11 +134,12 @@ export default function Dashboard() {
         total: dailyTasks.length,
       };
 
+      const weeklyOnly = weeklyTasks.filter((t: any) => (t.frequency || "weekly") === "weekly");
       const weekly: TaskStats = {
-        pending: weeklyTasks.filter((t: any) => t.status === "pending").length,
-        in_progress: weeklyTasks.filter((t: any) => t.status === "in_progress").length,
-        completed: weeklyTasks.filter((t: any) => t.status === "completed").length,
-        total: weeklyTasks.length,
+        pending: weeklyOnly.filter((t: any) => t.status === "pending").length,
+        in_progress: weeklyOnly.filter((t: any) => t.status === "in_progress").length,
+        completed: weeklyOnly.filter((t: any) => t.status === "completed").length,
+        total: weeklyOnly.length,
       };
 
       setDayStats({ daily, weekly });
