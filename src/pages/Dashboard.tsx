@@ -350,7 +350,7 @@ export default function Dashboard() {
                         </div>
                         <div className="text-center">
                           <div className="text-sm font-medium flex items-center gap-1">
-                            {client.google_business_id ? "✓" : "—"}
+                            {client.place_id ? "✓" : "—"}
                           </div>
                           <div className="text-xs text-slate-500">Google</div>
                         </div>

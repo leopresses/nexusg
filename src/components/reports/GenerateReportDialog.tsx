@@ -205,7 +205,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
       const inProgressTasks = 0;
       const completionRate = 100;
 
-      // Fetch Google Business metrics for this client and period
+      // Fetch Google Places metrics for this client and period
       let googleMetrics: GoogleMetrics | undefined;
       try {
         const metricsMap = await getMetricsByClientForPeriod(
