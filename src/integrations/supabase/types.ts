@@ -56,6 +56,47 @@ export type Database = {
         }
         Relationships: []
       }
+      client_evidences: {
+        Row: {
+          client_id: string
+          created_at: string
+          file_url: string | null
+          id: string
+          notes: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          notes?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_evidences_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_google_locations: {
         Row: {
           address: string | null
