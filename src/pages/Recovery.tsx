@@ -44,7 +44,8 @@ const CHECKLIST_STEPS = [
   "Se solicitado, anexar evidências (PDF gerado aqui)",
 ];
 
-const GOOGLE_APPEAL_URL = "https://support.google.com/business/troubleshooter/2690467";
+const GOOGLE_APPEAL_URL =
+  "https://support.google.com/business/community-video/251987419/corrigindo-uma-suspens%C3%A3o-ou-desativa%C3%A7%C3%A3o-no-perfil-da-empresa-no-google?hl=pt-BR&sjid=8273479830695779318-SA";
 
 export default function Recovery() {
   const { user } = useAuth();
