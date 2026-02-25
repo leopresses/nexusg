@@ -18,6 +18,7 @@ import Settings from "./pages/Settings";
 import Clients from "./pages/Clients";
 import Reports from "./pages/Reports";
 import Pricing from "./pages/Pricing";
+import Recovery from "./pages/Recovery";
 import AdminUsersPlans from "./pages/AdminUsersPlans";
 import AdminTemplates from "./pages/AdminTemplates";
 import NotFound from "./pages/NotFound";
@@ -95,7 +96,15 @@ const App = () => (
               } 
             />
             <Route 
-              path="/admin/users-plans" 
+              path="/recovery" 
+              element={
+                <ProtectedRoute>
+                  <Recovery />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/users-plans"
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminUsersPlans />

@@ -11,6 +11,7 @@ import {
   ListTodo,
   Pencil,
   Trash2,
+  ShieldAlert,
   Link as LinkIcon,
   Unlink,
   Star,
@@ -352,6 +353,16 @@ export default function Clients() {
                           </DropdownMenuItem>
                         )}
 
+                        <DropdownMenuSeparator className="bg-slate-100" />
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/recovery?client=${client.id}`);
+                          }}
+                          className="font-medium text-amber-600 focus:text-amber-700 focus:bg-amber-50"
+                        >
+                          <ShieldAlert className="h-4 w-4 mr-2" /> Conta restrita? Recuperar
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator className="bg-slate-100" />
                         <DropdownMenuItem
                           onClick={(e) => handleDelete(client, e as any)}
