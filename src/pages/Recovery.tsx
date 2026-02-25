@@ -45,7 +45,7 @@ const CHECKLIST_STEPS = [
 ];
 
 const GOOGLE_APPEAL_URL =
-  "https://support.google.com/business/community-video/251987419/corrigindo-uma-suspens%C3%A3o-ou-desativa%C3%A7%C3%A3o-no-perfil-da-empresa-no-google?hl=pt-BR&sjid=8273479830695779318-SA";
+  "https://support.google.com/business/workflow/13569690?sjid=8273479830695779318-SA&visit_id=639076383517998129-3093210050&p=manage_appeals&rd=1";
 
 export default function Recovery() {
   const { user } = useAuth();
