@@ -19,6 +19,7 @@ import Clients from "./pages/Clients";
 import Reports from "./pages/Reports";
 import Pricing from "./pages/Pricing";
 import Recovery from "./pages/Recovery";
+import Reviews from "./pages/Reviews";
 import AdminUsersPlans from "./pages/AdminUsersPlans";
 import AdminTemplates from "./pages/AdminTemplates";
 import Audit from "./pages/Audit";
@@ -127,6 +128,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Alerts />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reviews"
+              element={
+                <ProtectedRoute>
+                  <Reviews />
                 </ProtectedRoute>
               }
             />
