@@ -14,6 +14,7 @@ import {
   ShieldAlert,
   ClipboardCheck,
   Bell,
+  MessageSquareText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
@@ -35,6 +36,7 @@ const baseNavItems = [
   { icon: Settings, label: "Configurações", href: "/settings" },
   { icon: ClipboardCheck, label: "Auditoria", href: "/audit" },
   { icon: Bell, label: "Alertas", href: "/alerts" },
+  { icon: MessageSquareText, label: "Avaliações", href: "/reviews" },
   { icon: CreditCard, label: "Planos", href: "/pricing" },
   { icon: ShieldAlert, label: "Recuperação", href: "/recovery" },
 ];

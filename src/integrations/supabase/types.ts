@@ -141,6 +141,56 @@ export type Database = {
           },
         ]
       }
+      client_reviews: {
+        Row: {
+          author_name: string | null
+          client_id: string
+          comment: string | null
+          created_at: string
+          id: string
+          rating: number
+          responded_at: string | null
+          response_text: string | null
+          review_date: string | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          author_name?: string | null
+          client_id: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating: number
+          responded_at?: string | null
+          response_text?: string | null
+          review_date?: string | null
+          source?: string
+          user_id: string
+        }
+        Update: {
+          author_name?: string | null
+          client_id?: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating?: number
+          responded_at?: string | null
+          response_text?: string | null
+          review_date?: string | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_reviews_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
