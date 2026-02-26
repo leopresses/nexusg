@@ -21,6 +21,8 @@ import Pricing from "./pages/Pricing";
 import Recovery from "./pages/Recovery";
 import AdminUsersPlans from "./pages/AdminUsersPlans";
 import AdminTemplates from "./pages/AdminTemplates";
+import Audit from "./pages/Audit";
+import AuditClient from "./pages/AuditClient";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -118,6 +120,22 @@ const App = () => (
                   <AdminTemplates />
                 </ProtectedRoute>
               } 
+            />
+            <Route
+              path="/audit"
+              element={
+                <ProtectedRoute>
+                  <Audit />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/audit/:clientId"
+              element={
+                <ProtectedRoute>
+                  <AuditClient />
+                </ProtectedRoute>
+              }
             />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
