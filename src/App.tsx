@@ -23,6 +23,7 @@ import AdminUsersPlans from "./pages/AdminUsersPlans";
 import AdminTemplates from "./pages/AdminTemplates";
 import Audit from "./pages/Audit";
 import AuditClient from "./pages/AuditClient";
+import Alerts from "./pages/Alerts";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -120,6 +121,14 @@ const App = () => (
                   <AdminTemplates />
                 </ProtectedRoute>
               } 
+            />
+            <Route
+              path="/alerts"
+              element={
+                <ProtectedRoute>
+                  <Alerts />
+                </ProtectedRoute>
+              }
             />
             <Route
               path="/audit"
