@@ -27,11 +27,31 @@ import {
   getScoreColor,
   getProgressColor,
   type AuditItem,
-  type AuditResult,
 } from "@/lib/auditScore";
 import { toast } from "sonner";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
+
+// ✅ mesmo padrão do app (evita bug no domingo e evita timezone zoado)
+function getWeekStartISO(): string {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday (domingo volta 6 dias)
+  const monday = new Date(now.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  return monday.toISOString().split("T")[0];
+}
+
+function safeUUID() {
+  // crypto.randomUUID é suportado na maioria dos browsers modernos
+  // fallback simples pra não quebrar
+  // @ts-ignore
+  if (typeof crypto !== "undefined" && crypto?.randomUUID) {
+    // @ts-ignore
+    return crypto.randomUUID();
+  }
+  return `id_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
 
 function StatusIcon({ status }: { status: AuditItem["status"] }) {
   if (status === "ok") return <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />;
@@ -40,8 +60,10 @@ function StatusIcon({ status }: { status: AuditItem["status"] }) {
 }
 
 function StatusLabel({ status }: { status: AuditItem["status"] }) {
-  if (status === "ok") return <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">OK</span>;
-  if (status === "missing") return <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md">Falta</span>;
+  if (status === "ok")
+    return <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">OK</span>;
+  if (status === "missing")
+    return <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md">Falta</span>;
   return <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">N/D</span>;
 }
 
@@ -51,12 +73,14 @@ export default function AuditClient() {
   const navigate = useNavigate();
   const [client, setClient] = useState<Client | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     if (!clientId) return;
     const fetch = async () => {
       setIsLoading(true);
       const { data } = await supabase.from("clients").select("*").eq("id", clientId).maybeSingle();
+
       setClient(data);
       setIsLoading(false);
     };
@@ -97,9 +121,7 @@ export default function AuditClient() {
     place_snapshot: (client as any).place_snapshot,
   });
 
-  const missingActions = audit.items
-    .filter(i => i.status === "missing")
-    .map(i => i.label);
+  const missingActions = audit.items.filter((i) => i.status === "missing").map((i) => i.label);
 
   const handleCopyRecommendations = () => {
     const text = audit.recommendations.map((r, i) => `${i + 1}. ${r}`).join("\n");
@@ -109,36 +131,51 @@ export default function AuditClient() {
 
   const handleGenerateTasks = async () => {
     try {
-      // Create a single weekly task with checklist from missing items
+      setIsGenerating(true);
+
+      // ✅ checklist no formato certo usado no app
       const checklist = audit.items
-        .filter(i => i.status === "missing")
-        .map(i => ({ label: i.tip, checked: false }));
+        .filter((i) => i.status === "missing")
+        .map((i) => ({
+          id: safeUUID(),
+          text: i.tip || i.label,
+          completed: false,
+        }));
 
       if (checklist.length === 0) {
         toast.info("Nenhuma pendência encontrada para gerar tarefas.");
         return;
       }
 
-      const weekStart = new Date();
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Monday
-      const weekStartStr = weekStart.toISOString().split("T")[0];
+      const weekStartStr = getWeekStartISO();
 
-      const { error } = await supabase.from("tasks").insert({
-        client_id: client.id,
-        title: `Auditoria: Melhorar perfil Google (Score ${audit.score}/100)`,
-        description: `Plano de ação gerado pela auditoria do perfil. ${checklist.length} itens a resolver.`,
-        checklist: checklist as any,
-        week_start: weekStartStr,
-        status: "pending",
-        frequency: "weekly",
-        is_custom: true,
-      });
+      const { data, error } = await supabase
+        .from("tasks")
+        .insert({
+          client_id: client.id,
+          title: `Auditoria: Melhorar perfil Google (Score ${audit.score}/100)`,
+          description: `Plano de ação gerado pela auditoria do perfil. ${checklist.length} itens a resolver.`,
+          checklist: checklist as any,
+          week_start: weekStartStr,
+          status: "pending",
+          frequency: "weekly",
+          is_custom: true,
+          task_date: null, // weekly
+        })
+        .select("id")
+        .maybeSingle();
 
       if (error) throw error;
-      toast.success("Tarefa criada com sucesso! Veja em Tarefas.");
-    } catch (err) {
+
+      toast.success("Tarefa criada! Abrindo Tarefas…");
+
+      // ✅ já abre a página de tarefas filtrada por esse cliente
+      navigate(`/tasks?client=${client.id}`);
+    } catch (err: any) {
       console.error(err);
-      toast.error("Erro ao criar tarefa.");
+      toast.error(err?.message ? `Erro: ${err.message}` : "Erro ao criar tarefa.");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -153,12 +190,11 @@ export default function AuditClient() {
       }
     >
       <div className="space-y-6 max-w-4xl">
-        {/* Header with client info */}
+        {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <Card className="bg-white border-slate-200 shadow-sm rounded-2xl">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-                {/* Avatar & name */}
                 <div className="flex items-center gap-4 flex-1">
                   <div className="h-14 w-14 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center overflow-hidden">
                     <ClientAvatar avatarUrl={(client as any).avatar_url} clientName={client.name} />
@@ -166,7 +202,10 @@ export default function AuditClient() {
                   <div>
                     <h2 className="text-lg font-bold text-slate-900">{client.name}</h2>
                     <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="secondary" className="text-xs capitalize bg-slate-100 text-slate-600 border-slate-200">
+                      <Badge
+                        variant="secondary"
+                        className="text-xs capitalize bg-slate-100 text-slate-600 border-slate-200"
+                      >
                         <Building2 className="h-3 w-3 mr-1" />
                         {getBusinessTypeLabel(client.business_type)}
                       </Badge>
@@ -179,13 +218,16 @@ export default function AuditClient() {
                   </div>
                 </div>
 
-                {/* Score */}
                 <div className="text-center md:text-right">
                   <div className="flex items-baseline gap-1 justify-center md:justify-end">
                     <span className={`text-5xl font-black ${getScoreColor(audit.score)}`}>{audit.score}</span>
                     <span className="text-lg text-slate-400 font-semibold">/100</span>
                   </div>
-                  <span className={`inline-block mt-1 text-sm font-bold px-3 py-1 rounded-lg border ${getClassificationColor(audit.classification)}`}>
+                  <span
+                    className={`inline-block mt-1 text-sm font-bold px-3 py-1 rounded-lg border ${getClassificationColor(
+                      audit.classification,
+                    )}`}
+                  >
                     {audit.classification}
                   </span>
                   <div className="w-48 h-2.5 rounded-full bg-slate-100 overflow-hidden mt-3 mx-auto md:ml-auto md:mr-0">
@@ -200,7 +242,7 @@ export default function AuditClient() {
           </Card>
         </motion.div>
 
-        {/* Top recommendations */}
+        {/* Recommendations */}
         {audit.recommendations.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             <Card className="bg-white border-slate-200 shadow-sm rounded-2xl">
@@ -210,7 +252,12 @@ export default function AuditClient() {
                     <Zap className="h-4 w-4 text-amber-500" />
                     Principais Recomendações
                   </CardTitle>
-                  <Button variant="ghost" size="sm" onClick={handleCopyRecommendations} className="rounded-xl text-xs text-slate-500 hover:text-blue-600">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopyRecommendations}
+                    className="rounded-xl text-xs text-slate-500 hover:text-blue-600"
+                  >
                     <Copy className="h-3 w-3 mr-1" /> Copiar
                   </Button>
                 </div>
@@ -218,7 +265,10 @@ export default function AuditClient() {
               <CardContent className="pt-0">
                 <ul className="space-y-2">
                   {audit.recommendations.map((rec, i) => (
-                    <li key={i} className="flex items-start gap-3 text-sm text-slate-700 p-2.5 rounded-xl bg-amber-50/50 border border-amber-100">
+                    <li
+                      key={i}
+                      className="flex items-start gap-3 text-sm text-slate-700 p-2.5 rounded-xl bg-amber-50/50 border border-amber-100"
+                    >
                       <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5 flex-shrink-0">
                         {i + 1}
                       </span>
@@ -239,18 +289,14 @@ export default function AuditClient() {
             </CardHeader>
             <CardContent className="pt-0">
               <div className="divide-y divide-slate-100">
-                {audit.items.map(item => (
+                {audit.items.map((item) => (
                   <div key={item.key} className="flex items-center gap-3 py-3">
                     <StatusIcon status={item.status} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-800">{item.label}</p>
-                      {item.status === "missing" && (
-                        <p className="text-xs text-slate-500 mt-0.5">{item.tip}</p>
-                      )}
+                      {item.status === "missing" && <p className="text-xs text-slate-500 mt-0.5">{item.tip}</p>}
                     </div>
-                    <span className="text-[10px] text-slate-400 font-medium flex-shrink-0">
-                      peso {item.weight}
-                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium flex-shrink-0">peso {item.weight}</span>
                     <StatusLabel status={item.status} />
                   </div>
                 ))}
@@ -290,8 +336,8 @@ export default function AuditClient() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <Button onClick={handleGenerateTasks} className="rounded-xl shadow-md font-bold">
-            <Zap className="h-4 w-4 mr-2" />
+          <Button onClick={handleGenerateTasks} className="rounded-xl shadow-md font-bold" disabled={isGenerating}>
+            {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Zap className="h-4 w-4 mr-2" />}
             Gerar plano de ação
           </Button>
           <Button variant="outline" onClick={() => navigate("/audit")} className="rounded-xl border-slate-200">
