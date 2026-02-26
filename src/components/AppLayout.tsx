@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   ShieldAlert,
+  ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
@@ -31,6 +32,7 @@ const baseNavItems = [
   { icon: CheckSquare, label: "Tarefas", href: "/tasks" },
   { icon: FileText, label: "Gerador de Relatórios", href: "/reports" },
   { icon: Settings, label: "Configurações", href: "/settings" },
+  { icon: ClipboardCheck, label: "Auditoria", href: "/audit" },
   { icon: CreditCard, label: "Planos", href: "/pricing" },
   { icon: ShieldAlert, label: "Recuperação", href: "/recovery" },
 ];
