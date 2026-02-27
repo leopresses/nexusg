@@ -233,6 +233,11 @@ export default function Reviews() {
               key={f.value}
               variant={filter === f.value ? "default" : "outline"}
               size="sm"
+              className={`rounded-xl ${
+                filter === f.value
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+              }`}
               onClick={() => setFilter(f.value)}
             >
               {f.label}

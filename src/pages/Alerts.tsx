@@ -57,7 +57,7 @@ export default function Alerts() {
               className={`rounded-xl ${
                 filter === opt.value
                   ? "bg-blue-600 text-white hover:bg-blue-700"
-                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900"
               }`}
               onClick={() => setFilter(opt.value)}
             >
