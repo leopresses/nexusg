@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { AppLayout } from "@/components/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,13 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Star, Plus, MessageSquare, AlertTriangle, Search, RefreshCw, Loader2 } from "lucide-react";
+import { Star, Plus, MessageSquare, AlertTriangle, Search, RefreshCw, Loader2, HelpCircle, X, TrendingUp, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useClientReviews } from "@/hooks/useClientReviews";
 import { useBrandSettings } from "@/hooks/useBrandSettings";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
 import { toast } from "sonner";
+import { useHelpTutorial } from "@/hooks/useHelpTutorial";
 
 type FilterType = "all" | "no_response" | "responded" | "critical";
 
@@ -26,6 +28,7 @@ interface SimpleClient {
 export default function Reviews() {
   const { user } = useAuth();
   const { brandSettings } = useBrandSettings();
+  const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/reviews");
   const [clients, setClients] = useState<SimpleClient[]>([]);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>("all");
@@ -138,8 +141,36 @@ export default function Reviews() {
   ];
 
   return (
-    <AppLayout title="Avaliações" subtitle="Gerencie avaliações dos seus clientes">
-      <div className="space-y-6">
+    <AppLayout
+      title="Avaliações"
+      subtitle="Gerencie avaliações dos seus clientes"
+      headerActions={
+        <Button variant="ghost" size="icon" onClick={openTutorial} className="text-slate-500 hover:text-blue-600 hover:bg-blue-50" title="Ver tutorial">
+          <HelpCircle className="h-5 w-5" />
+        </Button>
+      }
+    >
+      <div className="space-y-6 relative">
+        <AnimatePresence>
+          {showTutorial && (
+            <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} className="absolute right-0 top-0 z-50 w-80 bg-blue-600 text-white p-5 rounded-2xl shadow-xl shadow-blue-200">
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-2"><div className="bg-white/20 p-1.5 rounded-lg"><Star className="h-4 w-4 text-white" /></div><h3 className="font-bold text-sm">Avaliações</h3></div>
+                <button onClick={closeTutorial} className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"><X className="h-4 w-4" /></button>
+              </div>
+              <div className="space-y-3 text-sm text-blue-50">
+                <p>Gerencie todas as avaliações dos seus clientes:</p>
+                <ul className="space-y-2 list-none">
+                  <li className="flex gap-2 items-start"><span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">1</span><span>Sincronize avaliações do Google com um clique.</span></li>
+                  <li className="flex gap-2 items-start"><span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">2</span><span>Filtre por críticas, sem resposta ou respondidas.</span></li>
+                  <li className="flex gap-2 items-start"><span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">3</span><span>Adicione avaliações manuais quando necessário.</span></li>
+                </ul>
+              </div>
+              <div className="mt-4 flex justify-end"><button onClick={closeTutorial} className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1">Entendi <ArrowRight className="h-3 w-3" /></button></div>
+              <div className="absolute -top-2 right-12 w-4 h-4 bg-blue-600 rotate-45 transform" />
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* KPIs */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card className="bg-white border-slate-200">

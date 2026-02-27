@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
-import { Search, ClipboardCheck, Loader2, ArrowRight, Building2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, ClipboardCheck, Loader2, ArrowRight, Building2, HelpCircle, X, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { ClientAvatar } from "@/components/clients/ClientAvatar";
 import { getBusinessTypeLabel } from "@/config/plans";
 import { computeClientAudit, getClassificationColor, getScoreColor, getProgressColor } from "@/lib/auditScore";
+import { useHelpTutorial } from "@/hooks/useHelpTutorial";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 
@@ -21,6 +22,7 @@ export default function Audit() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+  const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/audit");
 
   useEffect(() => {
     const fetch = async () => {
@@ -52,8 +54,36 @@ export default function Audit() {
   }
 
   return (
-    <AppLayout title="Auditoria do Perfil" subtitle="Avalie a qualidade do perfil Google dos seus clientes">
-      <div className="space-y-6">
+    <AppLayout
+      title="Auditoria do Perfil"
+      subtitle="Avalie a qualidade do perfil Google dos seus clientes"
+      headerActions={
+        <Button variant="ghost" size="icon" onClick={openTutorial} className="text-slate-500 hover:text-blue-600 hover:bg-blue-50" title="Ver tutorial">
+          <HelpCircle className="h-5 w-5" />
+        </Button>
+      }
+    >
+      <div className="space-y-6 relative">
+        <AnimatePresence>
+          {showTutorial && (
+            <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} className="absolute right-0 top-0 z-50 w-80 bg-blue-600 text-white p-5 rounded-2xl shadow-xl shadow-blue-200">
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-2"><div className="bg-white/20 p-1.5 rounded-lg"><TrendingUp className="h-4 w-4 text-white" /></div><h3 className="font-bold text-sm">Auditoria do Perfil</h3></div>
+                <button onClick={closeTutorial} className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"><X className="h-4 w-4" /></button>
+              </div>
+              <div className="space-y-3 text-sm text-blue-50">
+                <p>Aqui você avalia a qualidade do perfil Google dos seus clientes:</p>
+                <ul className="space-y-2 list-none">
+                  <li className="flex gap-2 items-start"><span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">1</span><span>Veja o score de 0 a 100 de cada cliente.</span></li>
+                  <li className="flex gap-2 items-start"><span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">2</span><span>Clique em um cliente para ver detalhes e recomendações.</span></li>
+                  <li className="flex gap-2 items-start"><span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">3</span><span>Sincronize o Google para ter dados mais precisos.</span></li>
+                </ul>
+              </div>
+              <div className="mt-4 flex justify-end"><button onClick={closeTutorial} className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1">Entendi <ArrowRight className="h-3 w-3" /></button></div>
+              <div className="absolute -top-2 right-12 w-4 h-4 bg-blue-600 rotate-45 transform" />
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
           <Input
