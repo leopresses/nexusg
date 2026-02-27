@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -15,6 +15,8 @@ import {
   HelpCircle,
   X,
   ArrowRight,
+  AlertCircle,
+  MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +60,14 @@ interface DayStats {
   weekly: TaskStats;
 }
 
+interface MetricsData {
+  views: number;
+  calls: number;
+  viewsPrev: number;
+  callsPrev: number;
+  hasData: boolean;
+}
+
 export default function Dashboard() {
   const [clients, setClients] = useState<Client[]>([]);
   const [recentTasks, setRecentTasks] = useState<Task[]>([]);
@@ -66,16 +76,64 @@ export default function Dashboard() {
     daily: { pending: 0, in_progress: 0, completed: 0, total: 0 },
     weekly: { pending: 0, in_progress: 0, completed: 0, total: 0 },
   });
+  const [metricsData, setMetricsData] = useState<MetricsData>({ views: 0, calls: 0, viewsPrev: 0, callsPrev: 0, hasData: false });
   const [isLoading, setIsLoading] = useState(true);
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/dashboard");
   const { alerts: allAlerts, isLoading: alertsLoading } = useAlerts();
   const topAlerts = allAlerts.slice(0, 5);
 
+  const fetchMetrics = useCallback(async () => {
+    if (!user) return;
+    try {
+      const now = new Date();
+      const sevenDaysAgo = new Date(now);
+      sevenDaysAgo.setDate(now.getDate() - 7);
+      const fourteenDaysAgo = new Date(now);
+      fourteenDaysAgo.setDate(now.getDate() - 14);
+
+      // Current period (last 7 days)
+      const { data: currentData } = await supabase
+        .from("google_metrics_daily")
+        .select("views, calls")
+        .eq("user_id", user.id)
+        .gte("date", sevenDaysAgo.toISOString().split("T")[0])
+        .lte("date", now.toISOString().split("T")[0]);
+
+      // Previous period (7-14 days ago)
+      const { data: prevData } = await supabase
+        .from("google_metrics_daily")
+        .select("views, calls")
+        .eq("user_id", user.id)
+        .gte("date", fourteenDaysAgo.toISOString().split("T")[0])
+        .lt("date", sevenDaysAgo.toISOString().split("T")[0]);
+
+      const current = (currentData || []).reduce(
+        (acc, m) => ({ views: acc.views + (m.views || 0), calls: acc.calls + (m.calls || 0) }),
+        { views: 0, calls: 0 }
+      );
+      const prev = (prevData || []).reduce(
+        (acc, m) => ({ views: acc.views + (m.views || 0), calls: acc.calls + (m.calls || 0) }),
+        { views: 0, calls: 0 }
+      );
+
+      setMetricsData({
+        views: current.views,
+        calls: current.calls,
+        viewsPrev: prev.views,
+        callsPrev: prev.calls,
+        hasData: (currentData || []).length > 0 || (prevData || []).length > 0,
+      });
+    } catch (err) {
+      console.error("Error fetching metrics:", err);
+    }
+  }, [user]);
+
   useEffect(() => {
     fetchData();
-  }, []);
+    fetchMetrics();
+  }, [fetchMetrics]);
 
   const fetchData = async () => {
     try {
@@ -97,7 +155,6 @@ export default function Dashboard() {
       if (tasksRes.error) throw tasksRes.error;
       setRecentTasks((tasksRes.data as any) || []);
 
-      // Get current week start (Monday) and today's date for filtering
       const now = new Date();
       const dayOfWeek = now.getDay();
       const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -106,13 +163,11 @@ export default function Dashboard() {
       const weekStartStr = weekStart.toISOString().split('T')[0];
       const todayStr = now.toISOString().split('T')[0];
 
-      // Fetch weekly tasks for current week
       const weeklyTasksRes = await supabase
         .from("tasks")
         .select("status, frequency")
         .eq("week_start", weekStartStr);
       
-      // Fetch daily tasks for today
       const dailyTasksRes = await supabase
         .from("tasks")
         .select("status, frequency")
@@ -157,11 +212,37 @@ export default function Dashboard() {
   const planLabel = getPlanLabel((profile as any)?.plan);
   const clientLimit = formatClientLimit((profile as any)?.clients_limit);
 
+  // Helper to compute change text
+  const getChangeText = (current: number, previous: number): string => {
+    if (previous === 0 && current === 0) return "Sem variação";
+    if (previous === 0) return `+${current} vs semana anterior`;
+    const pct = Math.round(((current - previous) / previous) * 100);
+    if (pct > 0) return `+${pct}% vs semana anterior`;
+    if (pct < 0) return `${pct}% vs semana anterior`;
+    return "Sem variação";
+  };
+
+  // Compute client health: how many clients have Google synced
+  const clientsWithGoogle = clients.filter(c => c.place_id).length;
+  const clientsWithoutGoogle = clients.length - clientsWithGoogle;
+
   const stats = [
-    { label: "Clientes Ativos", value: clients.length, icon: Users, change: "Ativos no momento" },
-    { label: "Tarefas Pendentes", value: taskStats.pending, icon: CheckSquare, change: "Precisam de atenção" },
-    { label: "Visualizações (mock)", value: "—", icon: Eye, change: "Placeholder" },
-    { label: "Chamadas (mock)", value: "—", icon: Phone, change: "Placeholder" },
+    { label: "Clientes Ativos", value: clients.length, icon: Users, change: "Ativos no momento", color: "text-blue-600" },
+    { label: "Tarefas Pendentes", value: taskStats.pending, icon: CheckSquare, change: "Precisam de atenção", color: "text-amber-600" },
+    {
+      label: "Visualizações",
+      value: metricsData.hasData ? metricsData.views.toLocaleString("pt-BR") : "—",
+      icon: Eye,
+      change: metricsData.hasData ? getChangeText(metricsData.views, metricsData.viewsPrev) : "Sem dados de métricas",
+      color: "text-indigo-600",
+    },
+    {
+      label: "Chamadas",
+      value: metricsData.hasData ? metricsData.calls.toLocaleString("pt-BR") : "—",
+      icon: Phone,
+      change: metricsData.hasData ? getChangeText(metricsData.calls, metricsData.callsPrev) : "Sem dados de métricas",
+      color: "text-emerald-600",
+    },
   ];
 
   if (isLoading) {
@@ -236,7 +317,7 @@ export default function Dashboard() {
                   </li>
                   <li className="flex gap-2 items-start">
                     <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">2</span>
-                    <span>Veja estatísticas rápidas dos seus clientes.</span>
+                    <span>Veja métricas reais do Google (visualizações e chamadas).</span>
                   </li>
                   <li className="flex gap-2 items-start">
                     <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">3</span>
@@ -254,7 +335,6 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              {/* Seta do balão */}
               <div className="absolute -top-2 right-12 w-4 h-4 bg-blue-600 rotate-45 transform" />
             </motion.div>
           )}
@@ -277,16 +357,33 @@ export default function Dashboard() {
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                  <stat.icon className="h-5 w-5 text-blue-600" />
+                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
                 </div>
-                <TrendingUp className="h-4 w-4 text-emerald-600" />
+                {stat.value !== "—" && <TrendingUp className="h-4 w-4 text-emerald-600" />}
               </div>
-              <div className="text-2xl font-bold mb-1">{stat.value}</div>
+              <div className="text-2xl font-bold mb-1 text-slate-900">{stat.value}</div>
               <div className="text-sm text-slate-500">{stat.label}</div>
-              <div className="text-xs text-emerald-600 mt-2">{stat.change}</div>
+              <div className="text-xs text-slate-400 mt-2">{stat.change}</div>
             </motion.div>
           ))}
         </motion.div>
+
+        {/* Client Health Banner (if some clients lack Google) */}
+        {clients.length > 0 && clientsWithoutGoogle > 0 && (
+          <motion.div
+            className="rounded-2xl bg-amber-50 border border-amber-200 p-4 flex items-center gap-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+            <div className="flex-1 text-sm text-amber-800">
+              <strong>{clientsWithoutGoogle}</strong> cliente{clientsWithoutGoogle > 1 ? "s" : ""} sem Google sincronizado.{" "}
+              <Link to="/clients" className="underline font-medium">
+                Vincular Place ID →
+              </Link>
+            </div>
+          </motion.div>
+        )}
 
         {/* Progress Bars */}
         <motion.div
@@ -298,7 +395,7 @@ export default function Dashboard() {
           <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
             <div className="flex items-center gap-2 mb-4">
               <Calendar className="h-5 w-5 text-blue-600" />
-              <h3 className="font-semibold">Tarefas de Hoje</h3>
+              <h3 className="font-semibold text-slate-900">Tarefas de Hoje</h3>
             </div>
             <ProgressBar
               pending={dayStats.daily.pending}
@@ -311,7 +408,7 @@ export default function Dashboard() {
           <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
             <div className="flex items-center gap-2 mb-4">
               <CalendarDays className="h-5 w-5 text-blue-600" />
-              <h3 className="font-semibold">Tarefas da Semana</h3>
+              <h3 className="font-semibold text-slate-900">Tarefas da Semana</h3>
             </div>
             <ProgressBar
               pending={dayStats.weekly.pending}
@@ -332,7 +429,7 @@ export default function Dashboard() {
             transition={{ duration: 0.3, delay: 0.2 }}
           >
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="font-semibold text-lg">Clientes</h2>
+              <h2 className="font-semibold text-lg text-slate-900">Clientes</h2>
               <Link to="/clients" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                 Ver todos <ChevronRight className="h-4 w-4" />
               </Link>
@@ -340,8 +437,8 @@ export default function Dashboard() {
             <div className="divide-y divide-slate-100">
               {clients.length === 0 ? (
                 <div className="p-8 text-center">
-                  <Users className="h-12 w-12 text-slate-500 mx-auto mb-4" />
-                  <h3 className="font-medium mb-2">Nenhum cliente ainda</h3>
+                  <Users className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                  <h3 className="font-medium mb-2 text-slate-900">Nenhum cliente ainda</h3>
                   <p className="text-sm text-slate-500 mb-4">Adicione seu primeiro cliente para começar</p>
                   <Button
                     onClick={() => navigate("/onboarding")}
@@ -360,7 +457,7 @@ export default function Dashboard() {
                           <ClientAvatar avatarUrl={(client as any).avatar_url} clientName={client.name} />
                         </div>
                         <div>
-                          <h3 className="font-medium">{client.name}</h3>
+                          <h3 className="font-medium text-slate-900">{client.name}</h3>
                           <p className="text-sm text-slate-500 capitalize">
                             {getBusinessTypeLabel(client.business_type)}
                           </p>
@@ -368,12 +465,16 @@ export default function Dashboard() {
                       </div>
                       <div className="flex items-center gap-6">
                         <div className="text-center">
-                          <div className="text-sm font-medium">{client.address ? "✓" : "—"}</div>
+                          <div className="text-sm font-medium text-slate-700">{client.address ? "✓" : "—"}</div>
                           <div className="text-xs text-slate-500">Endereço</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-sm font-medium flex items-center gap-1">
-                            {client.place_id ? "✓" : "—"}
+                          <div className="text-sm font-medium text-slate-700 flex items-center gap-1">
+                            {client.place_id ? (
+                              <span className="text-emerald-600">✓</span>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
                           </div>
                           <div className="text-xs text-slate-500">Google</div>
                         </div>
@@ -393,7 +494,7 @@ export default function Dashboard() {
             transition={{ duration: 0.3, delay: 0.3 }}
           >
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="font-semibold text-lg">Tarefas Recentes</h2>
+              <h2 className="font-semibold text-lg text-slate-900">Tarefas Recentes</h2>
               <Link to="/tasks" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                 Ver todas <ChevronRight className="h-4 w-4" />
               </Link>
@@ -401,7 +502,7 @@ export default function Dashboard() {
             <div className="p-4 space-y-3">
               {recentTasks.length === 0 ? (
                 <div className="text-center py-8">
-                  <CheckSquare className="h-10 w-10 text-slate-500 mx-auto mb-3" />
+                  <CheckSquare className="h-10 w-10 text-slate-400 mx-auto mb-3" />
                   <p className="text-sm text-slate-500">Nenhuma tarefa recente</p>
                 </div>
               ) : (
@@ -412,7 +513,7 @@ export default function Dashboard() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="font-medium text-sm">{task.title}</div>
+                        <div className="font-medium text-sm text-slate-900">{task.title}</div>
                         <div className="text-xs text-slate-500 mt-1">{task.clients?.name || "Cliente"}</div>
                       </div>
                       <Badge
@@ -436,7 +537,7 @@ export default function Dashboard() {
           transition={{ duration: 0.3, delay: 0.35 }}
         >
           <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-            <h2 className="font-semibold text-lg">Alertas</h2>
+            <h2 className="font-semibold text-lg text-slate-900">Alertas</h2>
             <Link to="/alerts" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
               Ver todos <ChevronRight className="h-4 w-4" />
             </Link>
@@ -463,7 +564,7 @@ export default function Dashboard() {
         >
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h3 className="font-semibold text-lg">Seu plano</h3>
+              <h3 className="font-semibold text-lg text-slate-900">Seu plano</h3>
               <p className="text-sm text-slate-500">
                 {planLabel} • Limite: {clientLimit}
               </p>
