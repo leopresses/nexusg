@@ -19,6 +19,7 @@ import {
   X,
   ArrowRight,
   Zap,
+  Rocket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -322,6 +323,15 @@ export default function Clients() {
                         align="end"
                         className="rounded-xl border-slate-200 !bg-white shadow-xl min-w-[180px]"
                       >
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/onboarding/client/${client.id}`);
+                          }}
+                          className="font-medium text-blue-600 focus:text-blue-700 focus:bg-blue-50"
+                        >
+                          <Rocket className="h-4 w-4 mr-2" /> Onboarding
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={(e) => handleEdit(client, e as any)}
                           className="font-medium text-slate-600 focus:text-blue-600 focus:bg-blue-50"

@@ -24,6 +24,7 @@ import AdminUsersPlans from "./pages/AdminUsersPlans";
 import AdminTemplates from "./pages/AdminTemplates";
 import Audit from "./pages/Audit";
 import AuditClient from "./pages/AuditClient";
+import ClientOnboarding from "./pages/ClientOnboarding";
 import Alerts from "./pages/Alerts";
 import NotFound from "./pages/NotFound";
 
@@ -152,6 +153,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AuditClient />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/onboarding/client/:clientId"
+              element={
+                <ProtectedRoute>
+                  <ClientOnboarding />
                 </ProtectedRoute>
               }
             />
