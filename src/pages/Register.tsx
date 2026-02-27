@@ -29,22 +29,55 @@ export default function Register() {
     }
   }, [user, navigate]);
 
+  const validateEmail = (em: string): boolean => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em.trim());
+  };
+
   const validatePassword = (pwd: string): { valid: boolean; errors: string[] } => {
     const errors: string[] = [];
     if (pwd.length < 8) errors.push("Mínimo 8 caracteres");
     if (!/[A-Z]/.test(pwd)) errors.push("1 letra maiúscula");
     if (!/[0-9]/.test(pwd)) errors.push("1 número");
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(pwd)) errors.push("1 caractere especial");
     return { valid: errors.length === 0, errors };
+  };
+
+  const mapSupabaseError = (msg: string): string => {
+    const lower = msg.toLowerCase();
+    if (lower.includes("already registered") || lower.includes("already been registered"))
+      return "Este email já está cadastrado. Tente fazer login.";
+    if (lower.includes("invalid email") || lower.includes("unable to validate email"))
+      return "Email inválido. Verifique o formato (ex: nome@email.com).";
+    if (lower.includes("weak password") || lower.includes("password should"))
+      return `Senha rejeitada pelo servidor: ${msg}. Use uma senha mais forte com letras, números e símbolos.`;
+    if (lower.includes("signup is disabled") || lower.includes("signups not allowed"))
+      return "Cadastro está temporariamente desabilitado. Contate o suporte.";
+    if (lower.includes("rate limit") || lower.includes("too many"))
+      return "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
+    if (lower.includes("password") && lower.includes("leaked"))
+      return "Esta senha foi encontrada em vazamentos de dados. Por segurança, escolha outra senha.";
+    // Fallback: show the real message
+    return `Erro do servidor: ${msg}`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!name.trim()) {
+      toast({ title: "Nome obrigatório", description: "Preencha seu nome completo.", variant: "destructive" });
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      toast({ title: "Email inválido", description: "Verifique o formato do email (ex: nome@email.com).", variant: "destructive" });
+      return;
+    }
+
     const validation = validatePassword(password);
     if (!validation.valid) {
       toast({
-        title: "Senha inválida",
-        description: `Requisitos: ${validation.errors.join(", ")}`,
+        title: "Senha não atende aos requisitos",
+        description: `Faltam: ${validation.errors.join(", ")}`,
         variant: "destructive",
       });
       return;
@@ -55,25 +88,16 @@ export default function Register() {
     const { error } = await signUp(email, password, name);
 
     if (error) {
-      let errorMessage = "Ocorreu um erro ao criar sua conta.";
-
-      if (error.message.includes("already registered")) {
-        errorMessage = "Este email já está cadastrado. Tente fazer login.";
-      } else if (error.message.includes("invalid email")) {
-        errorMessage = "Por favor, insira um email válido.";
-      } else if (error.message.includes("weak password")) {
-        errorMessage = "Senha muito fraca. Use letras, números e símbolos.";
-      }
-
+      console.error("[Signup Error]", { message: error.message, status: (error as any)?.status });
       toast({
         title: "Erro no cadastro",
-        description: errorMessage,
+        description: mapSupabaseError(error.message),
         variant: "destructive",
       });
     } else {
       toast({
         title: "Conta criada!",
-        description: "Bem-vindo ao Gestão Nexus! Vamos configurar seu primeiro cliente.",
+        description: "Verifique seu email para confirmar o cadastro.",
       });
       navigate("/onboarding");
     }
