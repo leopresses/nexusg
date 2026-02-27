@@ -29,6 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ClientAvatar } from "@/components/clients/ClientAvatar";
 import { getBusinessTypeLabel } from "@/config/plans";
 import { toast } from "sonner";
+import { translateWeekdayLine } from "@/lib/i18n";
 import type { Database } from "@/integrations/supabase/types";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
@@ -317,7 +318,7 @@ export default function ClientDetails() {
                   </span>
                   <div className="mt-1 space-y-0.5">
                     {snapshot.opening_hours.weekday_text.map((line, i) => (
-                      <p key={i} className="text-sm text-slate-700">{line}</p>
+                      <p key={i} className="text-sm text-slate-700">{translateWeekdayLine(line)}</p>
                     ))}
                   </div>
                 </div>
