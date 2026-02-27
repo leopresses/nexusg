@@ -84,8 +84,11 @@ export default function Dashboard() {
   const { alerts: allAlerts, isLoading: alertsLoading } = useAlerts();
   const topAlerts = allAlerts.slice(0, 5);
 
+  const [metricsError, setMetricsError] = useState(false);
+
   const fetchMetrics = useCallback(async () => {
     if (!user) return;
+    setMetricsError(false);
     try {
       const now = new Date();
       const sevenDaysAgo = new Date(now);
@@ -93,21 +96,31 @@ export default function Dashboard() {
       const fourteenDaysAgo = new Date(now);
       fourteenDaysAgo.setDate(now.getDate() - 14);
 
-      // Current period (last 7 days)
-      const { data: currentData } = await supabase
+      const { data: currentData, error: currentError } = await supabase
         .from("google_metrics_daily")
-        .select("views, calls")
+        .select("views, calls, date, client_id, user_id")
         .eq("user_id", user.id)
         .gte("date", sevenDaysAgo.toISOString().split("T")[0])
         .lte("date", now.toISOString().split("T")[0]);
 
-      // Previous period (7-14 days ago)
-      const { data: prevData } = await supabase
+      if (currentError) {
+        console.error("Error fetching current metrics:", currentError);
+        setMetricsError(true);
+        return;
+      }
+
+      const { data: prevData, error: prevError } = await supabase
         .from("google_metrics_daily")
-        .select("views, calls")
+        .select("views, calls, date, client_id, user_id")
         .eq("user_id", user.id)
         .gte("date", fourteenDaysAgo.toISOString().split("T")[0])
         .lt("date", sevenDaysAgo.toISOString().split("T")[0]);
+
+      if (prevError) {
+        console.error("Error fetching previous metrics:", prevError);
+        setMetricsError(true);
+        return;
+      }
 
       const current = (currentData || []).reduce(
         (acc, m) => ({ views: acc.views + (m.views || 0), calls: acc.calls + (m.calls || 0) }),
@@ -127,6 +140,7 @@ export default function Dashboard() {
       });
     } catch (err) {
       console.error("Error fetching metrics:", err);
+      setMetricsError(true);
     }
   }, [user]);
 
@@ -227,21 +241,25 @@ export default function Dashboard() {
   const clientsWithoutGoogle = clients.length - clientsWithGoogle;
 
   const stats = [
-    { label: "Clientes Ativos", value: clients.length, icon: Users, change: "Ativos no momento", color: "text-blue-600" },
-    { label: "Tarefas Pendentes", value: taskStats.pending, icon: CheckSquare, change: "Precisam de atenção", color: "text-amber-600" },
+    { label: "Clientes Ativos", value: String(clients.length), icon: Users, change: "Ativos no momento", color: "text-blue-600", isEmpty: false, isError: false },
+    { label: "Tarefas Pendentes", value: String(taskStats.pending), icon: CheckSquare, change: "Precisam de atenção", color: "text-amber-600", isEmpty: false, isError: false },
     {
       label: "Visualizações",
-      value: metricsData.hasData ? metricsData.views.toLocaleString("pt-BR") : "—",
+      value: metricsError ? "Erro" : metricsData.hasData ? metricsData.views.toLocaleString("pt-BR") : "Sem dados",
       icon: Eye,
-      change: metricsData.hasData ? getChangeText(metricsData.views, metricsData.viewsPrev) : "Sem dados de métricas",
+      change: metricsError ? "Erro ao carregar métricas" : metricsData.hasData ? getChangeText(metricsData.views, metricsData.viewsPrev) : "Conecte o Google para medir",
       color: "text-indigo-600",
+      isEmpty: !metricsData.hasData && !metricsError,
+      isError: metricsError,
     },
     {
       label: "Chamadas",
-      value: metricsData.hasData ? metricsData.calls.toLocaleString("pt-BR") : "—",
+      value: metricsError ? "Erro" : metricsData.hasData ? metricsData.calls.toLocaleString("pt-BR") : "Sem dados",
       icon: Phone,
-      change: metricsData.hasData ? getChangeText(metricsData.calls, metricsData.callsPrev) : "Sem dados de métricas",
+      change: metricsError ? "Erro ao carregar métricas" : metricsData.hasData ? getChangeText(metricsData.calls, metricsData.callsPrev) : "Conecte o Google para medir",
       color: "text-emerald-600",
+      isEmpty: !metricsData.hasData && !metricsError,
+      isError: metricsError,
     },
   ];
 
@@ -356,14 +374,25 @@ export default function Dashboard() {
               transition={{ duration: 0.3, delay: index * 0.1 }}
             >
               <div className="flex items-start justify-between mb-3">
-                <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${stat.isError ? 'bg-red-50' : 'bg-blue-50'}`}>
+                  <stat.icon className={`h-5 w-5 ${stat.isError ? 'text-red-500' : stat.color}`} />
                 </div>
-                {stat.value !== "—" && <TrendingUp className="h-4 w-4 text-emerald-600" />}
+                {!stat.isEmpty && !stat.isError && <TrendingUp className="h-4 w-4 text-emerald-600" />}
               </div>
-              <div className="text-2xl font-bold mb-1 text-slate-900">{stat.value}</div>
+              <div className={`text-2xl font-bold mb-1 ${stat.isError ? 'text-red-500' : stat.isEmpty ? 'text-slate-400' : 'text-slate-900'}`}>{stat.value}</div>
               <div className="text-sm text-slate-500">{stat.label}</div>
               <div className="text-xs text-slate-400 mt-2">{stat.change}</div>
+              {(stat.isEmpty || stat.isError) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2 h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2"
+                  onClick={() => navigate(stat.isError ? "/dashboard" : "/clients")}
+                >
+                  <MapPin className="h-3 w-3 mr-1" />
+                  {stat.isError ? "Tentar novamente" : "Sincronizar Google"}
+                </Button>
+              )}
             </motion.div>
           ))}
         </motion.div>
