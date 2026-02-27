@@ -18,6 +18,7 @@ import {
   Loader2,
   Image as ImageIcon,
   ChevronDown,
+  X,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,8 @@ interface PlaceSnapshot {
     weekday_text?: string[];
     open_now?: boolean;
   };
-  photos?: { photo_reference: string }[];
+  photos?: { photo_reference: string; url?: string }[];
+  photo_urls?: string[];
   business_status?: string;
 }
 
@@ -58,6 +60,7 @@ export default function ClientDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (clientId) fetchClient();
@@ -400,27 +403,100 @@ export default function ClientDetails() {
                 <CardTitle className="text-slate-900 text-base font-bold">Fotos</CardTitle>
               </CardHeader>
               <CardContent>
-                {snapshot.photos && snapshot.photos.length > 0 ? (
+                {!placeId ? (
+                  <div className="text-center py-6 rounded-xl bg-slate-50 border border-dashed border-slate-200">
+                    <ImageIcon className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-sm text-slate-400 mb-2">Conecte o Google Places para carregar fotos</p>
+                    <Button variant="outline" size="sm" className="rounded-xl text-xs" onClick={() => navigate("/clients")}>
+                      <MapPin className="h-3 w-3 mr-1" /> Conectar
+                    </Button>
+                  </div>
+                ) : (snapshot.photo_urls && snapshot.photo_urls.length > 0) ? (
                   <div className="grid grid-cols-3 gap-2">
-                    {snapshot.photos.map((photo, i) => (
-                      <div key={i} className="aspect-square rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
-                        <div className="text-center p-2">
-                          <ImageIcon className="h-5 w-5 text-slate-300 mx-auto" />
-                          <span className="text-[10px] text-slate-400 mt-1 block">Ref: {photo.photo_reference.slice(0, 10)}...</span>
-                        </div>
-                      </div>
+                    {snapshot.photo_urls.slice(0, 6).map((url, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setLightboxUrl(url)}
+                        className="aspect-square rounded-xl border border-slate-200 overflow-hidden bg-slate-100 hover:ring-2 hover:ring-blue-300 transition-all focus:outline-none"
+                      >
+                        <img
+                          src={url}
+                          alt={`Foto ${i + 1} de ${displayName}`}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.style.display = "none";
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = `<div class="w-full h-full flex items-center justify-center"><span class="text-xs text-slate-400">Erro</span></div>`;
+                            }
+                          }}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                ) : (snapshot.photos && snapshot.photos.some(p => p.url)) ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {snapshot.photos.filter(p => p.url).slice(0, 6).map((photo, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setLightboxUrl(photo.url!)}
+                        className="aspect-square rounded-xl border border-slate-200 overflow-hidden bg-slate-100 hover:ring-2 hover:ring-blue-300 transition-all focus:outline-none"
+                      >
+                        <img
+                          src={photo.url!}
+                          alt={`Foto ${i + 1} de ${displayName}`}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.style.display = "none";
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = `<div class="w-full h-full flex items-center justify-center"><span class="text-xs text-slate-400">Erro</span></div>`;
+                            }
+                          }}
+                        />
+                      </button>
                     ))}
                   </div>
                 ) : (
                   <div className="text-center py-6 rounded-xl bg-slate-50 border border-dashed border-slate-200">
                     <ImageIcon className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                    <p className="text-sm text-slate-400">Sem fotos disponíveis</p>
+                    <p className="text-sm text-slate-400 mb-2">Nenhuma foto pública encontrada</p>
+                    <Button variant="outline" size="sm" className="rounded-xl text-xs" onClick={handleSync} disabled={isSyncing}>
+                      {isSyncing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                      Sincronizar fotos
+                    </Button>
                   </div>
                 )}
               </CardContent>
             </Card>
           </div>
         </div>
+
+        {/* Photo Lightbox */}
+        {lightboxUrl && (
+          <div
+            className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <div className="relative max-w-3xl max-h-[90vh] w-full" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => setLightboxUrl(null)}
+                className="absolute -top-10 right-0 text-white hover:text-slate-300 transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+              <img
+                src={lightboxUrl}
+                alt="Foto ampliada"
+                className="w-full h-auto max-h-[85vh] object-contain rounded-xl"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Raw Snapshot */}
         {hasSnapshot && (
