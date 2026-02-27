@@ -26,6 +26,7 @@ import Audit from "./pages/Audit";
 import AuditClient from "./pages/AuditClient";
 import ClientOnboarding from "./pages/ClientOnboarding";
 import Alerts from "./pages/Alerts";
+import ClientDetails from "./pages/ClientDetails";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -81,6 +82,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Clients />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/clients/:clientId" 
+              element={
+                <ProtectedRoute>
+                  <ClientDetails />
                 </ProtectedRoute>
               } 
             />

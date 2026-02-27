@@ -86,7 +86,7 @@ export default function Clients() {
   }, [user]);
 
   const handleClientClick = (clientId: string) => {
-    navigate(`/tasks?client=${clientId}`);
+    navigate(`/clients/${clientId}`);
   };
 
   const handleEdit = (client: Client, e: React.MouseEvent) => {
