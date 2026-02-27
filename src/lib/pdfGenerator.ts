@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { safeText, safeNumber, safeUrl } from "./textSanitizer";
+import { translateWeekdayLine } from "./i18n";
 
 export interface BrandSettings {
   companyName: string;
@@ -235,7 +236,7 @@ export async function generateClientReport(brandSettings: BrandSettings, reportD
     if (oh && Array.isArray(oh.weekday_text)) {
       const safeHours = oh.weekday_text
         .slice(0, 4)
-        .map((h: unknown) => safeText(h, ""))
+        .map((h: unknown) => translateWeekdayLine(safeText(h, "")))
         .filter(Boolean);
       if (safeHours.length > 0) {
         lines.push(`Horário: ${safeHours.join(" | ")}`);
