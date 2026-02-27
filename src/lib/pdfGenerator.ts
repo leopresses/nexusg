@@ -220,31 +220,29 @@ export async function generateClientReport(brandSettings: BrandSettings, reportD
   if (snapshot && typeof snapshot === "object") {
     yPos += 12;
 
-    // Build sanitised info lines (ONLY: name/address/hours/site)
     const lines: string[] = [];
 
-    // Nome
+    // Nome (ONLY)
     const placeName = safeText(snapshot.name, "");
     if (placeName) lines.push(`Nome: ${placeName}`);
 
-    // Endereço
+    // Endereço (ONLY)
     const addr = safeText(snapshot.formatted_address, "");
     if (addr) lines.push(`Endereço: ${addr}`);
 
-    // Horário (weekday_text)
+    // Horário (ONLY)
     const oh = snapshot.opening_hours as Record<string, unknown> | undefined;
     if (oh && Array.isArray(oh.weekday_text)) {
       const safeHours = oh.weekday_text
-        .slice(0, 4) // mostra até 4 linhas pra não estourar o card
+        .slice(0, 4)
         .map((h: unknown) => safeText(h, ""))
         .filter(Boolean);
-
       if (safeHours.length > 0) {
         lines.push(`Horário: ${safeHours.join(" | ")}`);
       }
     }
 
-    // Site
+    // Site (ONLY)
     const website = safeUrl(snapshot.website, "");
     if (website) {
       const short = website.length > 70 ? website.substring(0, 70) + "..." : website;
@@ -253,9 +251,6 @@ export async function generateClientReport(brandSettings: BrandSettings, reportD
 
     if (lines.length === 0) {
       lines.push("Dados públicos do negócio não disponíveis para este cliente.");
-    }
-    if (lines.length === 0) {
-      lines.push("Dados do Google Places nao disponiveis para este cliente.");
     }
 
     // Calculate dynamic height
