@@ -1,18 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Star, Plus, MessageSquare, AlertTriangle, CheckCircle, Search } from "lucide-react";
+import { Star, Plus, MessageSquare, AlertTriangle, Search, RefreshCw, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useClientReviews } from "@/hooks/useClientReviews";
 import { useBrandSettings } from "@/hooks/useBrandSettings";
 import { ReviewCard } from "@/components/reviews/ReviewCard";
+import { toast } from "sonner";
 
 type FilterType = "all" | "no_response" | "responded" | "critical";
 
@@ -20,6 +20,7 @@ interface SimpleClient {
   id: string;
   name: string;
   business_type: string;
+  place_id: string | null;
 }
 
 export default function Reviews() {
@@ -30,6 +31,7 @@ export default function Reviews() {
   const [filter, setFilter] = useState<FilterType>("all");
   const [search, setSearch] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Form state
   const [newAuthor, setNewAuthor] = useState("");
@@ -37,7 +39,7 @@ export default function Reviews() {
   const [newComment, setNewComment] = useState("");
   const [newDate, setNewDate] = useState("");
 
-  const { reviews, isLoading, createReview, updateReview, deleteReview } =
+  const { reviews, isLoading, createReview, updateReview, deleteReview, refetch } =
     useClientReviews(selectedClientId);
 
   const selectedClient = clients.find((c) => c.id === selectedClientId);
@@ -47,16 +49,45 @@ export default function Reviews() {
     if (!user) return;
     supabase
       .from("clients")
-      .select("id, name, business_type")
+      .select("id, name, business_type, place_id")
       .eq("is_active", true)
       .order("name")
       .then(({ data }) => {
-        if (data) setClients(data);
+        if (data) setClients(data as SimpleClient[]);
         if (data && data.length > 0 && !selectedClientId) {
           setSelectedClientId(data[0].id);
         }
       });
   }, [user]);
+
+  const handleSyncGoogle = async () => {
+    if (!selectedClient || !selectedClient.place_id) {
+      toast.error("Este cliente não tem Place ID vinculado.");
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("places-details", {
+        body: {
+          place_id: selectedClient.place_id,
+          client_id: selectedClient.id,
+          sync_reviews: true,
+        },
+      });
+
+      if (error) throw error;
+
+      const reviewCount = data?.details?.reviews?.length || 0;
+      toast.success(`Sincronização concluída! ${reviewCount} avaliação(ões) do Google importada(s).`);
+      await refetch();
+    } catch (err: any) {
+      console.error("Sync error:", err);
+      toast.error("Erro ao sincronizar avaliações do Google.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     let list = reviews;
@@ -71,7 +102,6 @@ export default function Reviews() {
           r.comment?.toLowerCase().includes(q)
       );
     }
-    // Sort: critical first, then newest
     return [...list].sort((a, b) => {
       if (a.rating <= 3 && b.rating > 3) return -1;
       if (b.rating <= 3 && a.rating > 3) return 1;
@@ -153,10 +183,10 @@ export default function Reviews() {
             value={selectedClientId || ""}
             onValueChange={(v) => setSelectedClientId(v)}
           >
-            <SelectTrigger className="w-full sm:w-64 !bg-white border-slate-200 text-slate-900">
+            <SelectTrigger className="w-full sm:w-64">
               <SelectValue placeholder="Selecione um cliente" />
             </SelectTrigger>
-            <SelectContent className="bg-white text-slate-900 border-slate-200">
+            <SelectContent>
               {clients.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
                   {c.name}
@@ -171,9 +201,25 @@ export default function Reviews() {
               placeholder="Buscar por autor ou texto..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 !bg-white border-slate-200"
+              className="pl-9 bg-white border-slate-200"
             />
           </div>
+
+          {selectedClient?.place_id && (
+            <Button
+              variant="outline"
+              onClick={handleSyncGoogle}
+              disabled={isSyncing}
+              className="gap-2"
+            >
+              {isSyncing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              Sincronizar Google
+            </Button>
+          )}
 
           <Button onClick={() => setShowAddDialog(true)} disabled={!selectedClientId}>
             <Plus className="h-4 w-4 mr-1" /> Adicionar
@@ -188,7 +234,6 @@ export default function Reviews() {
               variant={filter === f.value ? "default" : "outline"}
               size="sm"
               onClick={() => setFilter(f.value)}
-              className={filter !== f.value ? "!bg-white border-slate-200 text-slate-700" : ""}
             >
               {f.label}
             </Button>
@@ -209,7 +254,11 @@ export default function Reviews() {
             <CardContent className="py-12 text-center text-slate-500">
               <MessageSquare className="h-10 w-10 mx-auto mb-3 text-slate-300" />
               <p className="font-medium">Nenhuma avaliação encontrada</p>
-              <p className="text-sm mt-1">Adicione avaliações manualmente ou importe do Google.</p>
+              <p className="text-sm mt-1">
+                {selectedClient?.place_id
+                  ? 'Clique em "Sincronizar Google" para importar avaliações.'
+                  : "Vincule um Place ID ao cliente para importar avaliações do Google."}
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -230,7 +279,7 @@ export default function Reviews() {
 
       {/* Add Review Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="bg-white text-slate-900 border-slate-200">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Adicionar Avaliação</DialogTitle>
           </DialogHeader>
@@ -241,16 +290,16 @@ export default function Reviews() {
                 value={newAuthor}
                 onChange={(e) => setNewAuthor(e.target.value)}
                 placeholder="Ex: João Silva"
-                className="!bg-white border-slate-200"
+                className="bg-white border-slate-200"
               />
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700">Nota</label>
               <Select value={newRating} onValueChange={setNewRating}>
-                <SelectTrigger className="!bg-white border-slate-200 text-slate-900">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-white text-slate-900 border-slate-200">
+                <SelectContent>
                   {[5, 4, 3, 2, 1].map((n) => (
                     <SelectItem key={n} value={String(n)}>
                       {"★".repeat(n)}{"☆".repeat(5 - n)} ({n})
@@ -265,7 +314,7 @@ export default function Reviews() {
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Texto da avaliação..."
-                className="!bg-white border-slate-200 text-slate-900"
+                className="bg-white border-slate-200 text-slate-900"
               />
             </div>
             <div>
@@ -274,12 +323,12 @@ export default function Reviews() {
                 type="date"
                 value={newDate}
                 onChange={(e) => setNewDate(e.target.value)}
-                className="!bg-white border-slate-200"
+                className="bg-white border-slate-200"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddDialog(false)} className="!bg-white border-slate-200">
+            <Button variant="outline" onClick={() => setShowAddDialog(false)}>
               Cancelar
             </Button>
             <Button onClick={handleAdd} disabled={!newComment.trim()}>
