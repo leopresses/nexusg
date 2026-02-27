@@ -16,6 +16,14 @@ const LEGIBLE_PATTERN = /^[a-zA-Z0-9À-ÿ \t\n.,:;()\-\/@&#+°ºª!?'"–—…%
 function looksCorrupted(s: string): boolean {
   if (s.length === 0) return false;
   if (s.length > 2000) return true; // suspiciously long for a single field
+
+  // Detect strings that look like HTML/entity encoded or "parameter soup".
+  // Example seen in some reports: long sequences with lots of '&' tokens.
+  const ampCount = (s.match(/&/g) || []).length;
+  if (s.length > 30 && ampCount >= 10 && ampCount / s.length > 0.08) return true;
+  if (/(&[A-Za-z0-9]{0,3}){12,}/.test(s)) return true;
+  if (/&(?:amp|lt|gt|quot|apos);/i.test(s)) return true;
+
   let bad = 0;
   for (const ch of s) {
     if (!/[a-zA-Z0-9À-ÿ .,:;()\-\/@&#+°ºª!?'"–—…%$€£¥•·\u00A0\t\n]/.test(ch)) {
@@ -29,18 +37,14 @@ function looksCorrupted(s: string): boolean {
  * Safely extract a readable string from an unknown value.
  * Returns the sanitized string or the fallback.
  */
-export function safeText(
-  value: unknown,
-  fallback = 'Não disponível',
-  maxLen = 500
-): string {
+export function safeText(value: unknown, fallback = "Não disponível", maxLen = 500): string {
   if (value === null || value === undefined) return fallback;
 
   let str: string;
 
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     str = value;
-  } else if (typeof value === 'number' || typeof value === 'boolean') {
+  } else if (typeof value === "number" || typeof value === "boolean") {
     str = String(value);
   } else {
     // Objects/arrays — don't dump raw JSON into the PDF
@@ -48,9 +52,9 @@ export function safeText(
   }
 
   // Strip control characters
-  str = str.replace(CONTROL_CHARS, '');
+  str = str.replace(CONTROL_CHARS, "");
   // Collapse whitespace
-  str = str.replace(MULTI_SPACES, ' ').trim();
+  str = str.replace(MULTI_SPACES, " ").trim();
 
   if (str.length === 0) return fallback;
   if (looksCorrupted(str)) return fallback;
@@ -62,18 +66,18 @@ export function safeText(
  * Safely extract a number, returning fallback if not a finite number.
  */
 export function safeNumber(value: unknown, fallback: number | null = null): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
   return fallback;
 }
 
 /**
  * Safely extract a URL string – rejects javascript:/data:/vbscript: schemes.
  */
-export function safeUrl(value: unknown, fallback = ''): string {
-  const str = safeText(value, '', 2000);
+export function safeUrl(value: unknown, fallback = ""): string {
+  const str = safeText(value, "", 2000);
   if (!str) return fallback;
   const lower = str.toLowerCase().trim();
-  if (lower.startsWith('javascript:') || lower.startsWith('data:') || lower.startsWith('vbscript:')) {
+  if (lower.startsWith("javascript:") || lower.startsWith("data:") || lower.startsWith("vbscript:")) {
     return fallback;
   }
   return str;
