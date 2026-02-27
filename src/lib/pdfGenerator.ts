@@ -274,7 +274,7 @@ export async function generateClientReport(brandSettings: BrandSettings, reportD
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(30, 64, 175);
-    doc.text("Dados Publicos do Google Places", margin + 4, yPos + 10);
+    doc.text("Dados públicos do negócio (Google)", margin + 4, yPos + 10);
 
     // Content lines
     doc.setFont("helvetica", "normal");
