@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { safeText, safeNumber, safeUrl } from './textSanitizer';
 
 export interface BrandSettings {
   companyName: string;
@@ -206,38 +207,94 @@ export async function generateClientReport(
   doc.text(`Período: ${formatDate(reportData.period.start)} a ${formatDate(reportData.period.end)}`, margin, yPos);
   
   // ===== GOOGLE PLACES SNAPSHOT (public data) =====
-  const snapshot = reportData.client.placeSnapshot;
-  if (snapshot) {
+  const snapshot = reportData.client.placeSnapshot as Record<string, unknown> | null | undefined;
+  if (snapshot && typeof snapshot === 'object') {
     yPos += 12;
+    
+    // Build sanitised info lines
+    const lines: string[] = [];
+    
+    const placeName = safeText(snapshot.name, '');
+    if (placeName) lines.push(`Nome: ${placeName}`);
+    
+    // Category – try types array
+    const types = Array.isArray(snapshot.types) ? snapshot.types : [];
+    const mainType = safeText(types[0], '');
+    if (mainType) lines.push(`Categoria: ${mainType}`);
+    
+    const addr = safeText(snapshot.formatted_address, '');
+    if (addr) lines.push(`Endereco: ${addr}`);
+    
+    const phone = safeText(snapshot.formatted_phone_number, '');
+    if (phone) lines.push(`Telefone: ${phone}`);
+    
+    const website = safeUrl(snapshot.website, '');
+    if (website) {
+      const short = website.length > 50 ? website.substring(0, 50) + '...' : website;
+      lines.push(`Website: ${short}`);
+    }
+    
+    const bizStatus = safeText(snapshot.business_status, '');
+    if (bizStatus) lines.push(`Status: ${bizStatus}`);
+    
+    const rating = safeNumber(snapshot.rating);
+    const totalRatings = safeNumber(snapshot.user_ratings_total);
+    if (rating !== null) {
+      lines.push(`Avaliacao: ${rating}/5${totalRatings !== null ? ` (${totalRatings} avaliacoes)` : ''}`);
+    }
+    
+    // Opening hours – show up to 3 lines
+    const oh = snapshot.opening_hours as Record<string, unknown> | undefined;
+    if (oh && Array.isArray(oh.weekday_text)) {
+      const safeHours = oh.weekday_text
+        .slice(0, 3)
+        .map((h: unknown) => safeText(h, ''))
+        .filter(Boolean);
+      if (safeHours.length > 0) {
+        lines.push(`Horario: ${safeHours.join(' | ')}`);
+      }
+    }
+    
+    // Google Maps link
+    const mapsUrl = safeUrl(snapshot.url, '');
+    const placeId = safeText((snapshot as any).place_id ?? (reportData.client as any).place_id, '');
+    const finalMapsUrl = mapsUrl || (placeId ? `https://www.google.com/maps/search/?api=1&query_place_id=${placeId}` : '');
+    if (finalMapsUrl) {
+      const shortUrl = finalMapsUrl.length > 70 ? finalMapsUrl.substring(0, 70) + '...' : finalMapsUrl;
+      lines.push(`Google Maps: ${shortUrl}`);
+    }
+    
+    if (lines.length === 0) {
+      lines.push('Dados do Google Places nao disponiveis para este cliente.');
+    }
+    
+    // Calculate dynamic height
+    const lineHeight = 8;
+    const headerHeight = 14;
+    const snapshotHeight = headerHeight + lines.length * lineHeight + 4;
+    
+    // Background
     doc.setFillColor(235, 243, 254);
-    const snapshotHeight = 28;
     doc.roundedRect(margin, yPos, pageWidth - margin * 2, snapshotHeight, 3, 3, 'F');
     doc.setDrawColor(66, 133, 244);
     doc.setLineWidth(0.3);
     doc.roundedRect(margin, yPos, pageWidth - margin * 2, snapshotHeight, 3, 3, 'S');
     
+    // Title
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(30, 64, 175);
-    doc.text('Dados Públicos do Google Places', margin + 4, yPos + 7);
+    doc.text('Dados Publicos do Google Places', margin + 4, yPos + 10);
     
+    // Content lines
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(60, 60, 60);
     doc.setFontSize(8);
     
-    const infoItems: string[] = [];
-    if (snapshot.rating) infoItems.push(`⭐ ${snapshot.rating}/5 (${snapshot.user_ratings_total || 0} avaliações)`);
-    if (snapshot.formatted_phone_number) infoItems.push(`📞 ${snapshot.formatted_phone_number}`);
-    if (snapshot.website) infoItems.push(`🌐 ${snapshot.website.substring(0, 40)}${snapshot.website.length > 40 ? '...' : ''}`);
-    
-    if (infoItems.length > 0) {
-      doc.text(infoItems.join('  •  '), margin + 4, yPos + 16);
-    }
-    
-    if (snapshot.url) {
-      doc.setTextColor(66, 133, 244);
-      doc.setFontSize(7);
-      doc.text(`Google Maps: ${snapshot.url.substring(0, 60)}${snapshot.url.length > 60 ? '...' : ''}`, margin + 4, yPos + 23);
+    let lineY = yPos + headerHeight + 4;
+    for (const line of lines) {
+      doc.text(line, margin + 4, lineY);
+      lineY += lineHeight;
     }
     
     yPos += snapshotHeight;
