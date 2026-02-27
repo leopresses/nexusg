@@ -21,7 +21,7 @@ interface PlaceDetails {
   formatted_phone_number?: string;
   international_phone_number?: string;
   website?: string;
-  url: string; // Google Maps URL
+  url: string;
   rating?: number;
   user_ratings_total?: number;
   types: string[];
@@ -34,7 +34,6 @@ interface PlaceDetails {
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: getCorsHeaders(req) });
   }
@@ -42,7 +41,6 @@ Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
 
   try {
-    // Validate auth
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(
@@ -65,7 +63,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Parse and validate request body
     const body = await req.json();
     const place_id = typeof body.place_id === "string" ? body.place_id.slice(0, 255).replace(/[<>"'&;]/g, '') : "";
     const client_id = typeof body.client_id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.client_id) ? body.client_id : undefined;
@@ -77,83 +74,74 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get Google Places API key
     const apiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
     if (!apiKey) {
       console.error("[places-details] GOOGLE_PLACES_API_KEY not configured");
       return new Response(
-        JSON.stringify({ error: "SERVICE_UNAVAILABLE", message: "Serviço temporariamente indisponível. Tente novamente mais tarde." }),
+        JSON.stringify({ error: "SERVICE_UNAVAILABLE", message: "Serviço temporariamente indisponível." }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     console.log('[places-details] Fetching place details');
 
-    // Call Google Places Details API
-    const detailsUrl = new URL("https://maps.googleapis.com/maps/api/place/details/json");
-    detailsUrl.searchParams.set("place_id", place_id);
-    detailsUrl.searchParams.set("key", apiKey);
-    detailsUrl.searchParams.set("language", "pt-BR");
-    detailsUrl.searchParams.set(
-      "fields",
-      "place_id,name,formatted_address,formatted_phone_number,international_phone_number,website,url,rating,user_ratings_total,types,opening_hours,photos,business_status"
-    );
+    // Use Places API (New)
+    const response = await fetch(`https://places.googleapis.com/v1/places/${place_id}`, {
+      method: "GET",
+      headers: {
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "id,displayName,formattedAddress,nationalPhoneNumber,internationalPhoneNumber,websiteUri,googleMapsUri,rating,userRatingCount,types,regularOpeningHours,photos,businessStatus",
+      },
+    });
 
-    const response = await fetch(detailsUrl.toString());
-    const data = await response.json();
+    const result = await response.json();
 
-    if (data.status !== "OK") {
-      console.error("[places-details] Google API error:", data.status, data.error_message);
+    if (!response.ok) {
+      console.error("[places-details] Google API error:", response.status, JSON.stringify(result));
       return new Response(
         JSON.stringify({ 
           error: "PLACE_NOT_FOUND", 
-          message: "Não foi possível obter os detalhes do lugar. Verifique o Place ID e tente novamente." 
+          message: "Não foi possível obter os detalhes do lugar. Verifique o Place ID." 
         }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Sanitize URLs to prevent javascript: and data: URI injection
     const sanitizeUrl = (url: string | undefined): string | undefined => {
       if (!url) return undefined;
       const lower = url.toLowerCase().trim();
       if (lower.startsWith("javascript:") || lower.startsWith("data:") || lower.startsWith("vbscript:")) {
-        console.warn("[places-details] Rejected unsafe URL scheme");
         return undefined;
       }
       return url;
     };
 
-    // Sanitize and validate string fields
     const sanitizeStr = (val: unknown, maxLen = 1000): string | undefined => {
       if (typeof val !== "string") return undefined;
       return val.slice(0, maxLen);
     };
 
-    const result = data.result;
     const placeDetails: PlaceDetails = {
-      place_id: sanitizeStr(result.place_id, 255) ?? "",
-      name: sanitizeStr(result.name, 500) ?? "",
-      formatted_address: sanitizeStr(result.formatted_address, 1000) ?? "",
-      formatted_phone_number: sanitizeStr(result.formatted_phone_number, 50),
-      international_phone_number: sanitizeStr(result.international_phone_number, 50),
-      website: sanitizeUrl(result.website),
-      url: sanitizeUrl(result.url) ?? "",
+      place_id: sanitizeStr(result.id, 255) ?? "",
+      name: sanitizeStr(result.displayName?.text, 500) ?? "",
+      formatted_address: sanitizeStr(result.formattedAddress, 1000) ?? "",
+      formatted_phone_number: sanitizeStr(result.nationalPhoneNumber, 50),
+      international_phone_number: sanitizeStr(result.internationalPhoneNumber, 50),
+      website: sanitizeUrl(result.websiteUri),
+      url: sanitizeUrl(result.googleMapsUri) ?? "",
       rating: typeof result.rating === "number" ? Math.max(0, Math.min(5, result.rating)) : undefined,
-      user_ratings_total: typeof result.user_ratings_total === "number" ? Math.max(0, result.user_ratings_total) : undefined,
+      user_ratings_total: typeof result.userRatingCount === "number" ? Math.max(0, result.userRatingCount) : undefined,
       types: Array.isArray(result.types) ? result.types.filter((t: unknown) => typeof t === "string").slice(0, 20) : [],
-      opening_hours: result.opening_hours && Array.isArray(result.opening_hours.weekday_text)
-        ? { weekday_text: result.opening_hours.weekday_text.slice(0, 7), open_now: result.opening_hours.open_now }
+      opening_hours: result.regularOpeningHours?.weekdayDescriptions
+        ? { weekday_text: result.regularOpeningHours.weekdayDescriptions.slice(0, 7) }
         : undefined,
-      photos: result.photos?.slice(0, 3).map((p: any) => ({ photo_reference: p.photo_reference })),
-      business_status: sanitizeStr(result.business_status, 50),
+      photos: result.photos?.slice(0, 3).map((p: any) => ({ photo_reference: p.name })),
+      business_status: sanitizeStr(result.businessStatus, 50),
     };
 
-    // If client_id provided, update the client with place data
     if (client_id) {
       console.log('[places-details] Updating client with place data');
       
-      // Verify client belongs to user via RLS (only owner can read)
       const { data: clientData, error: clientError } = await supabase
         .from("clients")
         .select("id")
@@ -167,7 +155,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Update client with place data
       const { error: updateError } = await supabase
         .from("clients")
         .update({

@@ -25,7 +25,6 @@ interface PlaceCandidate {
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: getCorsHeaders(req) });
   }
@@ -33,7 +32,6 @@ Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
 
   try {
-    // Validate auth
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(
@@ -56,7 +54,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Parse and validate request body
     const body = await req.json();
     const name = typeof body.name === "string" ? body.name.slice(0, 200).replace(/[<>"'&;]/g, '').trim() : "";
     const address = typeof body.address === "string" ? body.address.slice(0, 500).replace(/[<>"'&;]/g, '').trim() : "";
@@ -68,36 +65,41 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get Google Places API key
     const apiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
     if (!apiKey) {
       console.error("[places-search] GOOGLE_PLACES_API_KEY not configured");
       return new Response(
         JSON.stringify({ 
           error: "SERVICE_UNAVAILABLE", 
-          message: "Serviço temporariamente indisponível. Tente novamente mais tarde.",
+          message: "Serviço temporariamente indisponível.",
           candidates: []
         }),
         { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Build search query
     const searchQuery = [name, address].filter(Boolean).join(" ");
     console.log('[places-search] Search request received');
 
-    // Call Google Places Text Search API
-    const searchUrl = new URL("https://maps.googleapis.com/maps/api/place/textsearch/json");
-    searchUrl.searchParams.set("query", searchQuery);
-    searchUrl.searchParams.set("key", apiKey);
-    searchUrl.searchParams.set("type", "establishment");
-    searchUrl.searchParams.set("language", "pt-BR");
+    // Use Places API (New) - Text Search
+    const response = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.types,places.rating,places.userRatingCount,places.businessStatus",
+      },
+      body: JSON.stringify({
+        textQuery: searchQuery,
+        languageCode: "pt-BR",
+        maxResultCount: 5,
+      }),
+    });
 
-    const response = await fetch(searchUrl.toString());
     const data = await response.json();
 
-    if (data.status !== "OK" && data.status !== "ZERO_RESULTS") {
-      console.error("[places-search] Google API error:", data.status, data.error_message);
+    if (!response.ok) {
+      console.error("[places-search] Google API error:", response.status, JSON.stringify(data));
       return new Response(
         JSON.stringify({ 
           error: "SEARCH_ERROR", 
@@ -108,17 +110,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Map results to candidates (max 5)
-    const candidates: PlaceCandidate[] = (data.results || [])
+    const candidates: PlaceCandidate[] = (data.places || [])
       .slice(0, 5)
       .map((place: any) => ({
-        place_id: place.place_id,
-        name: place.name,
-        formatted_address: place.formatted_address,
+        place_id: place.id,
+        name: place.displayName?.text || "",
+        formatted_address: place.formattedAddress || "",
         types: place.types || [],
         rating: place.rating,
-        user_ratings_total: place.user_ratings_total,
-        business_status: place.business_status,
+        user_ratings_total: place.userRatingCount,
+        business_status: place.businessStatus,
       }));
 
     console.log('[places-search]', { event: 'search_complete', count: candidates.length });
