@@ -31,6 +31,13 @@ interface PlaceDetails {
   };
   photos?: { photo_reference: string }[];
   business_status?: string;
+  reviews?: {
+    author_name: string;
+    rating: number;
+    text: string;
+    time: string;
+    relative_time_description?: string;
+  }[];
 }
 
 Deno.serve(async (req) => {
@@ -66,6 +73,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const place_id = typeof body.place_id === "string" ? body.place_id.slice(0, 255).replace(/[<>"'&;]/g, '') : "";
     const client_id = typeof body.client_id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.client_id) ? body.client_id : undefined;
+    const sync_reviews = body.sync_reviews === true;
 
     if (!place_id) {
       return new Response(
@@ -85,12 +93,14 @@ Deno.serve(async (req) => {
 
     console.log('[places-details] Fetching place details');
 
-    // Use Places API (New)
+    // Include reviews in field mask
+    const fieldMask = "id,displayName,formattedAddress,nationalPhoneNumber,internationalPhoneNumber,websiteUri,googleMapsUri,rating,userRatingCount,types,regularOpeningHours,photos,businessStatus,reviews";
+
     const response = await fetch(`https://places.googleapis.com/v1/places/${place_id}`, {
       method: "GET",
       headers: {
         "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": "id,displayName,formattedAddress,nationalPhoneNumber,internationalPhoneNumber,websiteUri,googleMapsUri,rating,userRatingCount,types,regularOpeningHours,photos,businessStatus",
+        "X-Goog-FieldMask": fieldMask,
       },
     });
 
@@ -121,6 +131,17 @@ Deno.serve(async (req) => {
       return val.slice(0, maxLen);
     };
 
+    // Parse reviews from Google Places API (New)
+    const googleReviews = Array.isArray(result.reviews)
+      ? result.reviews.slice(0, 10).map((r: any) => ({
+          author_name: sanitizeStr(r.authorAttribution?.displayName, 200) || "Anônimo",
+          rating: typeof r.rating === "number" ? Math.max(1, Math.min(5, r.rating)) : 5,
+          text: sanitizeStr(r.text?.text || r.originalText?.text, 2000) || "",
+          time: r.publishTime || new Date().toISOString(),
+          relative_time_description: sanitizeStr(r.relativePublishTimeDescription, 100),
+        }))
+      : [];
+
     const placeDetails: PlaceDetails = {
       place_id: sanitizeStr(result.id, 255) ?? "",
       name: sanitizeStr(result.displayName?.text, 500) ?? "",
@@ -137,6 +158,7 @@ Deno.serve(async (req) => {
         : undefined,
       photos: result.photos?.slice(0, 3).map((p: any) => ({ photo_reference: p.name })),
       business_status: sanitizeStr(result.businessStatus, 50),
+      reviews: googleReviews,
     };
 
     if (client_id) {
@@ -171,6 +193,50 @@ Deno.serve(async (req) => {
           JSON.stringify({ error: "UPDATE_ERROR", message: "Erro ao salvar dados do Place no cliente." }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+      }
+
+      // Sync reviews to client_reviews table if requested
+      if (sync_reviews && googleReviews.length > 0) {
+        console.log(`[places-details] Syncing ${googleReviews.length} reviews`);
+        
+        for (const review of googleReviews) {
+          // Check for duplicates by author + rating + first 100 chars of text
+          const snippet = (review.text || "").slice(0, 100);
+          const { data: existing } = await supabase
+            .from("client_reviews")
+            .select("id")
+            .eq("client_id", client_id)
+            .eq("source", "google")
+            .eq("author_name", review.author_name)
+            .eq("rating", review.rating)
+            .limit(1);
+
+          if (existing && existing.length > 0) {
+            // Update existing
+            await supabase
+              .from("client_reviews")
+              .update({
+                comment: review.text,
+                review_date: review.time ? review.time.split("T")[0] : null,
+              })
+              .eq("id", existing[0].id);
+          } else {
+            // Insert new
+            await supabase
+              .from("client_reviews")
+              .insert({
+                user_id: user.id,
+                client_id: client_id,
+                source: "google",
+                author_name: review.author_name,
+                rating: review.rating,
+                comment: review.text,
+                review_date: review.time ? review.time.split("T")[0] : null,
+              });
+          }
+        }
+        
+        console.log('[places-details] Reviews synced successfully');
       }
 
       console.log('[places-details] Client updated successfully');

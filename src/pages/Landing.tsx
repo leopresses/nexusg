@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { motion } from "framer-motion";
 import {
   Check,
   MessageCircle,
@@ -10,6 +10,11 @@ import {
   LayoutDashboard,
   PlayCircle,
   FileBarChart,
+  Shield,
+  Bell,
+  MessageSquareText,
+  ShieldAlert,
+  ClipboardCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +32,6 @@ const stagger = {
 };
 
 export default function LandingPage() {
-  // Lógica para o botão de contratação (WhatsApp)
   const handleUpgrade = (planName: string, planPrice: string, clientsLimit: string) => {
     const message = encodeURIComponent(
       `Olá! Estive vendo a Landing Page do Gestão Nexus e tenho interesse no plano: ${planName}.\n` +
@@ -38,9 +42,57 @@ export default function LandingPage() {
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, "_blank");
   };
 
+  const allFeatures = [
+    {
+      icon: Zap,
+      title: "Sincronização Google Places",
+      desc: "Conecte o Place ID e puxe métricas, avaliações e dados do negócio automaticamente.",
+    },
+    {
+      icon: FileBarChart,
+      title: "Relatórios White-Label",
+      desc: "Gere PDFs profissionais com sua logo e cores. Envie direto para o cliente.",
+    },
+    {
+      icon: LayoutDashboard,
+      title: "Checklist Inteligente",
+      desc: "Tarefas semanais e diárias geradas automaticamente por tipo de negócio.",
+    },
+    {
+      icon: BarChart3,
+      title: "Auditoria Score",
+      desc: "Avaliação automática da presença digital de cada cliente com score de 0 a 100.",
+    },
+    {
+      icon: Bell,
+      title: "Alertas Inteligentes",
+      desc: "Notificações automáticas sobre queda de performance, tarefas atrasadas e dados desatualizados.",
+    },
+    {
+      icon: MessageSquareText,
+      title: "Gestão de Avaliações",
+      desc: "Importe avaliações do Google, responda com templates e acompanhe métricas de satisfação.",
+    },
+    {
+      icon: ShieldAlert,
+      title: "Central de Recuperação",
+      desc: "Guia passo a passo para recuperar contas restritas ou suspensas no Google.",
+    },
+    {
+      icon: ClipboardCheck,
+      title: "Onboarding por Cliente",
+      desc: "Processo guiado de ativação com checklist personalizado por tipo de negócio.",
+    },
+    {
+      icon: Shield,
+      title: "Multi-tenant Seguro",
+      desc: "Cada gestor acessa apenas seus próprios dados. Isolamento total via políticas de segurança.",
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-700">
-      {/* 1. Navbar Glassmorphism */}
+      {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           <Logo size="md" />
@@ -59,7 +111,7 @@ export default function LandingPage() {
               </Button>
             </Link>
             <Link to="/register">
-              <Button variant="default" className="rounded-full px-6 shadow-lg shadow-blue-200 font-bold">
+              <Button className="rounded-full px-6 shadow-lg shadow-blue-200 font-bold">
                 Criar Conta Grátis
               </Button>
             </Link>
@@ -67,10 +119,9 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* 2. Hero Section */}
+      {/* Hero */}
       <section className="pt-40 pb-20 px-6 relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.05)_0%,transparent_70%)] pointer-events-none" />
-
         <div className="container mx-auto text-center relative z-10">
           <motion.div initial="hidden" animate="visible" variants={fadeInUp}>
             <Badge
@@ -86,14 +137,13 @@ export default function LandingPage() {
               </span>
             </h1>
             <p className="text-xl text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Automatize tarefas, sincronize dados do Google Places e gere relatórios profissionais em segundos. Tudo
-              white-label para sua marca.
+              Automatize tarefas, sincronize dados do Google Places, gerencie avaliações e gere relatórios profissionais. Tudo white-label para sua marca.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link to="/register">
                 <Button
                   size="lg"
-                  className="h-14 px-10 rounded-2xl bg-blue-600 hover:bg-blue-700 text-lg font-bold shadow-xl shadow-blue-200 group"
+                  className="h-14 px-10 rounded-2xl text-lg font-bold shadow-xl shadow-blue-200 group"
                 >
                   Começar agora <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
@@ -102,7 +152,7 @@ export default function LandingPage() {
                 <Button
                   variant="outline"
                   size="lg"
-                  className="h-14 px-8 rounded-2xl border-slate-200 font-bold text-slate-600"
+                  className="h-14 px-8 rounded-2xl font-bold"
                   aria-label="Ver demonstração do Gestão Nexus"
                 >
                   <PlayCircle className="mr-2 h-5 w-5 text-blue-600" /> Ver demonstração
@@ -113,7 +163,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 3. Social Proof */}
+      {/* Social Proof */}
       <section className="py-12 border-y border-slate-50 bg-slate-50/50">
         <div className="container mx-auto px-6">
           <p className="text-center text-xs font-bold uppercase tracking-[0.2em] text-slate-400 mb-8">
@@ -129,53 +179,54 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 4. Features Section */}
+      {/* Features - expanded */}
       <section id="funcionalidades" className="py-24 px-6 bg-white">
         <div className="container mx-auto">
           <div className="text-center max-w-3xl mx-auto mb-20">
             <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4">
-              Feito para quem não quer perder tempo com planilhas.
+              Tudo que você precisa para escalar sua operação.
             </h2>
             <p className="text-slate-500 text-lg">
-              Desenvolvemos o Gestão Nexus para ser o cérebro da sua operação de SEO Local.
+              Do onboarding à auditoria. Do alerta ao relatório. Uma plataforma completa.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: Zap,
-                title: "Sincronização Direta",
-                desc: "Conecte o Place ID e puxe métricas de visualização e chamadas automaticamente.",
-              },
-              {
-                icon: FileBarChart,
-                title: "Relatórios White-Label",
-                desc: "Gere PDFs com sua logo, suas cores e envie direto no WhatsApp do cliente.",
-              },
-              {
-                icon: LayoutDashboard,
-                title: "Checklist Inteligente",
-                desc: "Tarefas geradas semanalmente seguindo o método que traz resultados.",
-              },
-            ].map((f, i) => (
+          <motion.div
+            className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={stagger}
+          >
+            {allFeatures.map((f, i) => (
               <motion.div
                 key={i}
-                whileHover={{ y: -10 }}
-                className="p-8 rounded-3xl border border-slate-100 bg-white hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-900/5 transition-all"
+                variants={fadeInUp}
+                whileHover={{ y: -6 }}
+                className="p-7 rounded-2xl border border-slate-100 bg-white hover:border-blue-200 hover:shadow-xl hover:shadow-blue-900/5 transition-all"
               >
-                <div className="h-14 w-14 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 mb-6">
-                  <f.icon className="h-7 w-7" />
+                <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 mb-5">
+                  <f.icon className="h-6 w-6" />
                 </div>
-                <h3 className="text-xl font-bold mb-3 text-slate-900">{f.title}</h3>
-                <p className="text-slate-500 leading-relaxed">{f.desc}</p>
+                <h3 className="text-lg font-bold mb-2 text-slate-900">{f.title}</h3>
+                <p className="text-slate-500 text-sm leading-relaxed">{f.desc}</p>
               </motion.div>
             ))}
+          </motion.div>
+
+          {/* CTA after features */}
+          <div className="text-center mt-16">
+            <Link to="/register">
+              <Button size="lg" className="rounded-2xl px-10 font-bold shadow-lg shadow-blue-200">
+                Experimente Grátis <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+            <p className="text-sm text-slate-400 mt-3">Sem cartão de crédito. 1 cliente grátis para sempre.</p>
           </div>
         </div>
       </section>
 
-      {/* 5. Pricing Section (AGORA COM OS PLANOS RENDERIZADOS) */}
+      {/* Pricing */}
       <section id="precos" className="py-24 px-6 bg-slate-50/50 relative">
         <div className="container mx-auto">
           <div className="text-center max-w-3xl mx-auto mb-16">
@@ -185,7 +236,6 @@ export default function LandingPage() {
             <p className="text-slate-500">Comece grátis hoje e escale conforme sua carteira de clientes aumenta.</p>
           </div>
 
-          {/* Grid de 5 colunas real */}
           <motion.div
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-stretch"
             initial="hidden"
@@ -193,7 +243,7 @@ export default function LandingPage() {
             viewport={{ once: true }}
             variants={stagger}
           >
-            {PLANS.map((plan, index) => {
+            {PLANS.map((plan) => {
               const PlanIcon = plan.icon;
               const formattedLimit = formatClientLimit(plan.clientsLimitValue);
 
@@ -219,7 +269,6 @@ export default function LandingPage() {
                   )}
 
                   <div className="p-5 flex flex-col h-full">
-                    {/* Header do Card */}
                     <div className="mb-4">
                       <div
                         className={`h-10 w-10 rounded-xl flex items-center justify-center border mb-4 transition-colors ${
@@ -235,7 +284,6 @@ export default function LandingPage() {
                       <h3 className="text-lg font-bold text-slate-900 leading-tight">{plan.name}</h3>
                     </div>
 
-                    {/* Preço */}
                     <div className="mb-4 pb-4 border-b border-slate-100">
                       <div className="flex items-baseline gap-1">
                         <span className="text-2xl font-black text-slate-900">{plan.price}</span>
@@ -246,7 +294,6 @@ export default function LandingPage() {
                       </p>
                     </div>
 
-                    {/* Features */}
                     <ul className="space-y-2.5 mb-8 flex-1">
                       {plan.features.map((feature, fIndex) => (
                         <li key={fIndex} className="flex items-start gap-2 text-[11px] font-medium text-slate-600">
@@ -262,13 +309,12 @@ export default function LandingPage() {
                       ))}
                     </ul>
 
-                    {/* Botão de Ação */}
                     <div className="mt-auto">
                       {plan.id === "starter" ? (
                         <Link to="/register" className="w-full">
                           <Button
                             variant="outline"
-                            className="w-full h-9 rounded-xl border-slate-200 text-slate-600 bg-white font-bold text-xs hover:bg-slate-50"
+                            className="w-full h-9 rounded-xl font-bold text-xs"
                           >
                             Começar Grátis
                           </Button>
@@ -279,7 +325,7 @@ export default function LandingPage() {
                           className={`w-full h-9 rounded-xl gap-2 font-bold text-xs shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] ${
                             plan.highlighted
                               ? "!bg-emerald-600 !text-white hover:!bg-emerald-700"
-                              : "!bg-blue-600 !text-white hover:!bg-blue-700"
+                              : ""
                           }`}
                         >
                           <MessageCircle className="h-3.5 w-3.5" />
@@ -295,7 +341,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 6. Footer */}
+      {/* Footer */}
       <footer className="py-20 px-6 bg-slate-900 text-white">
         <div className="container mx-auto grid md:grid-cols-4 gap-12 text-center md:text-left">
           <div className="col-span-2">
@@ -316,6 +362,11 @@ export default function LandingPage() {
                 <a href="#precos" className="hover:text-white transition-colors">
                   Preços
                 </a>
+              </li>
+              <li>
+                <Link to="/demo" className="hover:text-white transition-colors">
+                  Demonstração
+                </Link>
               </li>
             </ul>
           </div>

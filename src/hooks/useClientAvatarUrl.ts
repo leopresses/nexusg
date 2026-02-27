@@ -15,16 +15,21 @@ export function useClientAvatarUrl(storedUrl: string | null): string | null {
         return;
       }
 
-      // Extract the file path from the stored URL
-      // Format: https://...supabase.co/storage/v1/object/public/client-avatars/userId/clientId/avatar.ext
-      const urlParts = storedUrl.split("/client-avatars/");
-      if (urlParts.length < 2) {
-        // Not a storage URL, might be an external URL - use as-is
+      // If it looks like an external URL (http/https) that's NOT a supabase storage URL, use as-is
+      const isExternalUrl = storedUrl.startsWith("http") && !storedUrl.includes("/client-avatars/");
+      if (isExternalUrl) {
         setSignedUrl(storedUrl);
         return;
       }
 
-      const filePath = urlParts[1];
+      // Extract the file path - could be a full URL or a relative path
+      let filePath: string;
+      if (storedUrl.includes("/client-avatars/")) {
+        filePath = storedUrl.split("/client-avatars/")[1];
+      } else {
+        // Treat as relative path directly
+        filePath = storedUrl;
+      }
       
       try {
         const { data, error } = await supabase.storage
