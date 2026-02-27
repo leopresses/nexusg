@@ -138,8 +138,8 @@ export default function ClientOnboarding() {
       key: "review_started" as const,
       title: "Gerenciar Avaliações",
       description: "Adicione ou responda avaliações de clientes.",
-      actionLabel: "Ver Reviews",
-      onAction: () => navigate(`/reviews`),
+      actionLabel: "Ver Cliente",
+      onAction: () => navigate(`/clients/${clientId}`),
       showMarkDone: true,
     },
   ];
