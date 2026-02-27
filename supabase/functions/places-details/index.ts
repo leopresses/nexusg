@@ -29,7 +29,8 @@ interface PlaceDetails {
     weekday_text: string[];
     open_now?: boolean;
   };
-  photos?: { photo_reference: string }[];
+  photos?: { photo_reference: string; url?: string }[];
+  photo_urls?: string[];
   business_status?: string;
   reviews?: {
     author_name: string;
@@ -93,7 +94,6 @@ Deno.serve(async (req) => {
 
     console.log('[places-details] Fetching place details');
 
-    // Include reviews in field mask
     const fieldMask = "id,displayName,formattedAddress,nationalPhoneNumber,internationalPhoneNumber,websiteUri,googleMapsUri,rating,userRatingCount,types,regularOpeningHours,photos,businessStatus,reviews";
 
     const response = await fetch(`https://places.googleapis.com/v1/places/${place_id}`, {
@@ -142,6 +142,40 @@ Deno.serve(async (req) => {
         }))
       : [];
 
+    // Generate photo URLs server-side (don't expose API key to frontend)
+    const rawPhotos = Array.isArray(result.photos) ? result.photos.slice(0, 6) : [];
+    const photoUrls: string[] = [];
+    const photosWithUrls: { photo_reference: string; url?: string }[] = [];
+
+    for (const photo of rawPhotos) {
+      const photoName = photo.name; // e.g. "places/ChIJ.../photos/AelY_Ct..."
+      if (photoName) {
+        // Use Places API v1 photo media endpoint to get the actual image URL
+        try {
+          const mediaUrl = `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=400&skipHttpRedirect=true&key=${apiKey}`;
+          const mediaResp = await fetch(mediaUrl);
+          if (mediaResp.ok) {
+            const mediaResult = await mediaResp.json();
+            const resolvedUrl = mediaResult.photoUri;
+            if (resolvedUrl) {
+              photoUrls.push(resolvedUrl);
+              photosWithUrls.push({ photo_reference: photoName, url: resolvedUrl });
+            } else {
+              photosWithUrls.push({ photo_reference: photoName });
+            }
+          } else {
+            console.error(`[places-details] Photo media error for ${photoName}:`, mediaResp.status);
+            photosWithUrls.push({ photo_reference: photoName });
+          }
+        } catch (photoErr) {
+          console.error(`[places-details] Photo fetch error:`, photoErr);
+          photosWithUrls.push({ photo_reference: photoName });
+        }
+      }
+    }
+
+    console.log(`[places-details] Resolved ${photoUrls.length} photo URLs out of ${rawPhotos.length} photos`);
+
     const placeDetails: PlaceDetails = {
       place_id: sanitizeStr(result.id, 255) ?? "",
       name: sanitizeStr(result.displayName?.text, 500) ?? "",
@@ -156,7 +190,8 @@ Deno.serve(async (req) => {
       opening_hours: result.regularOpeningHours?.weekdayDescriptions
         ? { weekday_text: result.regularOpeningHours.weekdayDescriptions.slice(0, 7) }
         : undefined,
-      photos: result.photos?.slice(0, 3).map((p: any) => ({ photo_reference: p.name })),
+      photos: photosWithUrls,
+      photo_urls: photoUrls,
       business_status: sanitizeStr(result.businessStatus, 50),
       reviews: googleReviews,
     };
@@ -200,8 +235,6 @@ Deno.serve(async (req) => {
         console.log(`[places-details] Syncing ${googleReviews.length} reviews`);
         
         for (const review of googleReviews) {
-          // Check for duplicates by author + rating + first 100 chars of text
-          const snippet = (review.text || "").slice(0, 100);
           const { data: existing } = await supabase
             .from("client_reviews")
             .select("id")
@@ -212,7 +245,6 @@ Deno.serve(async (req) => {
             .limit(1);
 
           if (existing && existing.length > 0) {
-            // Update existing
             await supabase
               .from("client_reviews")
               .update({
@@ -221,7 +253,6 @@ Deno.serve(async (req) => {
               })
               .eq("id", existing[0].id);
           } else {
-            // Insert new
             await supabase
               .from("client_reviews")
               .insert({
