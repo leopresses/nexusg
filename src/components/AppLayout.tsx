@@ -8,6 +8,7 @@ import {
   Settings,
   LogOut,
   CreditCard,
+  Receipt,
   Shield,
   Menu,
   X,
@@ -35,8 +36,8 @@ const baseNavItems = [
   { icon: Settings, label: "Configurações", href: "/settings" },
   { icon: ClipboardCheck, label: "Auditoria", href: "/audit" },
   { icon: Bell, label: "Alertas", href: "/alerts" },
-  
   { icon: CreditCard, label: "Planos", href: "/pricing" },
+  { icon: Receipt, label: "Faturamento", href: "/billing" },
   { icon: ShieldAlert, label: "Recuperação", href: "/recovery" },
 ];
 

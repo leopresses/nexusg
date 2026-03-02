@@ -18,6 +18,7 @@ import Settings from "./pages/Settings";
 import Clients from "./pages/Clients";
 import Reports from "./pages/Reports";
 import Pricing from "./pages/Pricing";
+import Billing from "./pages/Billing";
 import Recovery from "./pages/Recovery";
 
 import AdminUsersPlans from "./pages/AdminUsersPlans";
@@ -106,6 +107,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Pricing />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/billing" 
+              element={
+                <ProtectedRoute>
+                  <Billing />
                 </ProtectedRoute>
               } 
             />
