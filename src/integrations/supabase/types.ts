@@ -500,6 +500,60 @@ export type Database = {
           },
         ]
       }
+      stripe_customers: {
+        Row: {
+          created_at: string
+          stripe_customer_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          stripe_customer_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          stripe_customer_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      stripe_subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          id: string
+          plan: string
+          status: string
+          stripe_price_id: string
+          stripe_subscription_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          plan: string
+          status: string
+          stripe_price_id: string
+          stripe_subscription_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          plan?: string
+          status?: string
+          stripe_price_id?: string
+          stripe_subscription_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       task_templates: {
         Row: {
           checklist: Json | null
