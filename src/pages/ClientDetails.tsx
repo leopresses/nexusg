@@ -62,6 +62,7 @@ export default function ClientDetails() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [failedPhotos, setFailedPhotos] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (clientId) fetchClient();
@@ -417,50 +418,51 @@ export default function ClientDetails() {
                     {snapshot.photo_urls.slice(0, 6).map((url, i) => (
                       <button
                         key={i}
-                        onClick={() => setLightboxUrl(url)}
+                        onClick={() => !failedPhotos.has(i) && setLightboxUrl(url)}
                         className="aspect-square rounded-xl border border-slate-200 overflow-hidden bg-slate-100 hover:ring-2 hover:ring-blue-300 transition-all focus:outline-none"
                       >
-                        <img
-                          src={url}
-                          alt={`Foto ${i + 1} de ${displayName}`}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                          onError={(e) => {
-                            const target = e.currentTarget;
-                            target.style.display = "none";
-                            const parent = target.parentElement;
-                            if (parent) {
-                              parent.innerHTML = `<div class="w-full h-full flex items-center justify-center"><span class="text-xs text-slate-400">Erro</span></div>`;
-                            }
-                          }}
-                        />
+                        {failedPhotos.has(i) ? (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <span className="text-xs text-slate-400">Erro</span>
+                          </div>
+                        ) : (
+                          <img
+                            src={url}
+                            alt={`Foto ${i + 1} de ${displayName}`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            onError={() => setFailedPhotos(prev => new Set(prev).add(i))}
+                          />
+                        )}
                       </button>
                     ))}
                   </div>
                 ) : (snapshot.photos && snapshot.photos.some(p => p.url)) ? (
                   <div className="grid grid-cols-3 gap-2">
-                    {snapshot.photos.filter(p => p.url).slice(0, 6).map((photo, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setLightboxUrl(photo.url!)}
-                        className="aspect-square rounded-xl border border-slate-200 overflow-hidden bg-slate-100 hover:ring-2 hover:ring-blue-300 transition-all focus:outline-none"
-                      >
-                        <img
-                          src={photo.url!}
-                          alt={`Foto ${i + 1} de ${displayName}`}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                          onError={(e) => {
-                            const target = e.currentTarget;
-                            target.style.display = "none";
-                            const parent = target.parentElement;
-                            if (parent) {
-                              parent.innerHTML = `<div class="w-full h-full flex items-center justify-center"><span class="text-xs text-slate-400">Erro</span></div>`;
-                            }
-                          }}
-                        />
-                      </button>
-                    ))}
+                    {snapshot.photos.filter(p => p.url).slice(0, 6).map((photo, i) => {
+                      const idx = i + 100;
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => !failedPhotos.has(idx) && setLightboxUrl(photo.url!)}
+                          className="aspect-square rounded-xl border border-slate-200 overflow-hidden bg-slate-100 hover:ring-2 hover:ring-blue-300 transition-all focus:outline-none"
+                        >
+                          {failedPhotos.has(idx) ? (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="text-xs text-slate-400">Erro</span>
+                            </div>
+                          ) : (
+                            <img
+                              src={photo.url!}
+                              alt={`Foto ${i + 1} de ${displayName}`}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              onError={() => setFailedPhotos(prev => new Set(prev).add(idx))}
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-6 rounded-xl bg-slate-50 border border-dashed border-slate-200">
