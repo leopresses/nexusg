@@ -1,98 +1,131 @@
-import { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import { Lock, ArrowRight, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, Eye, EyeOff, Lock } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
+import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
+
+function validatePassword(pwd: string): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  if (pwd.length < 8) errors.push("Mínimo 8 caracteres");
+  if (!/[A-Z]/.test(pwd)) errors.push("1 letra maiúscula");
+  if (!/[0-9]/.test(pwd)) errors.push("1 número");
+  return { valid: errors.length === 0, errors };
+}
 
 export default function ResetPassword() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const { toast } = useToast();
-  const navigate = useNavigate();
+
+  const timeoutRef = useRef<number | null>(null);
+
+  const passwordsMatch = useMemo(
+    () => password.length > 0 && password === confirmPassword,
+    [password, confirmPassword],
+  );
 
   useEffect(() => {
+    let cancelled = false;
+
     const checkSession = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
+
+      if (cancelled) return;
+
       if (!session) {
         toast({
           title: "Link inválido ou expirado",
           description: "Solicite um novo link de recuperação.",
           variant: "destructive",
         });
-        navigate("/forgot-password");
+        navigate("/forgot-password", { replace: true });
       }
     };
+
     checkSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, [navigate, toast]);
 
-  const validatePassword = (pwd: string): { valid: boolean; errors: string[] } => {
-    const errors: string[] = [];
-    if (pwd.length < 8) errors.push("Mínimo 8 caracteres");
-    if (!/[A-Z]/.test(pwd)) errors.push("1 letra maiúscula");
-    if (!/[0-9]/.test(pwd)) errors.push("1 número");
-    return { valid: errors.length === 0, errors };
-  };
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (isLoading) return;
 
-    const validation = validatePassword(password);
-    if (!validation.valid) {
-      toast({
-        title: "Senha inválida",
-        description: `Requisitos: ${validation.errors.join(", ")}`,
-        variant: "destructive",
-      });
-      return;
-    }
+      const validation = validatePassword(password);
+      if (!validation.valid) {
+        toast({
+          title: "Senha inválida",
+          description: `Requisitos: ${validation.errors.join(", ")}`,
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (password !== confirmPassword) {
-      toast({
-        title: "Senhas não coincidem",
-        description: "Por favor, verifique se as senhas são iguais.",
-        variant: "destructive",
-      });
-      return;
-    }
+      if (!passwordsMatch) {
+        toast({
+          title: "Senhas não coincidem",
+          description: "Por favor, verifique se as senhas são iguais.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    setIsLoading(true);
+      setIsLoading(true);
+      try {
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
 
-    try {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
+        setIsSuccess(true);
 
-      setIsSuccess(true);
+        toast({
+          title: "Senha atualizada!",
+          description: "Sua senha foi redefinida com sucesso.",
+        });
 
-      toast({
-        title: "Senha atualizada!",
-        description: "Sua senha foi redefinida com sucesso.",
-      });
+        timeoutRef.current = window.setTimeout(() => {
+          navigate("/login", { replace: true });
+        }, 3000);
+      } catch (error: any) {
+        toast({
+          title: "Erro",
+          description: error?.message || "Não foi possível atualizar a senha.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [isLoading, password, passwordsMatch, toast, navigate],
+  );
 
-      setTimeout(() => {
-        navigate("/login");
-      }, 3000);
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Não foi possível atualizar a senha.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const togglePasswordVisibility = useCallback(() => setShowPassword((p) => !p), []);
+  const toggleConfirmPasswordVisibility = useCallback(() => setShowConfirmPassword((p) => !p), []);
 
   if (isSuccess) {
     return (
@@ -143,7 +176,7 @@ export default function ResetPassword() {
           <p className="text-slate-600">Crie uma nova senha segura para sua conta</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           {/* Nova senha */}
           <div className="space-y-2">
             <Label htmlFor="password" className="text-slate-700">
@@ -153,17 +186,20 @@ export default function ResetPassword() {
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input
                 id="password"
+                name="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Mínimo 8 caracteres"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pl-10 pr-10 h-12 bg-white border-slate-200 rounded-xl focus-visible:ring-blue-600"
+                autoComplete="new-password"
+                className="pl-10 pr-12 h-12 bg-white border-slate-200 rounded-xl focus-visible:ring-blue-600"
                 required
               />
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
+                onClick={togglePasswordVisibility}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-800 transition-colors"
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
               >
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
@@ -180,21 +216,28 @@ export default function ResetPassword() {
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input
                 id="confirmPassword"
+                name="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
                 placeholder="Confirme a senha"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="pl-10 pr-10 h-12 bg-white border-slate-200 rounded-xl focus-visible:ring-blue-600"
+                autoComplete="new-password"
+                className="pl-10 pr-12 h-12 bg-white border-slate-200 rounded-xl focus-visible:ring-blue-600"
                 required
               />
               <button
                 type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                onClick={toggleConfirmPasswordVisibility}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-800 transition-colors"
+                aria-label={showConfirmPassword ? "Ocultar senha" : "Mostrar senha"}
               >
                 {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
+
+            {confirmPassword.length > 0 && !passwordsMatch && (
+              <p className="text-xs text-red-600">As senhas precisam ser iguais.</p>
+            )}
           </div>
 
           <Button
