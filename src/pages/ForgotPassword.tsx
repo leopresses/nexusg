@@ -1,7 +1,8 @@
-import { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Mail, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Mail } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,38 +10,60 @@ import { Logo } from "@/components/Logo";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isValidEmail(email: string) {
+  return EMAIL_REGEX.test(email.trim());
+}
+
 export default function ForgotPassword() {
+  const { toast } = useToast();
+
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const cleanEmail = useMemo(() => email.trim(), [email]);
 
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (isLoading) return;
 
-      if (error) throw error;
+      if (!isValidEmail(cleanEmail)) {
+        toast({
+          title: "Email inválido",
+          description: "Verifique o formato do email (ex: nome@email.com).",
+          variant: "destructive",
+        });
+        return;
+      }
 
-      setEmailSent(true);
-      toast({
-        title: "Email enviado!",
-        description: "Verifique sua caixa de entrada para redefinir sua senha.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Não foi possível enviar o email.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      setIsLoading(true);
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+
+        if (error) throw error;
+
+        setEmailSent(true);
+        toast({
+          title: "Email enviado!",
+          description: "Verifique sua caixa de entrada para redefinir sua senha.",
+        });
+      } catch (error: any) {
+        toast({
+          title: "Erro",
+          description: error?.message || "Não foi possível enviar o email.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [cleanEmail, isLoading, toast],
+  );
 
   if (emailSent) {
     return (
@@ -62,7 +85,7 @@ export default function ForgotPassword() {
 
           <h1 className="text-2xl font-bold mb-2 text-slate-900">Email enviado!</h1>
           <p className="text-slate-600 mb-6">
-            Enviamos um link de recuperação para <strong className="text-slate-900">{email}</strong>. Verifique sua
+            Enviamos um link de recuperação para <strong className="text-slate-900">{cleanEmail}</strong>. Verifique sua
             caixa de entrada e spam.
           </p>
 
@@ -101,7 +124,7 @@ export default function ForgotPassword() {
           <p className="text-slate-600">Informe seu email para receber um link de recuperação</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
           <div className="space-y-2">
             <Label htmlFor="email" className="text-slate-700">
               Email
@@ -110,10 +133,12 @@ export default function ForgotPassword() {
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input
                 id="email"
+                name="email"
                 type="email"
                 placeholder="seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
                 className="pl-10 h-12 bg-white border-slate-200 rounded-xl shadow-sm focus-visible:ring-blue-600"
                 required
               />
