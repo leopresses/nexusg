@@ -128,10 +128,7 @@ export default function Recovery() {
           evidence: e,
           signedUrl: e.file_url ? null : null,
         })),
-        brand: {
-          business_name: brandSettings?.business_name || "Gestão Nexus",
-          logo_url: brandSettings?.logo_url || null,
-        },
+        agencyName: brandSettings?.companyName || "Gestão Nexus",
       });
 
       downloadPdf(pdfBlob, `recuperacao-${selectedClient.name}.pdf`);
@@ -344,7 +341,7 @@ export default function Recovery() {
                       const typeSelect = document.getElementById("evidenceType") as HTMLSelectElement | null;
                       const typeValue = typeSelect?.value || "outro";
 
-                      await uploadEvidence(file, typeValue);
+                      await uploadEvidence(file, typeValue, file.name);
                       e.target.value = "";
                     }}
                   />
