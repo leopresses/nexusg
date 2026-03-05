@@ -22,7 +22,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
-import { SIMPLE_PLANS } from "@/config/plans";
+import { PLANS } from "@/config/plans";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
