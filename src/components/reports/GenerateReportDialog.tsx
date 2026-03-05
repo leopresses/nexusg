@@ -117,9 +117,9 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
       const pdfBlob = pdf.output('blob');
       
       // Upload to Supabase Storage
-      const path = `reports/${user?.id}/${Date.now()}-${filename}`;
+      const path = `${user?.id}/${Date.now()}-${filename}`;
       const { data, error } = await supabase.storage
-        .from('brand-logos') // Using existing bucket for now
+        .from('reports')
         .upload(path, pdfBlob, {
           contentType: 'application/pdf',
           cacheControl: '3600',
