@@ -173,6 +173,10 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   const planLabel = getPlanLabel((profile as any)?.plan);
   const clientLimit = formatClientLimit((profile as any)?.clients_limit);
 
