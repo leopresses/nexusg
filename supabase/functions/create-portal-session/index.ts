@@ -53,6 +53,22 @@ serve(async (req) => {
     const { returnUrl } = await req.json();
     const origin = req.headers.get("origin") || "https://nexusg.lovable.app";
 
+    // Validate redirect URL against allowed origins
+    const ALLOWED_ORIGINS = ["https://nexusg.lovable.app"];
+    function isAllowedUrl(url: string): boolean {
+      try {
+        const parsed = new URL(url);
+        return ALLOWED_ORIGINS.some((o) => url.startsWith(o)) ||
+          parsed.hostname.endsWith(".lovableproject.com") ||
+          parsed.hostname.endsWith(".lovable.app");
+      } catch {
+        return false;
+      }
+    }
+    if (returnUrl && !isAllowedUrl(returnUrl)) {
+      throw new Error("Invalid redirect URL");
+    }
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     const portalSession = await stripe.billingPortal.sessions.create({
