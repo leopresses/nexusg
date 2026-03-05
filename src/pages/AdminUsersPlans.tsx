@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield,
@@ -61,24 +61,41 @@ export default function AdminUsersPlans() {
   const [userToDelete, setUserToDelete] = useState<UserWithRole | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   // Estado para o tutorial
   const [showTutorial, setShowTutorial] = useState(false);
+  const normalizedQuery = useMemo(() => searchQuery.trim().toLowerCase(), [searchQuery]);
 
   useEffect(() => {
     fetchUsers();
+
     // Check tutorial on load
     const hasSeenTutorial = localStorage.getItem("admin_users_tutorial_seen");
+    let t: number | undefined;
     if (!hasSeenTutorial) {
-      setTimeout(() => setShowTutorial(true), 1000);
+      t = window.setTimeout(() => {
+        if (isMountedRef.current) setShowTutorial(true);
+      }, 1000);
     }
-  }, []);
+    return () => {
+      if (t) window.clearTimeout(t);
+    };
+  }, [fetchUsers]);
 
   const closeTutorial = () => {
     setShowTutorial(false);
     localStorage.setItem("admin_users_tutorial_seen", "true");
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setError(null);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -111,15 +128,15 @@ export default function AdminUsersPlans() {
       }
 
       const usersWithRoles: UserWithRole[] = response.data?.users || [];
-      setUsers(usersWithRoles);
+      if (isMountedRef.current) setUsers(usersWithRoles);
     } catch (err: any) {
       console.error("Error fetching users:", err);
       setError("Erro ao carregar usuários. Tente novamente.");
       toast.error("Erro ao carregar usuários");
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) setIsLoading(false);
     }
-  };
+  }, []);
 
   const toggleAdminRole = async (userId: string, currentlyAdmin: boolean) => {
     try {
@@ -190,17 +207,20 @@ export default function AdminUsersPlans() {
   const regularUsers = users.filter((u) => !u.roles.includes("admin"));
   const adminUsers = users.filter((u) => u.roles.includes("admin"));
 
-  const filterUsers = (list: UserWithRole[]) => {
-    return list.filter(
-      (user) =>
-        user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.user_id.toLowerCase().includes(searchQuery.toLowerCase()),
-    );
-  };
+  const filterUsers = useCallback(
+    (list: UserWithRole[]) => {
+      return list.filter(
+        (user) =>
+          user.full_name?.toLowerCase().includes(normalizedQuery) ||
+          user.email?.toLowerCase().includes(normalizedQuery) ||
+          user.user_id.toLowerCase().includes(normalizedQuery),
+      );
+    },
+    [normalizedQuery],
+  );
 
-  const filteredRegularUsers = filterUsers(regularUsers);
-  const filteredAdminUsers = filterUsers(adminUsers);
+  const filteredRegularUsers = useMemo(() => filterUsers(regularUsers), [filterUsers, regularUsers]);
+  const filteredAdminUsers = useMemo(() => filterUsers(adminUsers), [filterUsers, adminUsers]);
 
   if (error && !isLoading) {
     return (
