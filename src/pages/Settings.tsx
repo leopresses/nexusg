@@ -572,8 +572,6 @@ export default function Settings() {
     </AppLayout>
   );
 }
-
-export default function Settings() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
