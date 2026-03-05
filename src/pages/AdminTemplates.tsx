@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText,
@@ -63,14 +63,22 @@ export default function AdminTemplates() {
   const [editingTemplate, setEditingTemplate] = useState<TaskTemplate | null>(null);
   const [deletingTemplate, setDeletingTemplate] = useState<TaskTemplate | null>(null);
   const [isSendingTasks, setIsSendingTasks] = useState(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/admin/templates");
 
   useEffect(() => {
     fetchTemplates();
-  }, []);
+  }, [fetchTemplates]);
 
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("task_templates")
@@ -78,14 +86,14 @@ export default function AdminTemplates() {
         .order("sort_order", { ascending: true });
 
       if (error) throw error;
-      setTemplates(data || []);
+      if (isMountedRef.current) setTemplates(data || []);
     } catch (error) {
       console.error("Error fetching templates:", error);
       toast.error("Erro ao carregar templates");
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) setIsLoading(false);
     }
-  };
+  }, []);
 
   const handleCreate = () => {
     setEditingTemplate(null);
@@ -165,11 +173,16 @@ export default function AdminTemplates() {
     }
   };
 
-  const filteredTemplates = templates.filter(
-    (template) =>
-      template.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.description?.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const normalizedQuery = useMemo(() => searchQuery.trim().toLowerCase(), [searchQuery]);
+
+  const filteredTemplates = useMemo(() => {
+    if (!normalizedQuery) return templates;
+    return templates.filter((template) => {
+      const title = (template.title || "").toLowerCase();
+      const desc = (template.description || "").toLowerCase();
+      return title.includes(normalizedQuery) || desc.includes(normalizedQuery);
+    });
+  }, [templates, normalizedQuery]);
 
   const activeCount = templates.filter((t) => t.is_active).length;
   const dailyCount = templates.filter((t) => (t as any).frequency === "daily").length;
