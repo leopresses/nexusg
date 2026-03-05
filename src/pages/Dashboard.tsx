@@ -104,9 +104,6 @@ export default function Dashboard() {
   const { alerts: allAlerts, isLoading: alertsLoading } = useAlerts();
   const topAlerts = allAlerts.slice(0, 5);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
   const fetchData = useCallback(async () => {
     if (!user) return;
     try {
@@ -175,6 +172,10 @@ export default function Dashboard() {
       isMountedRef.current && setIsLoading(false);
     }
   }, [user]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const planLabel = getPlanLabel((profile as any)?.plan);
   const clientLimit = formatClientLimit((profile as any)?.clients_limit);
