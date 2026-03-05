@@ -132,7 +132,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
 
       // Get signed URL (valid for 7 days)
       const { data: signedData } = await supabase.storage
-        .from('brand-logos')
+        .from('reports')
         .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days expiration
 
       return signedData?.signedUrl || null;
