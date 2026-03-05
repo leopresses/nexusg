@@ -217,8 +217,18 @@ export default function ClientOnboarding() {
         </motion.div>
 
         <div className="space-y-3">
-          {steps.map((s) => (
-            <OnboardingStepCard key={s.key} stepKey={s.key} step={s as any} client={client as any} />
+          {steps.map((s, idx) => (
+            <OnboardingStepCard
+              key={s.key}
+              index={idx + 1}
+              title={s.title}
+              description={s.description}
+              completed={progress.steps[s.key]}
+              actionLabel={s.actionLabel}
+              onAction={s.onAction}
+              showMarkDone={s.showMarkDone}
+              onMarkDone={s.showMarkDone ? () => updateSteps({ [s.key]: true }).then(() => refetch()) : undefined}
+            />
           ))}
         </div>
       </div>
