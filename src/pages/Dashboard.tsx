@@ -104,9 +104,6 @@ export default function Dashboard() {
   const { alerts: allAlerts, isLoading: alertsLoading } = useAlerts();
   const topAlerts = allAlerts.slice(0, 5);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
   const fetchData = useCallback(async () => {
     if (!user) return;
     try {
