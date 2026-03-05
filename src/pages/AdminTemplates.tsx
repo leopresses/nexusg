@@ -74,10 +74,6 @@ export default function AdminTemplates() {
 
   const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/admin/templates");
 
-  useEffect(() => {
-    fetchTemplates();
-  }, [fetchTemplates]);
-
   const fetchTemplates = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -94,6 +90,10 @@ export default function AdminTemplates() {
       if (isMountedRef.current) setIsLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
 
   const handleCreate = () => {
     setEditingTemplate(null);
