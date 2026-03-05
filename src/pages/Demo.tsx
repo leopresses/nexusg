@@ -22,7 +22,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
-import { SIMPLE_PLANS } from "@/config/plans";
+import { PLANS } from "@/config/plans";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
@@ -220,10 +220,10 @@ export default function Demo() {
         </div>
 
         <div className="mt-6 grid md:grid-cols-3 gap-4">
-          {SIMPLE_PLANS.map((p) => (
+          {PLANS.slice(0, 3).map((p) => (
             <div key={p.name} className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm">
               <h3 className="font-extrabold text-slate-900">{p.name}</h3>
-              <div className="mt-3 text-4xl font-extrabold text-slate-900">{p.price}</div>
+              <div className="mt-3 text-4xl font-extrabold text-slate-900">{p.price}{p.period}</div>
               <div className="text-sm text-slate-600">por mês</div>
 
               <div className="mt-5 space-y-2">
