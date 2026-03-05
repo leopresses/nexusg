@@ -92,11 +92,10 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "Erro desconhecido";
-    console.error("[create-checkout-session] ERROR:", msg);
-    return new Response(JSON.stringify({ error: msg }), {
+    console.error("[create-checkout-session] ERROR:", error instanceof Error ? error.message : error);
+    return new Response(JSON.stringify({ error: "Operação falhou. Tente novamente." }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
+      status: 500,
     });
   }
 });
