@@ -91,6 +91,10 @@ export default function AdminTemplates() {
     }
   }, []);
 
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
+
   const handleCreate = () => {
     setEditingTemplate(null);
     setDialogOpen(true);
