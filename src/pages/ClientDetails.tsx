@@ -1,4 +1,4 @@
-import {useState, useEffect, useRef} from "react";
+import {useState, useEffect, useRef, useCallback} from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -82,10 +82,6 @@ export default function ClientDetails() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [failedPhotos, setFailedPhotos] = useState<Set<number>>(new Set());
 
-  useEffect(() => {
-    if (clientId) fetchClient();
-  }, [clientId]);
-
   const fetchClient = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -102,7 +98,11 @@ export default function ClientDetails() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [clientId]);
+
+  useEffect(() => {
+    if (clientId) fetchClient();
+  }, [clientId, fetchClient]);
 
   const snapshot: PlaceSnapshot = (client?.place_snapshot as any) || {};
   const hasSnapshot = Object.keys(snapshot).length > 0 && snapshot.place_id;
