@@ -52,6 +52,25 @@ serve(async (req) => {
       throw new Error(`Plano inválido: ${plan}`);
     }
 
+    // Validate redirect URLs against allowed origins
+    const ALLOWED_ORIGINS = ["https://nexusg.lovable.app"];
+    function isAllowedUrl(url: string): boolean {
+      try {
+        const parsed = new URL(url);
+        return ALLOWED_ORIGINS.some((o) => url.startsWith(o)) ||
+          parsed.hostname.endsWith(".lovableproject.com") ||
+          parsed.hostname.endsWith(".lovable.app");
+      } catch {
+        return false;
+      }
+    }
+    if (successUrl && !isAllowedUrl(successUrl)) {
+      throw new Error("Invalid redirect URL");
+    }
+    if (cancelUrl && !isAllowedUrl(cancelUrl)) {
+      throw new Error("Invalid redirect URL");
+    }
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     // Find or create Stripe customer
