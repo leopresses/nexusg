@@ -73,19 +73,36 @@ export default function AuditClient() {
   const navigate = useNavigate();
   const [client, setClient] = useState<Client | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    if (!clientId) return;
-    const fetch = async () => {
-      setIsLoading(true);
-      const { data } = await supabase.from("clients").select("*").eq("id", clientId).maybeSingle();
-
-      setClient(data);
-      setIsLoading(false);
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
     };
-    fetch();
-  }, [clientId, user]);
+  }, []);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const fetchClient = useCallback(async () => {
+    if (!clientId) return;
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase.from("clients").select("*").eq("id", clientId).maybeSingle();
+
+      if (error) throw error;
+      if (isMountedRef.current) setClient(data);
+    } catch (err) {
+      console.error("Error fetching client:", err);
+      if (isMountedRef.current) setClient(null);
+    } finally {
+      if (isMountedRef.current) setIsLoading(false);
+    }
+  }, [clientId]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchClient();
+  }, [user, fetchClient]);
 
   if (isLoading) {
     return (
