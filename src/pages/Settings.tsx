@@ -1,12 +1,4 @@
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Save,
-  Upload,
-  Loader2,
-  Image as ImageIcon,
-  CheckCircle2,
-  Trash2,import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Save,
@@ -580,32 +572,6 @@ export default function Settings() {
     </AppLayout>
   );
 }
-  HelpCircle,
-  X,
-  ArrowRight,
-  Palette,
-} from "lucide-react";
-import { AppLayout } from "@/components/AppLayout";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { useHelpTutorial } from "@/hooks/useHelpTutorial";
-
-type BrandSettings = {
-  id?: string;
-  user_id?: string;
-  company_name?: string | null;
-  support_whatsapp?: string | null;
-  primary_color?: string | null;
-  logo_storage_url?: string | null;
-  logo_display_url?: string | null;
-  report_footer?: string | null;
-  enable_sounds?: boolean | null;
-};
 
 export default function Settings() {
   const [isLoading, setIsLoading] = useState(true);
