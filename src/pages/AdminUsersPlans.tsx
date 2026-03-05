@@ -74,27 +74,6 @@ export default function AdminUsersPlans() {
   const [showTutorial, setShowTutorial] = useState(false);
   const normalizedQuery = useMemo(() => searchQuery.trim().toLowerCase(), [searchQuery]);
 
-  useEffect(() => {
-    fetchUsers();
-
-    // Check tutorial on load
-    const hasSeenTutorial = localStorage.getItem("admin_users_tutorial_seen");
-    let t: number | undefined;
-    if (!hasSeenTutorial) {
-      t = window.setTimeout(() => {
-        if (isMountedRef.current) setShowTutorial(true);
-      }, 1000);
-    }
-    return () => {
-      if (t) window.clearTimeout(t);
-    };
-  }, [fetchUsers]);
-
-  const closeTutorial = () => {
-    setShowTutorial(false);
-    localStorage.setItem("admin_users_tutorial_seen", "true");
-  };
-
   const fetchUsers = useCallback(async () => {
     setError(null);
     try {
@@ -137,6 +116,27 @@ export default function AdminUsersPlans() {
       if (isMountedRef.current) setIsLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    fetchUsers();
+
+    // Check tutorial on load
+    const hasSeenTutorial = localStorage.getItem("admin_users_tutorial_seen");
+    let t: number | undefined;
+    if (!hasSeenTutorial) {
+      t = window.setTimeout(() => {
+        if (isMountedRef.current) setShowTutorial(true);
+      }, 1000);
+    }
+    return () => {
+      if (t) window.clearTimeout(t);
+    };
+  }, [fetchUsers]);
+
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem("admin_users_tutorial_seen", "true");
+  };
 
   const toggleAdminRole = async (userId: string, currentlyAdmin: boolean) => {
     try {
