@@ -19,7 +19,6 @@ import {
   Image as ImageIcon,
   X,
   Bell,
-  MessageSquare,
   ShieldAlert,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
@@ -401,63 +400,75 @@ export default function ClientDetails() {
             <Card className="!bg-white border-slate-200 shadow-sm rounded-2xl">
               <CardHeader className="pb-3">
                 <CardTitle className="text-slate-900 text-base font-bold flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" /> Avaliações
+                  <Star className="h-4 w-4 text-amber-400" />
+                  Avaliações
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                {snapshot.rating !== undefined && (
-                  <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <div className="flex items-center gap-1.5">
+              <CardContent className="space-y-4">
+                {snapshot.rating !== undefined ? (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 flex items-center justify-between gap-4 flex-wrap">
+                    <div className="flex items-center gap-2">
                       <Star className="h-6 w-6 fill-amber-400 text-amber-400" />
-                      <span className="text-2xl font-bold text-slate-900">{snapshot.rating?.toFixed(1)}</span>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-3xl font-bold text-slate-900">{snapshot.rating?.toFixed(1)}</span>
+                          {snapshot.user_ratings_total !== undefined && (
+                            <span className="text-sm text-slate-500">
+                              ({snapshot.user_ratings_total.toLocaleString("pt-BR")} avaliações)
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
+                          As avaliações completas devem ser vistas direto no Google.
+                        </p>
+                      </div>
                     </div>
-                    {snapshot.user_ratings_total !== undefined && (
-                      <span className="text-sm text-slate-500">
-                        ({snapshot.user_ratings_total.toLocaleString("pt-BR")} avaliações)
-                      </span>
+
+                    {mapsUrl ? (
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="rounded-xl border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-blue-600"
+                      >
+                        <a href={mapsUrl} target="_blank" rel="noreferrer">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Ver no Google
+                        </a>
+                      </Button>
+                    ) : (
+                      <Button variant="outline" className="rounded-xl" onClick={handleSync} disabled={isSyncing}>
+                        {isSyncing ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                        )}
+                        Sincronizar Google
+                      </Button>
                     )}
                   </div>
-                )}
-                {snapshot.reviews && snapshot.reviews.length > 0 ? (
-                  <div className="space-y-3">
-                    {snapshot.reviews.slice(0, 3).map((review, i) => (
-                      <div key={i} className="p-3 rounded-xl border border-slate-100 bg-slate-50/50">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-semibold text-slate-800">{review.author_name}</span>
-                          <div className="flex items-center gap-0.5">
-                            {Array.from({ length: 5 }).map((_, s) => (
-                              <Star
-                                key={s}
-                                className={`h-3 w-3 ${s < review.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"}`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                        {review.text && <p className="text-sm text-slate-600 line-clamp-3">{review.text}</p>}
-                        {review.relative_time_description && (
-                          <p className="text-xs text-slate-400 mt-1">{review.relative_time_description}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
                 ) : (
-                  <div className="text-center py-4">
-                    <p className="text-sm text-slate-400 italic mb-2">Nenhuma avaliação sincronizada</p>
-                    {placeId && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-xl text-xs"
-                        onClick={handleSync}
-                        disabled={isSyncing}
-                      >
-                        {isSyncing ? (
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                        )}
-                        Sincronizar avaliações
+                  <div className="text-center py-6 rounded-xl bg-slate-50 border border-dashed border-slate-200">
+                    <p className="text-sm text-slate-500 mb-3">Nenhuma nota de avaliação disponível no momento.</p>
+                    {mapsUrl ? (
+                      <Button asChild variant="outline" className="rounded-xl">
+                        <a href={mapsUrl} target="_blank" rel="noreferrer">
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Abrir no Google
+                        </a>
                       </Button>
+                    ) : placeId ? (
+                      <Button variant="outline" className="rounded-xl" onClick={handleSync} disabled={isSyncing}>
+                        {isSyncing ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                        )}
+                        Sincronizar dados
+                      </Button>
+                    ) : (
+                      <p className="text-xs text-slate-400">
+                        Conecte o Google Places para visualizar dados do negócio.
+                      </p>
                     )}
                   </div>
                 )}
@@ -601,49 +612,6 @@ export default function ClientDetails() {
                     </Button>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-
-            {/* Technical Info */}
-            <Card className="!bg-white border-slate-200 shadow-sm rounded-2xl">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-slate-900 text-base font-bold">Informações Técnicas</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {placeId && (
-                  <div>
-                    <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Place ID</span>
-                    <div className="flex items-center gap-2 mt-1">
-                      <code className="text-xs bg-slate-50 border border-slate-200 px-2 py-1 rounded font-mono text-slate-700 truncate max-w-[180px]">
-                        {placeId}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-slate-400 hover:text-blue-600"
-                        onClick={() => copyToClipboard(placeId, "placeId2")}
-                      >
-                        {copiedField === "placeId2" ? (
-                          <Check className="h-3.5 w-3.5 text-emerald-600" />
-                        ) : (
-                          <Copy className="h-3.5 w-3.5" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                <div>
-                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Última atualização</span>
-                  <p className="text-sm text-slate-700 mt-1">
-                    {new Date(client.updated_at || client.created_at).toLocaleDateString("pt-BR", {
-                      day: "2-digit",
-                      month: "long",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </div>
               </CardContent>
             </Card>
           </div>
