@@ -165,9 +165,10 @@ serve(async (req) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("[stripe-webhook] ERROR:", error instanceof Error ? error.message : error);
-    return new Response(JSON.stringify({ error: "Webhook processing failed" }), {
-      status: 500,
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    console.error("[stripe-webhook] ERROR:", msg);
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 400,
       headers: { "Content-Type": "application/json" },
     });
   }

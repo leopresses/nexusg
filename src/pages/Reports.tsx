@@ -19,7 +19,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { GenerateReportDialog } from "@/components/reports/GenerateReportDialog";
 import { DeleteReportDialog } from "@/components/reports/DeleteReportDialog";
 import { useReports, type Report } from "@/hooks/useReports";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { WHATSAPP_NUMBER } from "@/config/plans";
 import { toast } from "sonner";
 import { useHelpTutorial } from "@/hooks/useHelpTutorial";

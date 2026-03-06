@@ -25,6 +25,8 @@ import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useClientEvidences, EVIDENCE_TYPES } from "@/hooks/useClientEvidences";
@@ -37,18 +39,38 @@ import { useHelpTutorial } from "@/hooks/useHelpTutorial";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 
+const CHECKLIST_STEPS = [
+  "Abrir a ferramenta de contestação do Google",
+  "Confirmar que está na conta correta do Google",
+  "Selecionar o perfil da empresa restrito",
+  "Verificar o motivo e a política violada",
+  "Enviar a contestação pelo formulário",
+  "Se solicitado, anexar evidências (PDF gerado aqui)",
+];
+
+const GOOGLE_APPEAL_URL =
+  "https://support.google.com/business/workflow/13569690?sjid=8273479830695779318-SA&visit_id=639076383517998129-3093210050&p=manage_appeals&rd=1";
+
 export default function Recovery() {
-  const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { brandSettings } = useBrandSettings();
+  const [searchParams] = useSearchParams();
+  const preselectedClientId = searchParams.get("client");
 
   const [clients, setClients] = useState<Client[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState<string>("");
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(preselectedClientId);
   const [isLoadingClients, setIsLoadingClients] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [checkedSteps, setCheckedSteps] = useState<boolean[]>(new Array(CHECKLIST_STEPS.length).fill(false));
 
+  // Upload form
+  const [uploadType, setUploadType] = useState("outros");
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadNotes, setUploadNotes] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const { brandSettings } = useBrandSettings();
   const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/recovery");
-
   const {
     evidences,
     isLoading: isLoadingEvidences,
@@ -64,353 +86,386 @@ export default function Recovery() {
 
   useEffect(() => {
     async function fetchClients() {
-      try {
-        setIsLoadingClients(true);
-        const { data, error } = await supabase.from("clients").select("*").order("name");
-        if (error) throw error;
-        setClients(data || []);
-
-        // Se vier via querystring ?clientId=...
-        const clientIdFromQuery = searchParams.get("clientId");
-        if (clientIdFromQuery && (data || []).some((c) => c.id === clientIdFromQuery)) {
-          setSelectedClientId(clientIdFromQuery);
-        } else if (!selectedClientId && (data || []).length > 0) {
-          setSelectedClientId((data || [])[0].id);
-        }
-      } catch (err) {
-        console.error("Error fetching clients:", err);
-        toast.error("Erro ao carregar clientes");
-      } finally {
-        setIsLoadingClients(false);
-      }
+      const { data } = await supabase.from("clients").select("*").order("name");
+      setClients(data || []);
+      setIsLoadingClients(false);
     }
+    if (user) fetchClients();
+  }, [user]);
 
-    fetchClients();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const toggleStep = (index: number) => {
+    setCheckedSteps((prev) => {
+      const next = [...prev];
+      next[index] = !next[index];
+      return next;
+    });
+  };
 
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success("Copiado!");
-    } catch {
-      toast.error("Não foi possível copiar");
+  const handleUpload = async () => {
+    if (!uploadFile || !uploadTitle.trim()) {
+      toast.error("Preencha o título e selecione um arquivo.");
+      return;
     }
+    setIsUploading(true);
+    await uploadEvidence(uploadFile, uploadType, uploadTitle.trim(), uploadNotes.trim() || undefined);
+    setUploadFile(null);
+    setUploadTitle("");
+    setUploadNotes("");
+    setUploadType("outros");
+    setIsUploading(false);
+  };
+
+  const contestationText = useMemo(() => {
+    if (!selectedClient) return "";
+    const snap = (selectedClient as any).place_snapshot as any;
+    const phone = snap?.formatted_phone_number || "";
+    return `Olá, estou solicitando revisão do Perfil da Empresa: ${selectedClient.name}.\nEndereço: ${selectedClient.address || "Não informado"}.\n${
+      phone ? `Telefone: ${phone}.\n` : ""
+    }Este negócio é legítimo e opera no local indicado.\nAnexo evidências documentais (registro/licença/contas/fotos) que comprovam a existência e regularidade do estabelecimento.\nSolicito a gentileza de reavaliar a restrição aplicada ao perfil.`;
+  }, [selectedClient]);
+
+  const copyText = () => {
+    navigator.clipboard.writeText(contestationText);
+    toast.success("Texto copiado!");
   };
 
   const handleGeneratePdf = async () => {
-    if (!selectedClientId || !selectedClient) {
-      toast.error("Selecione um cliente");
-      return;
-    }
-
+    if (!selectedClient) return;
+    setIsGeneratingPdf(true);
     try {
-      setIsGenerating(true);
+      const evidencesWithUrls = await Promise.all(
+        evidences.map(async (ev) => ({
+          evidence: ev,
+          signedUrl: ev.file_url ? await getSignedUrl(ev.file_url) : null,
+        })),
+      );
 
-      // Assina URL do avatar (se existir)
       let avatarSignedUrl: string | null = null;
-      if (selectedClient.avatar_url) {
-        avatarSignedUrl = await getSignedUrl(selectedClient.avatar_url);
+      if ((selectedClient as any).avatar_url) {
+        const parts = ((selectedClient as any).avatar_url as string).split("/client-avatars/");
+        if (parts.length >= 2) {
+          const { data } = await supabase.storage.from("client-avatars").createSignedUrl(parts[1], 3600);
+          avatarSignedUrl = data?.signedUrl || null;
+        }
       }
 
-      // place_snapshot pode estar em JSON
-      const placeSnapshot = (selectedClient.place_snapshot as any) || null;
-
-      const pdfBlob = await generateRecoveryPdf({
+      const doc = await generateRecoveryPdf({
         client: {
           name: selectedClient.name,
-          business_type: selectedClient.business_type || "",
-          address: selectedClient.address || null,
+          business_type: selectedClient.business_type,
+          address: selectedClient.address,
           avatarSignedUrl,
-          placeSnapshot,
+          placeSnapshot: (selectedClient as any).place_snapshot,
         },
-        evidences: (evidences || []).map((e) => ({
-          evidence: e,
-          signedUrl: e.file_url ? null : null,
-        })),
+        evidences: evidencesWithUrls,
         agencyName: brandSettings?.companyName || "Gestão Nexus",
       });
 
-      downloadPdf(pdfBlob, `recuperacao-${selectedClient.name}.pdf`);
+      downloadPdf(doc, `recuperacao-${selectedClient.name.replace(/\s+/g, "-").toLowerCase()}.pdf`);
       toast.success("PDF gerado com sucesso!");
     } catch (err) {
       console.error("Error generating PDF:", err);
       toast.error("Erro ao gerar PDF");
     } finally {
-      setIsGenerating(false);
+      setIsGeneratingPdf(false);
     }
   };
 
-  if (!user) {
-    return (
-      <AppLayout title="Recuperação de Conta" subtitle="Faça login para acessar esta página">
-        <div className="flex items-center justify-center py-20">
-          <div className="rounded-2xl bg-white border border-slate-200 p-8 text-center max-w-md">
-            <Shield className="h-10 w-10 text-blue-600 mx-auto mb-4" />
-            <h2 className="text-lg font-bold text-slate-900 mb-2">Acesso restrito</h2>
-            <p className="text-slate-600 mb-5">Você precisa estar logado para gerar relatórios de recuperação.</p>
-            <Button className="rounded-xl !bg-blue-600 !text-white" asChild>
-              <a href="/login">Ir para login</a>
-            </Button>
-          </div>
-        </div>
-      </AppLayout>
+  const shareWhatsApp = () => {
+    const text = encodeURIComponent(
+      `🚨 Recuperação Google Business — ${selectedClient?.name}\n\nBaixe o Pacote de Evidências e anexe no formulário de contestação do Google.\n\nLink da ferramenta: ${GOOGLE_APPEAL_URL}`,
     );
-  }
+    window.open(`https://wa.me/?text=${text}`, "_blank");
+  };
 
   return (
     <AppLayout
-      title="Recuperação de Conta"
-      subtitle="Gere um PDF profissional para solicitar recuperação/reativação de conta"
+      title="Central de Recuperação"
+      subtitle="Google Business Profile — Contestação e Evidências"
       headerActions={
-        <div className="flex items-center gap-2 relative">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={openTutorial}
-            className="text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
-            title="Tutorial"
-          >
-            <HelpCircle className="h-5 w-5" />
-          </Button>
-
-          <Button
-            onClick={handleGeneratePdf}
-            disabled={!selectedClientId || isGenerating}
-            className="h-10 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700"
-          >
-            {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-            Gerar PDF
-          </Button>
-
-          <AnimatePresence>
-            {showTutorial && (
-              <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                className="absolute right-0 top-14 z-50 w-80 bg-blue-600 text-white p-5 rounded-2xl shadow-xl shadow-blue-200"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="bg-white/20 p-1.5 rounded-lg">
-                      <TrendingUp className="h-4 w-4 text-white" />
-                    </div>
-                    <h3 className="font-bold text-sm">Como usar</h3>
-                  </div>
-                  <button
-                    onClick={closeTutorial}
-                    className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-
-                <div className="space-y-3 text-sm text-blue-50">
-                  <ul className="space-y-2 list-none">
-                    <li className="flex gap-2 items-start">
-                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
-                        1
-                      </span>
-                      <span>Selecione o cliente e anexe evidências (documentos, prints, etc.).</span>
-                    </li>
-                    <li className="flex gap-2 items-start">
-                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
-                        2
-                      </span>
-                      <span>Use “Gerar PDF” para baixar o relatório pronto.</span>
-                    </li>
-                    <li className="flex gap-2 items-start">
-                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
-                        3
-                      </span>
-                      <span>Envie ao suporte junto com o link da empresa e informações necessárias.</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="mt-4 flex justify-end">
-                  <button
-                    onClick={closeTutorial}
-                    className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1"
-                  >
-                    Entendi <ArrowRight className="h-3 w-3" />
-                  </button>
-                </div>
-
-                <div className="absolute -top-2 right-12 w-4 h-4 bg-blue-600 rotate-45 transform" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        <Button variant="ghost" size="icon" onClick={openTutorial} className="text-slate-500 hover:text-blue-600 hover:bg-blue-50" title="Ver tutorial">
+          <HelpCircle className="h-5 w-5" />
+        </Button>
       }
     >
-      <div className="space-y-6">
-        {/* Seleção de cliente */}
-        <div className="rounded-xl !bg-white border border-slate-200 p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <Info className="h-4 w-4 text-blue-600" />
-            <h3 className="font-semibold text-slate-900">Cliente</h3>
+      <div className="mx-auto max-w-4xl space-y-6 relative">
+        <AnimatePresence>
+          {showTutorial && (
+            <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} className="absolute right-0 top-0 z-50 w-80 bg-blue-600 text-white p-5 rounded-2xl shadow-xl shadow-blue-200">
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-2"><div className="bg-white/20 p-1.5 rounded-lg"><Shield className="h-4 w-4 text-white" /></div><h3 className="font-bold text-sm">Central de Recuperação</h3></div>
+                <button onClick={closeTutorial} className="text-white/70 hover:text-white hover:bg-white/10 rounded-full p-1 transition-colors"><X className="h-4 w-4" /></button>
+              </div>
+              <div className="space-y-3 text-sm text-blue-50">
+                <p>Recupere perfis restringidos do Google:</p>
+                <ul className="space-y-2 list-none">
+                  <li className="flex gap-2 items-start"><span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">1</span><span>Siga o checklist passo a passo para contestar.</span></li>
+                  <li className="flex gap-2 items-start"><span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">2</span><span>Envie evidências (alvarás, fotos, documentos).</span></li>
+                  <li className="flex gap-2 items-start"><span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">3</span><span>Gere o PDF de recuperação e envie ao Google.</span></li>
+                </ul>
+              </div>
+              <div className="mt-4 flex justify-end"><button onClick={closeTutorial} className="text-xs font-bold bg-white text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-1">Entendi <ArrowRight className="h-3 w-3" /></button></div>
+              <div className="absolute -top-2 right-12 w-4 h-4 bg-blue-600 rotate-45 transform" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {/* Emergency Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-red-200 bg-red-50 p-5"
+        >
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-red-100 p-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+            </div>
+            <div className="flex-1">
+              <div className="mb-1 flex items-center gap-2">
+                <h3 className="font-bold text-red-800">Modo Emergência — 60 minutos</h3>
+                <Badge className="bg-red-600 text-[10px] text-white">
+                  <Clock className="mr-1 h-3 w-3" /> URGENTE
+                </Badge>
+              </div>
+              <p className="text-sm text-red-700">
+                A empresa pode ficar <strong>invisível para consumidores</strong> enquanto o perfil estiver restrito.{" "}
+                <strong>Não crie um novo perfil</strong> enquanto a contestação estiver em análise.
+              </p>
+            </div>
           </div>
+        </motion.div>
 
+        {/* Info disclaimer */}
+        <div className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3">
+          <Info className="h-4 w-4 flex-shrink-0 text-blue-600" />
+          <span className="text-xs text-blue-700">
+            A contestação é feita diretamente no Google. O Nexus apenas organiza e gera o pacote de evidências.
+          </span>
+        </div>
+
+        {/* Client Selector */}
+        <div className="rounded-2xl border border-slate-200 !bg-white p-5 shadow-sm">
+          <h3 className="mb-3 font-bold text-slate-900">Selecionar Cliente</h3>
           {isLoadingClients ? (
-            <div className="flex items-center gap-2 text-slate-600">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Carregando clientes...
+            <div className="flex items-center gap-2 text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
             </div>
           ) : (
-            <div className="flex flex-col md:flex-row md:items-center gap-3">
-              <div className="flex-1">
-                <select
-                  value={selectedClientId}
-                  onChange={(e) => setSelectedClientId(e.target.value)}
-                  className="w-full h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-                >
-                  <option value="" disabled>
-                    Selecione um cliente
-                  </option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <Select value={selectedClientId || ""} onValueChange={(v) => setSelectedClientId(v)}>
+              <SelectTrigger className="rounded-xl !bg-white border-slate-200 text-slate-900 ring-offset-white">
+                <SelectValue placeholder="Escolha um cliente" />
+              </SelectTrigger>
 
-              {selectedClient?.google_maps_url && (
-                <Button
-                  variant="outline"
-                  className="h-11 rounded-xl bg-white border-slate-200"
-                  onClick={() => window.open(selectedClient.google_maps_url || "", "_blank")}
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Abrir no Google
-                </Button>
-              )}
-            </div>
+              {/* ✅ força dropdown branco (antes estava bg-popover escuro) */}
+              <SelectContent className="border-slate-200 bg-white text-slate-900 shadow-lg">
+                {clients.map((c) => (
+                  <SelectItem key={c.id} value={c.id} className="focus:bg-slate-100 focus:text-slate-900">
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
         </div>
 
-        {/* Evidências */}
-        <div className="rounded-xl !bg-white border border-slate-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2">
-              <FileUp className="h-4 w-4 text-blue-600" />
-              <h3 className="font-semibold text-slate-900">Evidências</h3>
-            </div>
-
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              {(evidences || []).length} itens
-            </Badge>
-          </div>
-
-          {!selectedClientId ? (
-            <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-slate-700 flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
-              <div>
-                <p className="font-semibold">Selecione um cliente</p>
-                <p className="text-sm text-slate-600">Depois você poderá anexar documentos e prints.</p>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Upload */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
-                <div className="md:col-span-1">
-                  <select
-                    id="evidenceType"
-                    className="w-full h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-                    defaultValue={EVIDENCE_TYPES[0]?.value}
+        {selectedClient && (
+          <AnimatePresence>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              {/* Checklist */}
+              <div className="rounded-2xl border border-slate-200 !bg-white p-5 shadow-sm">
+                <h3 className="mb-4 flex items-center gap-2 font-bold text-slate-900">
+                  <Shield className="h-5 w-5 text-blue-600" />
+                  Checklist de Contestação
+                </h3>
+                <ul className="space-y-3">
+                  {CHECKLIST_STEPS.map((step, i) => (
+                    <li key={i} className="group flex cursor-pointer items-center gap-3" onClick={() => toggleStep(i)}>
+                      {checkedSteps[i] ? (
+                        <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-500" />
+                      ) : (
+                        <Circle className="h-5 w-5 flex-shrink-0 text-slate-300 group-hover:text-blue-400" />
+                      )}
+                      <span className={`text-sm ${checkedSteps[i] ? "line-through text-slate-400" : "text-slate-700"}`}>
+                        <span className="mr-1 font-bold text-slate-500">{i + 1}.</span>
+                        {step}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-4">
+                  <Button
+                    variant="outline"
+                    className="rounded-xl"
+                    onClick={() => window.open(GOOGLE_APPEAL_URL, "_blank")}
                   >
-                    {EVIDENCE_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Abrir Ferramenta do Google
+                  </Button>
+                </div>
+              </div>
+
+              {/* Contestation Text */}
+              <div className="rounded-2xl border border-slate-200 !bg-white p-5 shadow-sm">
+                <h3 className="mb-3 font-bold text-slate-900">Texto de Contestação</h3>
+                <Textarea value={contestationText} readOnly className="min-h-[120px] rounded-xl text-sm !bg-slate-50" />
+                <Button onClick={copyText} variant="outline" className="mt-3 rounded-xl">
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copiar Texto
+                </Button>
+              </div>
+
+              {/* Upload Evidences */}
+              <div className="rounded-2xl border border-slate-200 !bg-white p-5 shadow-sm">
+                <h3 className="mb-4 flex items-center gap-2 font-bold text-slate-900">
+                  <FileUp className="h-5 w-5 text-blue-600" />
+                  Enviar Evidências
+                </h3>
+
+                <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">Tipo</label>
+                    <Select value={uploadType} onValueChange={setUploadType}>
+                      <SelectTrigger className="rounded-xl !bg-white border-slate-200 text-slate-900 ring-offset-white">
+                        <SelectValue />
+                      </SelectTrigger>
+
+                      {/* ✅ força dropdown branco */}
+                      <SelectContent className="border-slate-200 bg-white text-slate-900 shadow-lg">
+                        {EVIDENCE_TYPES.map((t) => (
+                          <SelectItem key={t.value} value={t.value} className="focus:bg-slate-100 focus:text-slate-900">
+                            {t.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-600">Título</label>
+
+                    {/* ✅ força fundo branco no input */}
+                    <Input
+                      placeholder="Ex: Alvará de Funcionamento"
+                      value={uploadTitle}
+                      onChange={(e) => setUploadTitle(e.target.value)}
+                      className="rounded-xl !bg-white border-slate-200"
+                    />
+                  </div>
                 </div>
 
-                <div className="md:col-span-2">
-                  <Input
-                    type="file"
-                    className="h-11 rounded-xl !bg-white border border-slate-200 shadow-sm"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
+                <div className="mb-3">
+                  <label className="mb-1 block text-xs font-medium text-slate-600">Observações (opcional)</label>
 
-                      const typeSelect = document.getElementById("evidenceType") as HTMLSelectElement | null;
-                      const typeValue = typeSelect?.value || "outro";
-
-                      await uploadEvidence(file, typeValue, file.name);
-                      e.target.value = "";
-                    }}
+                  {/* ✅ força fundo branco no textarea */}
+                  <Textarea
+                    placeholder="Notas adicionais..."
+                    value={uploadNotes}
+                    onChange={(e) => setUploadNotes(e.target.value)}
+                    className="min-h-[60px] rounded-xl !bg-white border-slate-200 text-slate-900 placeholder:text-slate-400"
                   />
                 </div>
+
+                <div className="flex items-center gap-3">
+                  <label className="flex-1">
+                    <div className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-2.5 transition-colors hover:border-blue-400 hover:bg-blue-50/50">
+                      <Upload className="h-4 w-4 text-slate-400" />
+                      <span className="truncate text-sm text-slate-600">
+                        {uploadFile ? uploadFile.name : "Selecionar arquivo"}
+                      </span>
+                    </div>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*,.pdf"
+                      onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                    />
+                  </label>
+
+                  <Button
+                    onClick={handleUpload}
+                    disabled={isUploading || !uploadFile || !uploadTitle.trim()}
+                    className="rounded-xl"
+                  >
+                    {isUploading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="mr-2 h-4 w-4" />
+                    )}
+                    Enviar
+                  </Button>
+                </div>
               </div>
 
-              {/* Lista */}
-              {isLoadingEvidences ? (
-                <div className="flex items-center gap-2 text-slate-600">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Carregando evidências...
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {(evidences || []).map((ev) => (
-                    <div
-                      key={ev.id}
-                      className="flex items-start justify-between gap-3 p-4 rounded-xl border border-slate-200 bg-white hover:border-blue-200 transition-colors"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                          <p className="font-semibold text-slate-900 truncate">{ev.title}</p>
+              {/* Evidences List */}
+              <div className="rounded-2xl border border-slate-200 !bg-white p-5 shadow-sm">
+                <h3 className="mb-4 font-bold text-slate-900">Evidências Anexadas ({evidences.length})</h3>
+
+                {isLoadingEvidences ? (
+                  <div className="flex items-center gap-2 py-4 text-slate-500">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
+                  </div>
+                ) : evidences.length === 0 ? (
+                  <p className="py-4 text-sm text-slate-400">Nenhuma evidência ainda.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {evidences.map((ev) => (
+                      <div
+                        key={ev.id}
+                        className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-slate-800">{ev.title}</p>
+                          <p className="text-xs text-slate-500">
+                            {EVIDENCE_TYPES.find((t) => t.value === ev.type)?.label || ev.type}
+                            {ev.notes && ` • ${ev.notes}`}
+                          </p>
                         </div>
-                        <p className="text-xs text-slate-500 flex items-center gap-2">
-                          <Clock className="h-3.5 w-3.5" />
-                          {new Date(ev.created_at).toLocaleString()}
-                        </p>
-                        {ev.notes && <p className="text-sm text-slate-600 mt-2">{ev.notes}</p>}
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {ev.file_url && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="rounded-xl text-slate-500 hover:bg-slate-100"
-                            onClick={() => copyToClipboard(ev.file_url || "")}
-                            title="Copiar link"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        )}
-
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="rounded-xl text-red-400 hover:bg-red-50 hover:text-red-600"
+                          className="flex-shrink-0 rounded-xl text-red-400 hover:bg-red-50 hover:text-red-600"
                           onClick={() => deleteEvidence(ev)}
-                          title="Excluir"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                )}
+              </div>
 
-                  {(evidences || []).length === 0 && (
-                    <div className="rounded-xl bg-slate-50 border border-slate-200 p-6 text-center">
-                      <Upload className="h-10 w-10 text-slate-400 mx-auto mb-3" />
-                      <p className="font-semibold text-slate-900">Nenhuma evidência adicionada</p>
-                      <p className="text-sm text-slate-600">Envie um arquivo acima para começar.</p>
-                    </div>
-                  )}
+              {/* Actions */}
+              <div className="rounded-2xl border border-slate-200 !bg-white p-5 shadow-sm">
+                <h3 className="mb-4 font-bold text-slate-900">Gerar Pacote de Recuperação</h3>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    onClick={handleGeneratePdf}
+                    disabled={isGeneratingPdf}
+                    className="rounded-xl bg-red-600 hover:bg-red-700"
+                  >
+                    {isGeneratingPdf ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="mr-2 h-4 w-4" />
+                    )}
+                    Baixar PDF
+                  </Button>
+                  <Button variant="outline" className="rounded-xl" onClick={shareWhatsApp}>
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    Compartilhar WhatsApp
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="rounded-xl"
+                    onClick={() => window.open(GOOGLE_APPEAL_URL, "_blank")}
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Abrir Ferramenta Google
+                  </Button>
                 </div>
-              )}
-            </>
-          )}
-        </div>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        )}
       </div>
     </AppLayout>
   );

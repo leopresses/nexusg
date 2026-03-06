@@ -1,4 +1,4 @@
-import {useState, useEffect, useRef, useCallback} from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -68,13 +68,6 @@ interface PlaceSnapshot {
 export default function ClientDetails() {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
-  const isMountedRef = useRef(true);
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
   const [client, setClient] = useState<Client | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -82,7 +75,11 @@ export default function ClientDetails() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [failedPhotos, setFailedPhotos] = useState<Set<number>>(new Set());
 
-  const fetchClient = useCallback(async () => {
+  useEffect(() => {
+    if (clientId) fetchClient();
+  }, [clientId]);
+
+  const fetchClient = async () => {
     try {
       setIsLoading(true);
       const { data, error } = await supabase
@@ -91,18 +88,14 @@ export default function ClientDetails() {
         .eq("id", clientId!)
         .single();
       if (error) throw error;
-      isMountedRef.current && setClient(data);
+      setClient(data);
     } catch (error) {
       console.error("Error fetching client:", error);
       toast.error("Cliente não encontrado");
     } finally {
       setIsLoading(false);
     }
-  }, [clientId]);
-
-  useEffect(() => {
-    if (clientId) fetchClient();
-  }, [clientId, fetchClient]);
+  };
 
   const snapshot: PlaceSnapshot = (client?.place_snapshot as any) || {};
   const hasSnapshot = Object.keys(snapshot).length > 0 && snapshot.place_id;
@@ -116,7 +109,7 @@ export default function ClientDetails() {
 
   const handleSync = async () => {
     if (!client?.place_id) return;
-    isMountedRef.current && setIsSyncing(true);
+    setIsSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke("places-details", {
         body: { place_id: client.place_id, client_id: client.id, sync_reviews: true },
@@ -127,7 +120,7 @@ export default function ClientDetails() {
     } catch (err: any) {
       toast.error(err.message || "Erro ao sincronizar dados");
     } finally {
-      isMountedRef.current && setIsSyncing(false);
+      setIsSyncing(false);
     }
   };
 

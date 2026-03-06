@@ -2,19 +2,11 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get("Origin") || "";
-  const isAllowed =
-    origin.endsWith(".lovableproject.com") ||
-    origin.endsWith(".lovable.app") ||
-    origin === "https://nexusg.lovable.app";
-  return {
-    "Access-Control-Allow-Origin": isAllowed ? origin : "https://nexusg.lovable.app",
-    "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-    "Access-Control-Allow-Credentials": "true",
-  };
-}
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
 
 const PRICE_MAP: Record<string, string> = {
   tatico: "price_1T6Y7V1wSF4SiKrjrvUG1SF6",
@@ -25,7 +17,7 @@ const PRICE_MAP: Record<string, string> = {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -50,25 +42,6 @@ serve(async (req) => {
 
     if (!plan || !PRICE_MAP[plan]) {
       throw new Error(`Plano inválido: ${plan}`);
-    }
-
-    // Validate redirect URLs against allowed origins
-    const ALLOWED_ORIGINS = ["https://nexusg.lovable.app"];
-    function isAllowedUrl(url: string): boolean {
-      try {
-        const parsed = new URL(url);
-        return ALLOWED_ORIGINS.some((o) => url.startsWith(o)) ||
-          parsed.hostname.endsWith(".lovableproject.com") ||
-          parsed.hostname.endsWith(".lovable.app");
-      } catch {
-        return false;
-      }
-    }
-    if (successUrl && !isAllowedUrl(successUrl)) {
-      throw new Error("Invalid redirect URL");
-    }
-    if (cancelUrl && !isAllowedUrl(cancelUrl)) {
-      throw new Error("Invalid redirect URL");
     }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
@@ -115,14 +88,15 @@ serve(async (req) => {
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
-      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
-    console.error("[create-checkout-session] ERROR:", error instanceof Error ? error.message : error);
-    return new Response(JSON.stringify({ error: "Operação falhou. Tente novamente." }), {
-      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
-      status: 500,
+    const msg = error instanceof Error ? error.message : "Erro desconhecido";
+    console.error("[create-checkout-session] ERROR:", msg);
+    return new Response(JSON.stringify({ error: msg }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400,
     });
   }
 });

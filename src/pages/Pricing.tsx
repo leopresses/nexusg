@@ -1,17 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Check,
-  MessageCircle,
-  Star,
-  HelpCircle,
-  X,
-  ArrowRight,
-  CreditCard,
-  Zap,
-  Loader2,
-  ExternalLink,
-} from "lucide-react";
+import { Check, MessageCircle, Star, HelpCircle, X, ArrowRight, CreditCard, Zap, Loader2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AppLayout } from "@/components/AppLayout";
@@ -38,56 +27,46 @@ export default function Pricing() {
   const [searchParams] = useSearchParams();
 
   const [showTutorial, setShowTutorial] = useState(false);
-  const tutorialTimerRef = useRef<number | null>(null);
-  const refreshTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const hasSeenTutorial = localStorage.getItem("pricing_tutorial_seen");
     if (!hasSeenTutorial) {
-      tutorialTimerRef.current = window.setTimeout(() => setShowTutorial(true), 1000);
+      setTimeout(() => setShowTutorial(true), 1000);
     }
-    return () => {
-      if (tutorialTimerRef.current) window.clearTimeout(tutorialTimerRef.current);
-    };
   }, []);
 
   // Handle success/cancel redirects
   useEffect(() => {
     if (searchParams.get("success") === "true") {
       toast.success("Assinatura realizada com sucesso! Seu plano será atualizado em instantes.");
-      refreshTimerRef.current = window.setTimeout(() => refreshSubscription(), 3000);
+      // Refresh subscription data after a short delay
+      setTimeout(() => refreshSubscription(), 3000);
     }
     if (searchParams.get("canceled") === "true") {
       toast.info("Checkout cancelado.");
     }
-    return () => {
-      if (refreshTimerRef.current) window.clearTimeout(refreshTimerRef.current);
-    };
-  }, [searchParams, refreshSubscription]);
+  }, [searchParams]);
 
-  const closeTutorial = useCallback(() => {
+  const closeTutorial = () => {
     setShowTutorial(false);
     localStorage.setItem("pricing_tutorial_seen", "true");
-  }, []);
+  };
 
-  const handleSubscribe = useCallback(
-    async (planId: string) => {
-      try {
-        await createCheckout(planId);
-      } catch {
-        toast.error("Erro ao iniciar checkout. Tente novamente.");
-      }
-    },
-    [createCheckout],
-  );
+  const handleSubscribe = async (planId: string) => {
+    try {
+      await createCheckout(planId);
+    } catch {
+      toast.error("Erro ao iniciar checkout. Tente novamente.");
+    }
+  };
 
-  const handleManageSubscription = useCallback(async () => {
+  const handleManageSubscription = async () => {
     try {
       await openPortal();
     } catch {
       toast.error("Erro ao abrir portal de assinatura.");
     }
-  }, [openPortal]);
+  };
 
   const hasPaidSubscription = isSubscriptionActive && currentPlan !== "starter";
 
@@ -105,11 +84,7 @@ export default function Pricing() {
               disabled={isPortalLoading}
               className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50"
             >
-              {isPortalLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-1" />
-              ) : (
-                <ExternalLink className="h-4 w-4 mr-1" />
-              )}
+              {isPortalLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ExternalLink className="h-4 w-4 mr-1" />}
               Gerenciar assinatura
             </Button>
           )}
@@ -148,21 +123,15 @@ export default function Pricing() {
                 <div className="space-y-3 text-sm text-blue-50">
                   <ul className="space-y-2 list-none">
                     <li className="flex gap-2 items-start">
-                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
-                        1
-                      </span>
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">1</span>
                       <span>Seu plano atual aparece em destaque no topo.</span>
                     </li>
                     <li className="flex gap-2 items-start">
-                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
-                        2
-                      </span>
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">2</span>
                       <span>Clique em "Assinar" para fazer upgrade via pagamento seguro.</span>
                     </li>
                     <li className="flex gap-2 items-start">
-                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">
-                        3
-                      </span>
+                      <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">3</span>
                       <span>Use "Gerenciar assinatura" para alterar ou cancelar.</span>
                     </li>
                   </ul>
@@ -269,9 +238,7 @@ export default function Pricing() {
                           : "bg-slate-50 border-slate-100 group-hover:bg-blue-50 group-hover:border-blue-100"
                       }`}
                     >
-                      <PlanIcon
-                        className={`h-5 w-5 ${plan.highlighted ? "text-emerald-600" : "text-slate-600 group-hover:text-blue-600"}`}
-                      />
+                      <PlanIcon className={`h-5 w-5 ${plan.highlighted ? "text-emerald-600" : "text-slate-600 group-hover:text-blue-600"}`} />
                     </div>
                     <h3 className="text-lg font-bold text-slate-900 leading-tight">{plan.name}</h3>
                   </div>

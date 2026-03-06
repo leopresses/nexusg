@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Save,
@@ -39,13 +39,6 @@ export default function Settings() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeletingLogo, setIsDeletingLogo] = useState(false);
-  const isMountedRef = useRef(true);
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
 
   const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/settings");
 
@@ -63,7 +56,7 @@ export default function Settings() {
     className: "!bg-blue-600 !text-white border-none shadow-2xl rounded-2xl p-4 font-bold",
   };
 
-  const getSignedLogoUrl = useCallback(async (storedUrl: string): Promise<string | null> => {
+  const getSignedLogoUrl = async (storedUrl: string): Promise<string | null> => {
     if (!storedUrl) return null;
     const parts = storedUrl.split("/brand-logos/");
     if (parts.length < 2) return null;
@@ -71,16 +64,16 @@ export default function Settings() {
     const { data, error } = await supabase.storage.from("brand-logos").createSignedUrl(filePath, 3600);
     if (error || !data) return null;
     return data.signedUrl;
-  }, []);
+  };
 
-  const fetchSettings = useCallback(async () => {
+  const fetchSettings = async () => {
     try {
       setIsLoading(true);
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        if (isMountedRef.current) setIsLoading(false);
+        setIsLoading(false);
         return;
       }
 
@@ -117,9 +110,9 @@ export default function Settings() {
       console.error(e);
       toast.error("Erro ao carregar configurações", toastStyle);
     } finally {
-      if (isMountedRef.current) setIsLoading(false);
+      setIsLoading(false);
     }
-  }, [getSignedLogoUrl]);
+  };
 
   useEffect(() => {
     fetchSettings();

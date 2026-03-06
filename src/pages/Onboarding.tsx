@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2,
@@ -81,7 +81,7 @@ export default function Onboarding() {
   const [showManualInput, setShowManualInput] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<PlaceCandidate | null>(null);
 
-  const selectedType = useMemo(() => businessTypes.find((t) => t.key === selectedKey)?.id || null, [selectedKey]);
+  const selectedType = businessTypes.find((t) => t.key === selectedKey)?.id || null;
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -109,13 +109,13 @@ export default function Onboarding() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleSearch = useCallback(async () => {
+  const handleSearch = async () => {
     await searchPlaces(searchName, searchAddress);
-  }, [searchPlaces, searchName, searchAddress]);
+  };
 
-  const handleSelectCandidate = useCallback((candidate: PlaceCandidate) => {
+  const handleSelectCandidate = (candidate: PlaceCandidate) => {
     setSelectedPlace(candidate);
-  }, []);
+  };
 
   // Initialize search fields when entering step 3
   const goToStep3 = () => {
@@ -205,11 +205,7 @@ export default function Onboarding() {
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Error creating client:", error);
-      toast({
-        title: "Erro ao criar cliente",
-        description: error.message || "Tente novamente.",
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao criar cliente", description: error.message || "Tente novamente.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -237,10 +233,7 @@ export default function Onboarding() {
       beauty_salon: "Salão de Beleza",
       hair_care: "Cabeleireiro",
     };
-    const mapped = types
-      .filter((t) => typeMap[t])
-      .map((t) => typeMap[t])
-      .slice(0, 2);
+    const mapped = types.filter((t) => typeMap[t]).map((t) => typeMap[t]).slice(0, 2);
     return mapped.length > 0 ? mapped.join(", ") : "Negócio";
   };
 
@@ -281,11 +274,7 @@ export default function Onboarding() {
                   </motion.div>
 
                   <div className="pt-0.5">
-                    <h3
-                      className={["font-medium", currentStep >= step.id ? "text-slate-900" : "text-slate-500"].join(
-                        " ",
-                      )}
-                    >
+                    <h3 className={["font-medium", currentStep >= step.id ? "text-slate-900" : "text-slate-500"].join(" ")}>
                       {step.title}
                     </h3>
                     <p className="text-sm text-slate-500">{step.description}</p>
@@ -423,12 +412,7 @@ export default function Onboarding() {
                               id="onboarding-photo"
                             />
                             <label htmlFor="onboarding-photo">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                asChild
-                                className="border-slate-200 text-slate-600 hover:bg-slate-50"
-                              >
+                              <Button variant="outline" size="sm" asChild className="border-slate-200 text-slate-600 hover:bg-slate-50">
                                 <span>
                                   <Camera className="h-4 w-4 mr-2" />
                                   {photoPreview ? "Trocar" : "Escolher foto"}
@@ -436,12 +420,7 @@ export default function Onboarding() {
                               </Button>
                             </label>
                             {photoPreview && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={removePhoto}
-                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                              >
+                              <Button variant="ghost" size="sm" onClick={removePhoto} className="text-red-500 hover:text-red-600 hover:bg-red-50">
                                 <X className="h-4 w-4" />
                               </Button>
                             )}
@@ -498,9 +477,7 @@ export default function Onboarding() {
                   <h1 className="text-3xl font-bold mb-2">
                     Vincular <span className="text-blue-600">Google Place ID</span>
                   </h1>
-                  <p className="text-slate-600 mb-6">
-                    Opcional: vincule para acessar avaliações, fotos e dados públicos
-                  </p>
+                  <p className="text-slate-600 mb-6">Opcional: vincule para acessar avaliações, fotos e dados públicos</p>
 
                   {selectedPlace ? (
                     <div className="space-y-4">
@@ -527,10 +504,7 @@ export default function Onboarding() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          setSelectedPlace(null);
-                          clearSearch();
-                        }}
+                        onClick={() => { setSelectedPlace(null); clearSearch(); }}
                         className="text-slate-500 hover:text-blue-600"
                       >
                         Escolher outro lugar
@@ -540,9 +514,7 @@ export default function Onboarding() {
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <Label htmlFor="searchName" className="text-xs text-slate-700">
-                            Nome do negócio
-                          </Label>
+                          <Label htmlFor="searchName" className="text-xs text-slate-700">Nome do negócio</Label>
                           <Input
                             id="searchName"
                             placeholder="Ex: Pizzaria Roma"
@@ -552,9 +524,7 @@ export default function Onboarding() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label htmlFor="searchAddress" className="text-xs text-slate-700">
-                            Cidade/Endereço
-                          </Label>
+                          <Label htmlFor="searchAddress" className="text-xs text-slate-700">Cidade/Endereço</Label>
                           <Input
                             id="searchAddress"
                             placeholder="Ex: São Paulo"
@@ -570,11 +540,7 @@ export default function Onboarding() {
                         disabled={isSearching || (!searchName.trim() && !searchAddress.trim())}
                         className="w-full bg-blue-600 text-white hover:bg-blue-700"
                       >
-                        {isSearching ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Search className="h-4 w-4 mr-2" />
-                        )}
+                        {isSearching ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
                         Buscar no Google
                       </Button>
 
@@ -637,9 +603,7 @@ export default function Onboarding() {
                   ) : (
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="manualPlaceId" className="text-slate-700">
-                          Google Place ID
-                        </Label>
+                        <Label htmlFor="manualPlaceId" className="text-slate-700">Google Place ID</Label>
                         <Input
                           id="manualPlaceId"
                           placeholder="ChIJ..."

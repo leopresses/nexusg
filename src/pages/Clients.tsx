@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
@@ -63,34 +63,27 @@ export default function Clients() {
   const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/clients");
 
   const navigate = useNavigate();
-  const isMountedRef = useRef(true);
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
 
   const clientIds = useMemo(() => clients.map((c) => c.id), [clients]);
   const { getStatsForClient } = useClientTasks(clientIds);
 
-  const fetchClients = useCallback(async () => {
+  const fetchClients = async () => {
     try {
-      isMountedRef.current && setIsLoading(true);
+      setIsLoading(true);
       const { data, error } = await supabase.from("clients").select("*").order("created_at", { ascending: false });
       if (error) throw error;
-      isMountedRef.current && setClients(data || []);
+      setClients(data || []);
     } catch (error) {
       console.error("Error fetching clients:", error);
       toast.error("Erro ao carregar clientes");
     } finally {
-      isMountedRef.current && setIsLoading(false);
+      setIsLoading(false);
     }
-  }, [user]);
+  };
 
   useEffect(() => {
     fetchClients();
-  }, [fetchClients]);
+  }, [user]);
 
   const handleClientClick = (clientId: string) => {
     navigate(`/clients/${clientId}`);
@@ -248,7 +241,7 @@ export default function Clients() {
           <Input
             placeholder="Buscar clientes..."
             value={searchQuery}
-            onChange={(e) => isMountedRef.current && setSearchQuery(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 h-10 rounded-full !bg-white !text-slate-900 border border-slate-200 shadow-sm focus-visible:ring-blue-600 placeholder:text-slate-500"
           />
         </div>

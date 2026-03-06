@@ -117,9 +117,9 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
       const pdfBlob = pdf.output('blob');
       
       // Upload to Supabase Storage
-      const path = `${user?.id}/${Date.now()}-${filename}`;
+      const path = `reports/${user?.id}/${Date.now()}-${filename}`;
       const { data, error } = await supabase.storage
-        .from('reports')
+        .from('brand-logos') // Using existing bucket for now
         .upload(path, pdfBlob, {
           contentType: 'application/pdf',
           cacheControl: '3600',
@@ -132,7 +132,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
 
       // Get signed URL (valid for 7 days)
       const { data: signedData } = await supabase.storage
-        .from('reports')
+        .from('brand-logos')
         .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days expiration
 
       return signedData?.signedUrl || null;
