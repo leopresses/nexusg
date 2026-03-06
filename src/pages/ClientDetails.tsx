@@ -26,7 +26,6 @@ import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
 import { ClientAvatar } from "@/components/clients/ClientAvatar";
 import { getBusinessTypeLabel } from "@/config/plans";
@@ -82,11 +81,7 @@ export default function ClientDetails() {
   const fetchClient = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
-        .from("clients")
-        .select("*")
-        .eq("id", clientId!)
-        .single();
+      const { data, error } = await supabase.from("clients").select("*").eq("id", clientId!).single();
       if (error) throw error;
       setClient(data);
     } catch (error) {
@@ -125,17 +120,34 @@ export default function ClientDetails() {
   };
 
   const typeLabels: Record<string, string> = {
-    restaurant: "Restaurante", cafe: "Café", bar: "Bar", store: "Loja",
-    food: "Alimentação", point_of_interest: "Ponto de interesse",
-    establishment: "Estabelecimento", beauty_salon: "Salão de Beleza",
-    hair_care: "Cabeleireiro", spa: "Spa", gym: "Academia",
-    bakery: "Padaria", clothing_store: "Loja de Roupas",
-    shopping_mall: "Shopping", supermarket: "Supermercado",
-    pharmacy: "Farmácia", hospital: "Hospital", dentist: "Dentista",
-    doctor: "Médico", lawyer: "Advogado", accounting: "Contabilidade",
-    real_estate_agency: "Imobiliária", car_dealer: "Concessionária",
-    car_repair: "Oficina", gas_station: "Posto de Combustível",
-    lodging: "Hospedagem", pet_store: "Pet Shop", veterinary_care: "Veterinário",
+    restaurant: "Restaurante",
+    cafe: "Café",
+    bar: "Bar",
+    store: "Loja",
+    food: "Alimentação",
+    point_of_interest: "Ponto de interesse",
+    establishment: "Estabelecimento",
+    beauty_salon: "Salão de Beleza",
+    hair_care: "Cabeleireiro",
+    spa: "Spa",
+    gym: "Academia",
+    bakery: "Padaria",
+    clothing_store: "Loja de Roupas",
+    shopping_mall: "Shopping",
+    supermarket: "Supermercado",
+    pharmacy: "Farmácia",
+    hospital: "Hospital",
+    dentist: "Dentista",
+    doctor: "Médico",
+    lawyer: "Advogado",
+    accounting: "Contabilidade",
+    real_estate_agency: "Imobiliária",
+    car_dealer: "Concessionária",
+    car_repair: "Oficina",
+    gas_station: "Posto de Combustível",
+    lodging: "Hospedagem",
+    pet_store: "Pet Shop",
+    veterinary_care: "Veterinário",
   };
 
   const formatType = (t: string) => typeLabels[t] || t.replace(/_/g, " ");
@@ -146,8 +158,9 @@ export default function ClientDetails() {
     CLOSED_PERMANENTLY: { label: "Fechado permanentemente", color: "bg-red-100 text-red-700 border-red-200" },
   };
 
-  const mapsUrl = snapshot.url
-    || (client?.place_id ? `https://www.google.com/maps/search/?api=1&query_place_id=${client.place_id}` : null);
+  const mapsUrl =
+    snapshot.url ||
+    (client?.place_id ? `https://www.google.com/maps/search/?api=1&query_place_id=${client.place_id}` : null);
 
   if (isLoading) {
     return (
@@ -195,7 +208,12 @@ export default function ClientDetails() {
               Sincronizar
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={() => navigate(`/tasks?client=${client.id}`)} className={btnClass}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/tasks?client=${client.id}`)}
+            className={btnClass}
+          >
             <ListTodo className="h-4 w-4 mr-2" /> Tarefas
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigate(`/audit/${client.id}`)} className={btnClass}>
@@ -204,13 +222,28 @@ export default function ClientDetails() {
           <Button variant="outline" size="sm" onClick={() => navigate("/alerts")} className={btnClass}>
             <Bell className="h-4 w-4 mr-2" /> Alertas
           </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate(`/recovery?client=${client.id}`)} className={btnClass}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/recovery?client=${client.id}`)}
+            className={btnClass}
+          >
             <ShieldAlert className="h-4 w-4 mr-2" /> Recuperação
           </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate(`/onboarding/client/${client.id}`)} className={btnClass}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/onboarding/client/${client.id}`)}
+            className={btnClass}
+          >
             <Rocket className="h-4 w-4 mr-2" /> Onboarding
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => navigate("/clients")} className="rounded-xl text-slate-500 hover:text-slate-700">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/clients")}
+            className="rounded-xl text-slate-500 hover:text-slate-700"
+          >
             <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
           </Button>
         </div>
@@ -267,7 +300,11 @@ export default function ClientDetails() {
                     <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Categorias</span>
                     <div className="flex flex-wrap gap-1.5 mt-1">
                       {snapshot.types!.slice(0, 6).map((t) => (
-                        <Badge key={t} variant="outline" className="text-xs border-slate-200 text-slate-600 bg-slate-50">
+                        <Badge
+                          key={t}
+                          variant="outline"
+                          className="text-xs border-slate-200 text-slate-600 bg-slate-50"
+                        >
                           {formatType(t)}
                         </Badge>
                       ))}
@@ -275,13 +312,22 @@ export default function ClientDetails() {
                   </div>
                 )}
                 <InfoRow label="Endereço" value={displayAddress} icon={<MapPin className="h-4 w-4" />} />
-                <InfoRow label="Telefone" value={snapshot.formatted_phone_number || snapshot.international_phone_number} icon={<Phone className="h-4 w-4" />} />
+                <InfoRow
+                  label="Telefone"
+                  value={snapshot.formatted_phone_number || snapshot.international_phone_number}
+                  icon={<Phone className="h-4 w-4" />}
+                />
                 {snapshot.website && (
                   <div>
                     <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Website</span>
                     <div className="flex items-center gap-2 mt-1">
                       <Globe className="h-4 w-4 text-slate-400" />
-                      <a href={snapshot.website} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline truncate">
+                      <a
+                        href={snapshot.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:underline truncate"
+                      >
                         {snapshot.website}
                       </a>
                       <ExternalLink className="h-3 w-3 text-blue-400 flex-shrink-0" />
@@ -292,7 +338,12 @@ export default function ClientDetails() {
                   <div>
                     <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Google Maps</span>
                     <div className="flex items-center gap-2 mt-1">
-                      <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                      <a
+                        href={mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:underline"
+                      >
                         Abrir no Google Maps
                       </a>
                       <ExternalLink className="h-3 w-3 text-blue-400" />
@@ -306,8 +357,17 @@ export default function ClientDetails() {
                       <code className="text-xs bg-slate-50 border border-slate-200 px-2 py-1 rounded font-mono text-slate-700 truncate max-w-xs">
                         {placeId}
                       </code>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-blue-600" onClick={() => copyToClipboard(placeId, "placeId")}>
-                        {copiedField === "placeId" ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-slate-400 hover:text-blue-600"
+                        onClick={() => copyToClipboard(placeId, "placeId")}
+                      >
+                        {copiedField === "placeId" ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -326,7 +386,9 @@ export default function ClientDetails() {
                 {snapshot.opening_hours?.weekday_text && snapshot.opening_hours.weekday_text.length > 0 ? (
                   <div className="space-y-1">
                     {snapshot.opening_hours.weekday_text.map((line, i) => (
-                      <p key={i} className="text-sm text-slate-700">{translateWeekdayLine(line)}</p>
+                      <p key={i} className="text-sm text-slate-700">
+                        {translateWeekdayLine(line)}
+                      </p>
                     ))}
                   </div>
                 ) : (
@@ -350,7 +412,9 @@ export default function ClientDetails() {
                       <span className="text-2xl font-bold text-slate-900">{snapshot.rating?.toFixed(1)}</span>
                     </div>
                     {snapshot.user_ratings_total !== undefined && (
-                      <span className="text-sm text-slate-500">({snapshot.user_ratings_total.toLocaleString("pt-BR")} avaliações)</span>
+                      <span className="text-sm text-slate-500">
+                        ({snapshot.user_ratings_total.toLocaleString("pt-BR")} avaliações)
+                      </span>
                     )}
                   </div>
                 )}
@@ -362,13 +426,14 @@ export default function ClientDetails() {
                           <span className="text-sm font-semibold text-slate-800">{review.author_name}</span>
                           <div className="flex items-center gap-0.5">
                             {Array.from({ length: 5 }).map((_, s) => (
-                              <Star key={s} className={`h-3 w-3 ${s < review.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"}`} />
+                              <Star
+                                key={s}
+                                className={`h-3 w-3 ${s < review.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"}`}
+                              />
                             ))}
                           </div>
                         </div>
-                        {review.text && (
-                          <p className="text-sm text-slate-600 line-clamp-3">{review.text}</p>
-                        )}
+                        {review.text && <p className="text-sm text-slate-600 line-clamp-3">{review.text}</p>}
                         {review.relative_time_description && (
                           <p className="text-xs text-slate-400 mt-1">{review.relative_time_description}</p>
                         )}
@@ -379,8 +444,18 @@ export default function ClientDetails() {
                   <div className="text-center py-4">
                     <p className="text-sm text-slate-400 italic mb-2">Nenhuma avaliação sincronizada</p>
                     {placeId && (
-                      <Button variant="outline" size="sm" className="rounded-xl text-xs" onClick={handleSync} disabled={isSyncing}>
-                        {isSyncing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl text-xs"
+                        onClick={handleSync}
+                        disabled={isSyncing}
+                      >
+                        {isSyncing ? (
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                        )}
                         Sincronizar avaliações
                       </Button>
                     )}
@@ -412,13 +487,17 @@ export default function ClientDetails() {
                 {snapshot.user_ratings_total !== undefined && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">Total de avaliações</span>
-                    <span className="text-lg font-bold text-slate-900">{snapshot.user_ratings_total?.toLocaleString("pt-BR")}</span>
+                    <span className="text-lg font-bold text-slate-900">
+                      {snapshot.user_ratings_total?.toLocaleString("pt-BR")}
+                    </span>
                   </div>
                 )}
                 {snapshot.business_status && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-slate-600">Status</span>
-                    <Badge className={`${statusLabels[snapshot.business_status]?.color || "bg-slate-100 text-slate-600"} font-medium text-xs`}>
+                    <Badge
+                      className={`${statusLabels[snapshot.business_status]?.color || "bg-slate-100 text-slate-600"} font-medium text-xs`}
+                    >
                       {statusLabels[snapshot.business_status]?.label || snapshot.business_status}
                     </Badge>
                   </div>
@@ -439,11 +518,16 @@ export default function ClientDetails() {
                   <div className="text-center py-6 rounded-xl bg-slate-50 border border-dashed border-slate-200">
                     <ImageIcon className="h-8 w-8 text-slate-300 mx-auto mb-2" />
                     <p className="text-sm text-slate-400 mb-2">Conecte o Google Places para carregar fotos</p>
-                    <Button variant="outline" size="sm" className="rounded-xl text-xs" onClick={() => navigate("/clients")}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl text-xs"
+                      onClick={() => navigate("/clients")}
+                    >
                       <MapPin className="h-3 w-3 mr-1" /> Conectar
                     </Button>
                   </div>
-                ) : (snapshot.photo_urls && snapshot.photo_urls.length > 0) ? (
+                ) : snapshot.photo_urls && snapshot.photo_urls.length > 0 ? (
                   <div className="grid grid-cols-3 gap-2">
                     {snapshot.photo_urls.slice(0, 9).map((url, i) => (
                       <button
@@ -456,37 +540,63 @@ export default function ClientDetails() {
                             <span className="text-xs text-slate-400">Erro</span>
                           </div>
                         ) : (
-                          <img src={url} alt={`Foto ${i + 1} de ${displayName}`} className="w-full h-full object-cover" loading="lazy"
-                            onError={() => setFailedPhotos(prev => new Set(prev).add(i))} />
+                          <img
+                            src={url}
+                            alt={`Foto ${i + 1} de ${displayName}`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            onError={() => setFailedPhotos((prev) => new Set(prev).add(i))}
+                          />
                         )}
                       </button>
                     ))}
                   </div>
-                ) : (snapshot.photos && snapshot.photos.some(p => p.url)) ? (
+                ) : snapshot.photos && snapshot.photos.some((p) => p.url) ? (
                   <div className="grid grid-cols-3 gap-2">
-                    {snapshot.photos.filter(p => p.url).slice(0, 9).map((photo, i) => {
-                      const idx = i + 100;
-                      return (
-                        <button key={i} onClick={() => !failedPhotos.has(idx) && setLightboxUrl(photo.url!)}
-                          className="aspect-square rounded-xl border border-slate-200 overflow-hidden bg-slate-100 hover:ring-2 hover:ring-blue-300 transition-all focus:outline-none">
-                          {failedPhotos.has(idx) ? (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <span className="text-xs text-slate-400">Erro</span>
-                            </div>
-                          ) : (
-                            <img src={photo.url!} alt={`Foto ${i + 1} de ${displayName}`} className="w-full h-full object-cover" loading="lazy"
-                              onError={() => setFailedPhotos(prev => new Set(prev).add(idx))} />
-                          )}
-                        </button>
-                      );
-                    })}
+                    {snapshot.photos
+                      .filter((p) => p.url)
+                      .slice(0, 9)
+                      .map((photo, i) => {
+                        const idx = i + 100;
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => !failedPhotos.has(idx) && setLightboxUrl(photo.url!)}
+                            className="aspect-square rounded-xl border border-slate-200 overflow-hidden bg-slate-100 hover:ring-2 hover:ring-blue-300 transition-all focus:outline-none"
+                          >
+                            {failedPhotos.has(idx) ? (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <span className="text-xs text-slate-400">Erro</span>
+                              </div>
+                            ) : (
+                              <img
+                                src={photo.url!}
+                                alt={`Foto ${i + 1} de ${displayName}`}
+                                className="w-full h-full object-cover"
+                                loading="lazy"
+                                onError={() => setFailedPhotos((prev) => new Set(prev).add(idx))}
+                              />
+                            )}
+                          </button>
+                        );
+                      })}
                   </div>
                 ) : (
                   <div className="text-center py-6 rounded-xl bg-slate-50 border border-dashed border-slate-200">
                     <ImageIcon className="h-8 w-8 text-slate-300 mx-auto mb-2" />
                     <p className="text-sm text-slate-400 mb-2">Nenhuma foto pública encontrada</p>
-                    <Button variant="outline" size="sm" className="rounded-xl text-xs" onClick={handleSync} disabled={isSyncing}>
-                      {isSyncing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl text-xs"
+                      onClick={handleSync}
+                      disabled={isSyncing}
+                    >
+                      {isSyncing ? (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                      )}
                       Sincronizar fotos
                     </Button>
                   </div>
@@ -507,8 +617,17 @@ export default function ClientDetails() {
                       <code className="text-xs bg-slate-50 border border-slate-200 px-2 py-1 rounded font-mono text-slate-700 truncate max-w-[180px]">
                         {placeId}
                       </code>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-blue-600" onClick={() => copyToClipboard(placeId, "placeId2")}>
-                        {copiedField === "placeId2" ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-slate-400 hover:text-blue-600"
+                        onClick={() => copyToClipboard(placeId, "placeId2")}
+                      >
+                        {copiedField === "placeId2" ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -516,7 +635,13 @@ export default function ClientDetails() {
                 <div>
                   <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Última atualização</span>
                   <p className="text-sm text-slate-700 mt-1">
-                    {new Date(client.updated_at || client.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    {new Date(client.updated_at || client.created_at).toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </p>
                 </div>
               </CardContent>
@@ -526,38 +651,24 @@ export default function ClientDetails() {
 
         {/* Photo Lightbox */}
         {lightboxUrl && (
-          <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setLightboxUrl(null)}>
+          <div
+            className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+            onClick={() => setLightboxUrl(null)}
+          >
             <div className="relative max-w-3xl max-h-[90vh] w-full" onClick={(e) => e.stopPropagation()}>
-              <button onClick={() => setLightboxUrl(null)} className="absolute -top-10 right-0 text-white hover:text-slate-300 transition-colors">
+              <button
+                onClick={() => setLightboxUrl(null)}
+                className="absolute -top-10 right-0 text-white hover:text-slate-300 transition-colors"
+              >
                 <X className="h-6 w-6" />
               </button>
-              <img src={lightboxUrl} alt="Foto ampliada" className="w-full h-auto max-h-[85vh] object-contain rounded-xl" />
+              <img
+                src={lightboxUrl}
+                alt="Foto ampliada"
+                className="w-full h-auto max-h-[85vh] object-contain rounded-xl"
+              />
             </div>
           </div>
-        )}
-
-        {/* Raw Snapshot Accordion */}
-        {hasSnapshot && (
-          <Accordion type="single" collapsible>
-            <AccordionItem value="snapshot" className="!bg-white border border-slate-200 rounded-2xl shadow-sm px-4">
-              <AccordionTrigger className="text-sm font-bold text-slate-700 hover:no-underline py-4">
-                Ver dados completos do snapshot
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="relative">
-                  <Button variant="outline" size="sm"
-                    className="absolute top-2 right-2 rounded-lg border-slate-200 text-slate-500 hover:text-blue-600 z-10"
-                    onClick={() => copyToClipboard(JSON.stringify(snapshot, null, 2), "json")}>
-                    {copiedField === "json" ? <Check className="h-3.5 w-3.5 mr-1.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
-                    Copiar JSON
-                  </Button>
-                  <pre className="text-xs bg-slate-50 border border-slate-200 rounded-xl p-4 overflow-auto max-h-96 font-mono text-slate-700">
-                    {JSON.stringify(snapshot, null, 2)}
-                  </pre>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
         )}
       </div>
     </AppLayout>
