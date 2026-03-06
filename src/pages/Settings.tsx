@@ -28,6 +28,7 @@ type BrandSettings = {
   company_name?: string | null;
   support_whatsapp?: string | null;
   primary_color?: string | null;
+  secondary_color?: string | null;
   logo_storage_url?: string | null;
   logo_display_url?: string | null;
   report_footer?: string | null;
@@ -46,6 +47,7 @@ export default function Settings() {
     company_name: "",
     support_whatsapp: "",
     primary_color: "#2563EB",
+    secondary_color: "#1D4ED8",
     logo_storage_url: "",
     logo_display_url: "",
     report_footer: "Relatório gerado por Gestão Nexus",
@@ -100,6 +102,7 @@ export default function Settings() {
           company_name: data.company_name ?? "",
           support_whatsapp: (data as any).support_whatsapp ?? "",
           primary_color: data.primary_color ?? "#2563EB",
+          secondary_color: (data as any).secondary_color ?? "#1D4ED8",
           logo_storage_url: data.logo_url ?? "",
           logo_display_url: displayLogoUrl,
           report_footer: data.report_footer ?? "Relatório gerado por Gestão Nexus",
@@ -219,6 +222,7 @@ export default function Settings() {
         company_name: settings.company_name || null,
         support_whatsapp: settings.support_whatsapp || null,
         primary_color: settings.primary_color || "#2563EB",
+        secondary_color: settings.secondary_color || "#1D4ED8",
         report_footer: settings.report_footer || null,
         updated_at: new Date().toISOString(),
       };
@@ -252,7 +256,7 @@ export default function Settings() {
 
   const companyName = (settings.company_name || "Gestão Nexus").toString().trim() || "Gestão Nexus";
   const primaryColor = (settings.primary_color || "#2563EB").toString();
-  const secondaryColor = "#1D4ED8";
+  const secondaryColor = (settings.secondary_color || "#1D4ED8").toString();
   const footerText = (settings.report_footer || "Relatório gerado por Gestão Nexus").toString();
   const whatsappText = settings.support_whatsapp?.trim() || "";
   const initialLetter = companyName.charAt(0).toUpperCase() || "G";
@@ -445,6 +449,22 @@ export default function Settings() {
                     <Input
                       value={settings.primary_color || ""}
                       onChange={(e) => setSettings((p) => ({ ...p, primary_color: e.target.value }))}
+                      className="flex-1 !bg-white !text-slate-900"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-700 font-bold">Cor do Topo do Relatório</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      value={settings.secondary_color || "#1D4ED8"}
+                      onChange={(e) => setSettings((p) => ({ ...p, secondary_color: e.target.value }))}
+                      className="w-12 h-10 p-1 !bg-white border-slate-200 cursor-pointer"
+                    />
+                    <Input
+                      value={settings.secondary_color || ""}
+                      onChange={(e) => setSettings((p) => ({ ...p, secondary_color: e.target.value }))}
                       className="flex-1 !bg-white !text-slate-900"
                     />
                   </div>
