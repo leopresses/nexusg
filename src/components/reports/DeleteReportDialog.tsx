@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,35 +18,32 @@ interface DeleteReportDialogProps {
   onConfirm: () => void;
 }
 
-export function DeleteReportDialog({
-  open,
-  onOpenChange,
-  reportName,
-  onConfirm,
-}: DeleteReportDialogProps) {
-  return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2">
-            <Trash2 className="h-5 w-5 text-destructive" />
-            Excluir Relatório
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            Tem certeza que deseja excluir o relatório <strong>"{reportName}"</strong>?
-            Esta ação não pode ser desfeita.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={onConfirm}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            Excluir
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
+export const DeleteReportDialog = forwardRef<HTMLDivElement, DeleteReportDialogProps>(
+  function DeleteReportDialog({ open, onOpenChange, reportName, onConfirm }, ref) {
+    return (
+      <AlertDialog open={open} onOpenChange={onOpenChange}>
+        <AlertDialogContent ref={ref}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              Excluir Relatório
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o relatório <strong>"{reportName}"</strong>?
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={onConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    );
+  }
+);
