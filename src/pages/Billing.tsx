@@ -35,19 +35,11 @@ export default function Billing() {
     } catch {
       toast.error("Erro ao abrir portal de assinatura.");
     }
-  };
+  }, [openPortal]);
 
-  const statusInfo = subscription?.status
-    ? STATUS_LABELS[subscription.status] || { label: subscription.status, color: "!bg-slate-50 !text-slate-700 border-slate-200" }
-    : null;
-
-  const periodEnd = subscription?.current_period_end
-    ? new Date(subscription.current_period_end).toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-      })
-    : null;
+  const handleGoPricing = useCallback(() => {
+    navigate("/pricing");
+  }, [navigate]);
 
   if (isLoading) {
     return (
@@ -60,9 +52,8 @@ export default function Billing() {
   }
 
   return (
-    <AppLayout title="Faturamento" subtitle="Gerencie sua assinatura e plano">
-      <div className="max-w-2xl space-y-6">
-        {/* Plano Atual */}
+    <AppLayout title="Faturamento" subtitle="Gerencie seu plano e assinatura">
+      <div className="max-w-3xl mx-auto space-y-6">
         <motion.div
           className="rounded-2xl !bg-white border border-slate-200 p-6 shadow-sm"
           initial={{ opacity: 0, y: 20 }}
@@ -81,19 +72,22 @@ export default function Billing() {
           <div className="space-y-4">
             <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100">
               <div>
-                <p className="text-sm text-slate-500">Plano</p>
-                <p className="text-lg font-bold text-slate-900">{getPlanLabel(currentPlan)}</p>
+                <h2 className="text-lg font-bold text-slate-900 mb-1">Sua assinatura</h2>
+                <p className="text-slate-600">Plano atual e status do pagamento</p>
               </div>
-              {statusInfo && (
-                <Badge className={`${statusInfo.color} border text-sm px-3 py-1 rounded-full font-bold`}>
-                  {statusInfo.label}
-                </Badge>
-              )}
-              {!subscription && (
-                <Badge className="!bg-slate-100 !text-slate-600 border border-slate-200 text-sm px-3 py-1 rounded-full font-bold">
-                  Gratuito
-                </Badge>
-              )}
+            </div>
+
+            {statusInfo && (
+              <Badge variant="outline" className={statusInfo.color}>
+                {statusInfo.label}
+              </Badge>
+            )}
+          </div>
+
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="text-xs text-slate-500 mb-1">Plano</div>
+              <div className="font-bold text-slate-900">{planLabel}</div>
             </div>
 
             <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100">
@@ -116,39 +110,23 @@ export default function Billing() {
               </div>
             )}
           </div>
-        </motion.div>
 
-        {/* Ações */}
-        <motion.div
-          className="rounded-2xl !bg-white border border-slate-200 p-6 shadow-sm"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <h3 className="font-bold text-slate-900 mb-4">Ações</h3>
-          <div className="space-y-3">
-            {isSubscriptionActive && currentPlan !== "starter" && (
-              <Button
-                onClick={handleOpenPortal}
-                disabled={isPortalLoading}
-                className="w-full h-12 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700 font-bold gap-2"
-              >
-                {isPortalLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ExternalLink className="h-4 w-4" />
-                )}
-                Gerenciar assinatura
-              </Button>
-            )}
-
+          <div className="mt-6 flex flex-col sm:flex-row gap-3">
             <Button
-              variant="outline"
-              onClick={() => navigate("/pricing")}
-              className="w-full h-12 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 font-bold gap-2"
+              onClick={handleOpenPortal}
+              disabled={isPortalLoading}
+              className="h-11 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700"
             >
-              <ArrowRight className="h-4 w-4" />
-              {currentPlan === "starter" ? "Fazer upgrade" : "Alterar plano"}
+              {isPortalLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <ExternalLink className="h-4 w-4 mr-2" />
+              )}
+              Gerenciar assinatura
+            </Button>
+
+            <Button variant="outline" onClick={handleGoPricing} className="h-11 rounded-xl bg-white border-slate-200">
+              Ver planos
             </Button>
           </div>
         </motion.div>
