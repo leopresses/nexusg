@@ -19,14 +19,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function Billing() {
   const { profile } = useAuth();
-  const {
-    subscription,
-    isLoading,
-    isPortalLoading,
-    isSubscriptionActive,
-    currentPlan,
-    openPortal,
-  } = useBilling();
+  const { subscription, isLoading, isPortalLoading, isSubscriptionActive, currentPlan, openPortal } = useBilling();
   const navigate = useNavigate();
 
   const handleOpenPortal = async () => {
@@ -37,9 +30,24 @@ export default function Billing() {
     }
   };
 
+  const hasPaidPlan = currentPlan !== "starter";
+
+  const fallbackStatus = hasPaidPlan
+    ? {
+        label: "Pago",
+        color: "!bg-emerald-50 !text-emerald-700 border-emerald-200",
+      }
+    : {
+        label: "Gratuito",
+        color: "!bg-slate-100 !text-slate-600 border-slate-200",
+      };
+
   const statusInfo = subscription?.status
-    ? STATUS_LABELS[subscription.status] || { label: subscription.status, color: "!bg-slate-50 !text-slate-700 border-slate-200" }
-    : null;
+    ? STATUS_LABELS[subscription.status] || {
+        label: subscription.status,
+        color: "!bg-slate-50 !text-slate-700 border-slate-200",
+      }
+    : fallbackStatus;
 
   const periodEnd = subscription?.current_period_end
     ? new Date(subscription.current_period_end).toLocaleDateString("pt-BR", {
@@ -62,7 +70,6 @@ export default function Billing() {
   return (
     <AppLayout title="Faturamento" subtitle="Gerencie sua assinatura e plano">
       <div className="max-w-2xl space-y-6">
-        {/* Plano Atual */}
         <motion.div
           className="rounded-2xl !bg-white border border-slate-200 p-6 shadow-sm"
           initial={{ opacity: 0, y: 20 }}
@@ -84,24 +91,16 @@ export default function Billing() {
                 <p className="text-sm text-slate-500">Plano</p>
                 <p className="text-lg font-bold text-slate-900">{getPlanLabel(currentPlan)}</p>
               </div>
-              {statusInfo && (
-                <Badge className={`${statusInfo.color} border text-sm px-3 py-1 rounded-full font-bold`}>
-                  {statusInfo.label}
-                </Badge>
-              )}
-              {!subscription && (
-                <Badge className="!bg-slate-100 !text-slate-600 border border-slate-200 text-sm px-3 py-1 rounded-full font-bold">
-                  Gratuito
-                </Badge>
-              )}
+
+              <Badge className={`${statusInfo.color} border text-sm px-3 py-1 rounded-full font-bold`}>
+                {statusInfo.label}
+              </Badge>
             </div>
 
             <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100">
               <div>
                 <p className="text-sm text-slate-500">Limite de clientes</p>
-                <p className="text-lg font-bold text-slate-900">
-                  {formatClientLimit(profile?.clients_limit || 1)}
-                </p>
+                <p className="text-lg font-bold text-slate-900">{formatClientLimit(profile?.clients_limit || 1)}</p>
               </div>
               <Shield className="h-5 w-5 text-slate-400" />
             </div>
@@ -118,7 +117,6 @@ export default function Billing() {
           </div>
         </motion.div>
 
-        {/* Ações */}
         <motion.div
           className="rounded-2xl !bg-white border border-slate-200 p-6 shadow-sm"
           initial={{ opacity: 0, y: 20 }}
@@ -133,11 +131,7 @@ export default function Billing() {
                 disabled={isPortalLoading}
                 className="w-full h-12 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700 font-bold gap-2"
               >
-                {isPortalLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ExternalLink className="h-4 w-4" />
-                )}
+                {isPortalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
                 Gerenciar assinatura
               </Button>
             )}
