@@ -7,7 +7,7 @@
    Colors: Blue primary, Slate neutrals
 */
 
-@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -68,7 +68,7 @@
     --gradient-dark: linear-gradient(180deg, hsl(215, 25%, 15%) 0%, hsl(215, 25%, 10%) 100%);
     --gradient-card: linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(210, 20%, 98%) 100%);
     --gradient-cyber: linear-gradient(135deg, hsl(210, 20%, 98%) 0%, hsl(0, 0%, 100%) 100%);
-
+    
     /* Shadows */
     --shadow-neon: 0 4px 20px -5px hsla(221, 83%, 53%, 0.25);
     --shadow-cyan: 0 4px 20px -5px hsla(221, 83%, 53%, 0.2);
@@ -84,17 +84,12 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  h1, h2, h3, h4, h5, h6 {
     @apply font-bold tracking-tight;
-    font-family: "Montserrat", system-ui, sans-serif;
+    font-family: 'Montserrat', system-ui, sans-serif;
   }
 }
 
@@ -184,7 +179,7 @@
 
   /* Subtle grid pattern */
   .bg-grid-pattern {
-    background-image:
+    background-image: 
       linear-gradient(hsla(214, 32%, 88%, 0.3) 1px, transparent 1px),
       linear-gradient(90deg, hsla(214, 32%, 88%, 0.3) 1px, transparent 1px);
     background-size: 40px 40px;
@@ -192,7 +187,8 @@
 
   /* Subtle lines decoration */
   .cyber-lines {
-    background-image: linear-gradient(90deg, transparent 0%, hsla(214, 32%, 88%, 0.5) 50%, transparent 100%);
+    background-image: 
+      linear-gradient(90deg, transparent 0%, hsla(214, 32%, 88%, 0.5) 50%, transparent 100%);
     background-size: 100% 1px;
     background-repeat: no-repeat;
     background-position: bottom;
@@ -213,64 +209,42 @@
   }
 
   @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
+    from { 
+      opacity: 0; 
+      transform: translateY(20px); 
     }
-    to {
-      opacity: 1;
-      transform: translateY(0);
+    to { 
+      opacity: 1; 
+      transform: translateY(0); 
     }
   }
 
   @keyframes scaleIn {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
+    from { 
+      opacity: 0; 
+      transform: scale(0.95); 
     }
-    to {
-      opacity: 1;
-      transform: scale(1);
+    to { 
+      opacity: 1; 
+      transform: scale(1); 
     }
   }
 
   @keyframes pulse-blue {
-    0%,
-    100% {
+    0%, 100% { 
       box-shadow: 0 0 20px -5px hsla(221, 83%, 53%, 0.3);
     }
-    50% {
+    50% { 
       box-shadow: 0 0 30px -5px hsla(221, 83%, 53%, 0.5);
     }
   }
 
   .animate-pulse-gold {
     animation: pulse-blue 2s ease-in-out infinite;
-  }
-  /* ================================
-   Fix: remover "olhinho" nativo do navegador (Edge/IE/Chrome)
-   Mantém apenas o botão custom do app
-================================ */
-
-  /* Edge / Internet Explorer */
-  input[type="password"]::-ms-reveal,
-  input[type="password"]::-ms-clear {
-    display: none;
-  }
-
-  /* Chromium (Edge/Chrome) - botão de autofill/credenciais */
-  input[type="password"]::-webkit-credentials-auto-fill-button {
-    visibility: hidden;
-    position: absolute;
-    right: 0;
   }
 }
