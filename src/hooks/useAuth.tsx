@@ -63,22 +63,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let mounted = true;
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!mounted) return;
         setSession(session);
         setUser(session?.user ?? null);
 
         // Defer profile/roles fetch with setTimeout to avoid deadlocks
         if (session?.user) {
           setTimeout(async () => {
-            const [profileData, rolesData] = await Promise.all([
-              fetchProfile(session.user.id),
-              fetchRoles(session.user.id),
-            ]);
-            setProfile(profileData);
-            setRoles(rolesData);
-            setIsLoading(false);
+            if (!mounted) return;
+            try {
+              const [profileData, rolesData] = await Promise.all([
+                fetchProfile(session.user.id),
+                fetchRoles(session.user.id),
+              ]);
+              if (!mounted) return;
+              setProfile(profileData);
+              setRoles(rolesData);
+            } catch (err) {
+              console.error("Error loading user data:", err);
+            } finally {
+              if (mounted) setIsLoading(false);
+            }
           }, 0);
         } else {
           setProfile(null);
@@ -90,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
       setSession(session);
       setUser(session?.user ?? null);
 
@@ -98,16 +109,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           fetchProfile(session.user.id),
           fetchRoles(session.user.id),
         ]).then(([profileData, rolesData]) => {
+          if (!mounted) return;
           setProfile(profileData);
           setRoles(rolesData);
           setIsLoading(false);
+        }).catch((err) => {
+          console.error("Error loading session data:", err);
+          if (mounted) setIsLoading(false);
         });
       } else {
         setIsLoading(false);
       }
+    }).catch((err) => {
+      console.error("Error getting session:", err);
+      if (mounted) setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string) => {
@@ -140,9 +161,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     // Limpa histórico de tutoriais do usuário atual antes do logout
     if (user?.id) {
-      clearTutorialHistory(user.id);
+      try { clearTutorialHistory(user.id); } catch { /* safe */ }
     }
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Error during sign out:", err);
+    }
     setUser(null);
     setSession(null);
     setProfile(null);
