@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { safeStorage } from "@/lib/safeStorage";
 
 /**
  * Hook robusto para controlar tutoriais contextuais por página.
@@ -16,46 +17,33 @@ export function useHelpTutorial(pageKey: string) {
   const { user, isLoading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
-  // Ref para evitar que o efeito abra o tutorial mais de uma vez
-  // mesmo que as dependências mudem (ex: StrictMode, re-renders de auth)
   const hasCheckedRef = useRef(false);
 
-  // Chave única por usuário + página
   const storageKey = user?.id
     ? `tutorial_seen_${pageKey}_${user.id}`
     : null;
 
   useEffect(() => {
-    // Aguarda auth resolver completamente
     if (isLoading) return;
-
-    // Sem usuário logado, não abre tutorial
     if (!storageKey) return;
-
-    // Garante que a verificação só ocorre UMA vez por montagem do componente,
-    // evitando que re-renders (isLoading alternando, StrictMode) reabram o tutorial
     if (hasCheckedRef.current) return;
     hasCheckedRef.current = true;
 
-    // Delay para garantir que o componente está completamente renderizado
     const timer = setTimeout(() => {
-      const hasSeen = localStorage.getItem(storageKey);
+      const hasSeen = safeStorage.getItem(storageKey);
       if (!hasSeen) {
         setIsOpen(true);
       }
     }, 800);
 
     return () => clearTimeout(timer);
-    // ⚠️ INTENCIONALMENTE não inclui isLoading nas deps:
-    // storageKey só tem valor quando user existe (isLoading=false implícito).
-    // Incluir isLoading causaria re-execução e reabertura indevida do tutorial.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storageKey]);
 
   const close = useCallback(() => {
     setIsOpen(false);
     if (storageKey) {
-      localStorage.setItem(storageKey, "true");
+      safeStorage.setItem(storageKey, "true");
     }
   }, [storageKey]);
 
@@ -68,28 +56,23 @@ export function useHelpTutorial(pageKey: string) {
 
 /**
  * Limpa TODAS as chaves de tutorial do localStorage para um usuário específico.
- * Deve ser chamado no logout para evitar que resíduos de sessão afutem novos usuários.
  */
 export function clearTutorialHistory(userId?: string) {
-  const prefix = userId
-    ? `tutorial_seen_`  // filtramos por userId abaixo
-    : `tutorial_seen_`;
-
+  const prefix = "tutorial_seen_";
   const keysToRemove: string[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
+
+  for (let i = 0; i < safeStorage.length; i++) {
+    const key = safeStorage.key(i);
     if (!key) continue;
     if (userId) {
-      // Remove apenas chaves deste usuário específico
       if (key.startsWith(prefix) && key.endsWith(`_${userId}`)) {
         keysToRemove.push(key);
       }
     } else {
-      // Remove todas as chaves de tutorial (logout sem userId)
       if (key.startsWith(prefix)) {
         keysToRemove.push(key);
       }
     }
   }
-  keysToRemove.forEach((k) => localStorage.removeItem(k));
+  keysToRemove.forEach((k) => safeStorage.removeItem(k));
 }

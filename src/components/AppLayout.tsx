@@ -75,14 +75,16 @@ export function AppLayout({ children, title, subtitle, headerActions }: AppLayou
     try {
       await signOut();
 
-      // limpa qualquer cache de sessão
-      localStorage.clear();
-      sessionStorage.clear();
+      // limpa qualquer cache de sessão (safe wrappers)
+      try { localStorage.clear(); } catch { /* blocked */ }
+      try { sessionStorage.clear(); } catch { /* blocked */ }
 
       // força refresh e volta para landing
       window.location.href = "/";
     } catch (error) {
       console.error("Erro ao sair:", error);
+      // Even if signOut fails, redirect to landing
+      window.location.href = "/";
     }
   };
 
