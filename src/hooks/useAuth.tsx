@@ -161,9 +161,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     // Limpa histórico de tutoriais do usuário atual antes do logout
     if (user?.id) {
-      clearTutorialHistory(user.id);
+      try { clearTutorialHistory(user.id); } catch { /* safe */ }
     }
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Error during sign out:", err);
+    }
     setUser(null);
     setSession(null);
     setProfile(null);
