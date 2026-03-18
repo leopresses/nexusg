@@ -222,7 +222,7 @@ export default function Settings() {
         company_name: settings.company_name || null,
         support_whatsapp: settings.support_whatsapp || null,
         primary_color: settings.primary_color || "#2563EB",
-        header_color: settings.header_color || "#1D4ED8",
+        secondary_color: settings.header_color || "#1D4ED8",
         report_footer: settings.report_footer || null,
         updated_at: new Date().toISOString(),
       };
