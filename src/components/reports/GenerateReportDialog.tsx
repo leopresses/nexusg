@@ -253,15 +253,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
         client: {
           ...selectedClient,
           avatarSignedUrl,
-          placeSnapshot: placeSnapshot ? {
-            rating: placeSnapshot.rating,
-            user_ratings_total: placeSnapshot.user_ratings_total,
-            formatted_phone_number: placeSnapshot.formatted_phone_number,
-            website: placeSnapshot.website,
-            url: placeSnapshot.url || (selectedClient as any).google_maps_url,
-            opening_hours: placeSnapshot.opening_hours,
-          } : null,
-        },
+        } as ClientData,
         tasks,
         period: periodDates,
         metrics: {
