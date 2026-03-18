@@ -175,15 +175,39 @@ export default function Pricing() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Badge className="!bg-emerald-50 !text-emerald-700 border border-emerald-200 text-sm px-4 py-1.5 rounded-full font-bold whitespace-nowrap">
-              {isSubscriptionActive && currentPlan !== "starter"
-                ? "Assinatura Ativa"
-                : currentPlan === "starter"
-                  ? "Gratuito"
-                  : subscription?.status === "past_due"
-                    ? "Pagamento Pendente"
-                    : "Inativo"}
-            </Badge>
+            {(() => {
+              const isActive = isSubscriptionActive && currentPlan !== "starter";
+              const isStarter = currentPlan === "starter" && !subscription;
+              const isPastDue = subscription?.status === "past_due";
+              const isPaidProfileNoSub = currentPlan !== "starter" && !subscription;
+
+              if (isActive || isPaidProfileNoSub) {
+                return (
+                  <Badge className="!bg-emerald-50 !text-emerald-700 border border-emerald-200 text-sm px-4 py-1.5 rounded-full font-bold whitespace-nowrap">
+                    {isActive ? "Assinatura Ativa" : "Pago"}
+                  </Badge>
+                );
+              }
+              if (isStarter) {
+                return (
+                  <Badge className="!bg-slate-100 !text-slate-600 border border-slate-200 text-sm px-4 py-1.5 rounded-full font-bold whitespace-nowrap">
+                    Gratuito
+                  </Badge>
+                );
+              }
+              if (isPastDue) {
+                return (
+                  <Badge className="!bg-amber-50 !text-amber-700 border border-amber-200 text-sm px-4 py-1.5 rounded-full font-bold whitespace-nowrap">
+                    Pagamento Pendente
+                  </Badge>
+                );
+              }
+              return (
+                <Badge className="!bg-red-50 !text-red-700 border border-red-200 text-sm px-4 py-1.5 rounded-full font-bold whitespace-nowrap">
+                  Inativo
+                </Badge>
+              );
+            })()}
             {hasPaidSubscription && (
               <Button
                 variant="outline"
