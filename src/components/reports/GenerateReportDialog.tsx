@@ -208,7 +208,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
       const completionRate = 100;
 
       // Fetch Google Places metrics for this client and period
-      let googleMetrics: GoogleMetrics | undefined;
+      let googleMetrics: AggregatedMetrics | undefined;
       try {
         const metricsMap = await getMetricsByClientForPeriod(
           [selectedClientId],
