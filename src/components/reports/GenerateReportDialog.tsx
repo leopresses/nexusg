@@ -263,7 +263,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
           inProgressTasks,
           completionRate,
         },
-        googleMetrics,
+        
         agencyLogoUrl,
       };
 
