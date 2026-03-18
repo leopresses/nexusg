@@ -7,7 +7,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useBilling } from "@/hooks/useBilling";
 import { PLANS, formatClientLimit } from "@/config/plans";
-import { STRIPE_PRICE_MAP } from "@/config/stripe";
+import { isPaidPlan } from "@/config/stripe";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
 
@@ -208,7 +208,7 @@ export default function Pricing() {
           {PLANS.map((plan, index) => {
             const isCurrentPlan = plan.id === currentPlan;
             const PlanIcon = plan.icon;
-            const hasStripePrice = !!STRIPE_PRICE_MAP[plan.id];
+            const hasStripePrice = isPaidPlan(plan.id);
 
             return (
               <motion.div
