@@ -28,7 +28,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBrandSettings } from '@/hooks/useBrandSettings';
 import { useReports } from '@/hooks/useReports';
 import { useGoogleMetrics } from '@/hooks/useGoogleMetrics';
-import { generateClientReport, downloadPdf, type ReportData, type ClientData, type TaskData, type GoogleMetrics } from '@/lib/pdfGenerator';
+import { generateClientReport, downloadPdf, type ReportData, type ClientData, type TaskData } from '@/lib/pdfGenerator';
+import type { AggregatedMetrics } from '@/hooks/useGoogleMetrics';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -207,7 +208,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
       const completionRate = 100;
 
       // Fetch Google Places metrics for this client and period
-      let googleMetrics: GoogleMetrics | undefined;
+      let googleMetrics: AggregatedMetrics | undefined;
       try {
         const metricsMap = await getMetricsByClientForPeriod(
           [selectedClientId],
@@ -252,15 +253,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
         client: {
           ...selectedClient,
           avatarSignedUrl,
-          placeSnapshot: placeSnapshot ? {
-            rating: placeSnapshot.rating,
-            user_ratings_total: placeSnapshot.user_ratings_total,
-            formatted_phone_number: placeSnapshot.formatted_phone_number,
-            website: placeSnapshot.website,
-            url: placeSnapshot.url || (selectedClient as any).google_maps_url,
-            opening_hours: placeSnapshot.opening_hours,
-          } : null,
-        },
+        } as ClientData,
         tasks,
         period: periodDates,
         metrics: {
@@ -270,7 +263,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
           inProgressTasks,
           completionRate,
         },
-        googleMetrics,
+        
         agencyLogoUrl,
       };
 
