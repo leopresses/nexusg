@@ -17,22 +17,22 @@
  */
 export const STRIPE_PRICE_IDS: Record<string, string | null> = {
   starter: null,
-  tatico: "price_1T6Y7V1wSF4SiKrjrvUG1SF6",
-  pro: "price_1T6Y7n1wSF4SiKrjrLI3SoRS",
-  elite: "price_1T6Y831wSF4SiKrjGT9VHvgF",
-  agency: "price_1T6Y8H1wSF4SiKrjVYk1kAao",
+  tatico: "price_1TBZojEmeysLJoAP0cXWlbj0",
+  pro: "price_1TBZqMEmeysLJoAPClGm1VzF",
+  elite: "price_1TBZrWEmeysLJoAPsKwVQvvP",
+  agency: "price_1TBZsMEmeysLJoAPhQP3SEhf",
 };
 
 /** @deprecated Use STRIPE_PRICE_IDS instead */
 export const STRIPE_PRICE_MAP: Record<string, string> = Object.fromEntries(
-  Object.entries(STRIPE_PRICE_IDS).filter(([, v]) => v !== null)
+  Object.entries(STRIPE_PRICE_IDS).filter(([, v]) => v !== null),
 ) as Record<string, string>;
 
 // Reverse mapping: price_id -> plan name (excludes starter)
 export const PRICE_TO_PLAN: Record<string, string> = Object.fromEntries(
   Object.entries(STRIPE_PRICE_IDS)
     .filter(([, v]) => v !== null)
-    .map(([plan, priceId]) => [priceId as string, plan])
+    .map(([plan, priceId]) => [priceId as string, plan]),
 );
 
 // Plan limits (mirrors plans.ts — used by edge functions as reference)
