@@ -53,32 +53,7 @@ Admin: - Gestão de usuários e planos - Gestão de templates de tarefas
 
 ------------------------------------------------------------------------
 
-📂 Estrutura do Projeto
-
-src/ components/ → Componentes reutilizáveis e UI pages/ → Páginas
-principais do sistema hooks/ → Hooks customizados integrations/ →
-Integrações externas (Supabase) lib/ → Utilitários gerais config/ →
-Configurações globais
-
-------------------------------------------------------------------------
-
 🗄️ Banco de Dados (Supabase)
-
-Principais tabelas: - profiles - user_roles - clients - task_templates -
-tasks - reports - brand_settings - google_metrics_daily
-
-RPC Functions: - can_add_client - generate_tasks_for_client -
-generate_weekly_tasks_for_all_clients
-
-------------------------------------------------------------------------
-
-▶️ Instalação e Execução
-
-Instalar dependências: npm install
-
-Executar projeto: npm run dev
-
-Build produção: npm run build
 
 ------------------------------------------------------------------------
 
