@@ -1,7 +1,5 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { safeText, safeNumber, safeUrl } from "./textSanitizer";
-import { translateWeekdayLine } from "./i18n";
 
 export interface BrandSettings {
   companyName: string;
@@ -20,14 +18,6 @@ export interface ClientData {
   address: string | null;
   is_active: boolean;
   avatarSignedUrl?: string | null;
-  placeSnapshot?: {
-    rating?: number;
-    user_ratings_total?: number;
-    formatted_phone_number?: string;
-    website?: string;
-    url?: string;
-    opening_hours?: { weekday_text?: string[] };
-  } | null;
 }
 
 export interface TaskData {
@@ -36,14 +26,6 @@ export interface TaskData {
   status: "pending" | "in_progress" | "completed";
   completed_at: string | null;
   client_id: string;
-}
-
-export interface GoogleMetrics {
-  views: number;
-  calls: number;
-  directions: number;
-  websiteClicks: number;
-  messages: number;
 }
 
 export interface ReportData {
@@ -60,7 +42,6 @@ export interface ReportData {
     inProgressTasks: number;
     completionRate: number;
   };
-  googleMetrics?: GoogleMetrics;
   agencyLogoUrl?: string | null;
 }
 
@@ -157,13 +138,10 @@ export async function generateClientReport(brandSettings: BrandSettings, reportD
   // ===== CLIENT INFO (with photo) =====
   let yPos = 55;
 
-  const clientInfoX = margin;
-
   // Client photo (if available)
   if (reportData.client.avatarSignedUrl) {
     try {
       doc.addImage(reportData.client.avatarSignedUrl, "JPEG", margin, yPos - 5, 20, 20);
-      // Shift text to the right of the photo
       doc.setTextColor(40, 40, 40);
       doc.setFontSize(20);
       doc.setFont("helvetica", "bold");
@@ -179,7 +157,6 @@ export async function generateClientReport(brandSettings: BrandSettings, reportD
         yPos,
       );
     } catch {
-      // If image fails, render text only
       doc.setTextColor(40, 40, 40);
       doc.setFontSize(20);
       doc.setFont("helvetica", "bold");
@@ -216,85 +193,8 @@ export async function generateClientReport(brandSettings: BrandSettings, reportD
   doc.setFontSize(10);
   doc.text(`Período: ${formatDate(reportData.period.start)} a ${formatDate(reportData.period.end)}`, margin, yPos);
 
-  // ===== GOOGLE PLACES SNAPSHOT (public data) =====
-  const snapshot = reportData.client.placeSnapshot as Record<string, unknown> | null | undefined;
-  if (snapshot && typeof snapshot === "object") {
-    yPos += 12;
-
-    const lines: string[] = [];
-
-    // Nome (ONLY)
-    const placeName = safeText(snapshot.name, "");
-    if (placeName) lines.push(`Nome: ${placeName}`);
-
-    // Endereço (ONLY)
-    const addr = safeText(snapshot.formatted_address, "");
-    if (addr) lines.push(`Endereço: ${addr}`);
-
-    // Horário (ONLY)
-    const oh = snapshot.opening_hours as Record<string, unknown> | undefined;
-    if (oh && Array.isArray(oh.weekday_text)) {
-      const safeHours = oh.weekday_text
-        .slice(0, 4)
-        .map((h: unknown) => translateWeekdayLine(safeText(h, "")))
-        .filter(Boolean);
-      if (safeHours.length > 0) {
-        lines.push(`Horário: ${safeHours.join(" | ")}`);
-      }
-    }
-
-    // Site (ONLY)
-    const website = safeUrl(snapshot.website, "");
-    if (website) {
-      const short = website.length > 70 ? website.substring(0, 70) + "..." : website;
-      lines.push(`Site: ${short}`);
-    }
-
-    if (lines.length === 0) {
-      lines.push("Dados públicos do negócio não disponíveis para este cliente.");
-    }
-
-    // Calculate dynamic height
-    const lineHeight = 8;
-    const headerHeight = 14;
-    const snapshotHeight = headerHeight + lines.length * lineHeight + 4;
-
-    // Background
-    doc.setFillColor(235, 243, 254);
-    doc.roundedRect(margin, yPos, pageWidth - margin * 2, snapshotHeight, 3, 3, "F");
-    doc.setDrawColor(66, 133, 244);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(margin, yPos, pageWidth - margin * 2, snapshotHeight, 3, 3, "S");
-
-    // Title
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(30, 64, 175);
-    doc.text("Dados públicos do negócio (Google)", margin + 4, yPos + 10);
-
-    // Content lines
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(60, 60, 60);
-    doc.setFontSize(8);
-
-    let lineY = yPos + headerHeight + 4;
-    for (const line of lines) {
-      doc.text(line, margin + 4, lineY);
-      lineY += lineHeight;
-    }
-
-    yPos += snapshotHeight;
-  }
-
   // ===== METRICS CARDS =====
   yPos += 20;
-
-  const hasGoogleMetrics =
-    reportData.googleMetrics &&
-    (reportData.googleMetrics.views > 0 ||
-      reportData.googleMetrics.calls > 0 ||
-      reportData.googleMetrics.directions > 0 ||
-      reportData.googleMetrics.websiteClicks > 0);
 
   // Task Metrics Cards
   const taskCardWidth = (pageWidth - margin * 2 - 15) / 4;
@@ -310,80 +210,23 @@ export async function generateClientReport(brandSettings: BrandSettings, reportD
   taskMetrics.forEach((metric, index) => {
     const xPos = margin + index * (taskCardWidth + 5);
 
-    // Card background with light tint
     doc.setFillColor(240, 240, 240);
     doc.roundedRect(xPos, yPos, taskCardWidth, cardHeight, 4, 4, "F");
 
-    // Card border
     doc.setDrawColor(primaryRgb.r, primaryRgb.g, primaryRgb.b);
     doc.setLineWidth(0.5);
     doc.roundedRect(xPos, yPos, taskCardWidth, cardHeight, 4, 4, "S");
 
-    // Value
     doc.setTextColor(primaryRgb.r, primaryRgb.g, primaryRgb.b);
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
     doc.text(metric.value, xPos + taskCardWidth / 2, yPos + 16, { align: "center" });
 
-    // Label
     doc.setTextColor(80, 80, 80);
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.text(metric.label, xPos + taskCardWidth / 2, yPos + 26, { align: "center" });
   });
-
-  // ===== GOOGLE PLACES METRICS (if available) =====
-  if (hasGoogleMetrics) {
-    yPos += cardHeight + 15;
-
-    doc.setTextColor(40, 40, 40);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text("Dados do Google Places", margin, yPos);
-
-    yPos += 10;
-
-    const googleCardWidth = (pageWidth - margin * 2 - 20) / 5;
-    const googleCardHeight = 30;
-
-    const googleMetrics = [
-      { label: "Visualizações", value: reportData.googleMetrics!.views.toString() },
-      { label: "Ligações", value: reportData.googleMetrics!.calls.toString() },
-      { label: "Rotas", value: reportData.googleMetrics!.directions.toString() },
-      { label: "Cliques Site", value: reportData.googleMetrics!.websiteClicks.toString() },
-      { label: "Mensagens", value: reportData.googleMetrics!.messages.toString() },
-    ];
-
-    // Blue color for Google metrics
-    const googleBlue = { r: 66, g: 133, b: 244 };
-
-    googleMetrics.forEach((metric, index) => {
-      const xPos = margin + index * (googleCardWidth + 5);
-
-      // Card background
-      doc.setFillColor(235, 243, 254);
-      doc.roundedRect(xPos, yPos, googleCardWidth, googleCardHeight, 3, 3, "F");
-
-      // Card border
-      doc.setDrawColor(googleBlue.r, googleBlue.g, googleBlue.b);
-      doc.setLineWidth(0.3);
-      doc.roundedRect(xPos, yPos, googleCardWidth, googleCardHeight, 3, 3, "S");
-
-      // Value
-      doc.setTextColor(googleBlue.r, googleBlue.g, googleBlue.b);
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text(metric.value, xPos + googleCardWidth / 2, yPos + 12, { align: "center" });
-
-      // Label
-      doc.setTextColor(80, 80, 80);
-      doc.setFontSize(7);
-      doc.setFont("helvetica", "normal");
-      doc.text(metric.label, xPos + googleCardWidth / 2, yPos + 22, { align: "center" });
-    });
-
-    yPos += googleCardHeight;
-  }
 
   // ===== TASKS TABLE =====
   yPos += cardHeight + 20;
