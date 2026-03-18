@@ -28,6 +28,7 @@ type BrandSettings = {
   company_name?: string | null;
   support_whatsapp?: string | null;
   primary_color?: string | null;
+  header_color?: string | null;
   logo_storage_url?: string | null;
   logo_display_url?: string | null;
   report_footer?: string | null;
@@ -46,6 +47,7 @@ export default function Settings() {
     company_name: "",
     support_whatsapp: "",
     primary_color: "#2563EB",
+    header_color: "#1D4ED8",
     logo_storage_url: "",
     logo_display_url: "",
     report_footer: "Relatório gerado por Gestão Nexus",
@@ -100,6 +102,7 @@ export default function Settings() {
           company_name: data.company_name ?? "",
           support_whatsapp: (data as any).support_whatsapp ?? "",
           primary_color: data.primary_color ?? "#2563EB",
+          header_color: (data as any).header_color ?? "#1D4ED8",
           logo_storage_url: data.logo_url ?? "",
           logo_display_url: displayLogoUrl,
           report_footer: data.report_footer ?? "Relatório gerado por Gestão Nexus",
@@ -219,6 +222,7 @@ export default function Settings() {
         company_name: settings.company_name || null,
         support_whatsapp: settings.support_whatsapp || null,
         primary_color: settings.primary_color || "#2563EB",
+        header_color: settings.header_color || "#1D4ED8",
         report_footer: settings.report_footer || null,
         updated_at: new Date().toISOString(),
       };
@@ -252,7 +256,7 @@ export default function Settings() {
 
   const companyName = (settings.company_name || "Gestão Nexus").toString().trim() || "Gestão Nexus";
   const primaryColor = (settings.primary_color || "#2563EB").toString();
-  const secondaryColor = "#1D4ED8";
+  const headerColor = (settings.header_color || "#1D4ED8").toString();
   const footerText = (settings.report_footer || "Relatório gerado por Gestão Nexus").toString();
   const whatsappText = settings.support_whatsapp?.trim() || "";
   const initialLetter = companyName.charAt(0).toUpperCase() || "G";
@@ -270,7 +274,6 @@ export default function Settings() {
   return (
     <AppLayout title="Configurações" subtitle="Personalize sua experiência e marca">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start relative">
-        {/* Tutorial Bubble positioned absolutely relative to grid container */}
         <AnimatePresence>
           {showTutorial && (
             <motion.div
@@ -302,7 +305,7 @@ export default function Settings() {
                   </li>
                   <li className="flex gap-2 items-start">
                     <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">2</span>
-                    <span>Escolha a cor principal da sua marca para personalizar o PDF.</span>
+                    <span>Escolha a cor principal e do topo para personalizar o PDF.</span>
                   </li>
                   <li className="flex gap-2 items-start">
                     <span className="bg-white/20 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">3</span>
@@ -320,13 +323,11 @@ export default function Settings() {
                 </button>
               </div>
 
-              {/* Seta do balão */}
               <div className="absolute -top-2 left-8 w-4 h-4 bg-blue-600 rotate-45 transform" />
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* COLUNA ESQUERDA: Formulários */}
         <div className="space-y-6">
           <motion.div
             className="rounded-2xl !bg-white border border-slate-200 p-6 shadow-sm"
@@ -339,7 +340,6 @@ export default function Settings() {
                 <p className="text-sm text-slate-600">Altere os dados e veja o resultado.</p>
               </div>
               <div className="flex items-center gap-2">
-                {/* Botão de Ajuda */}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -362,7 +362,6 @@ export default function Settings() {
             </div>
 
             <div className="space-y-6">
-              {/* Logo Upload */}
               <div className="space-y-2">
                 <Label className="text-slate-700 font-bold">Logo da Empresa</Label>
                 <div className="flex items-center gap-4 p-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/50">
@@ -449,6 +448,22 @@ export default function Settings() {
                     />
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-700 font-bold">Cor do Topo (Header)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      value={settings.header_color || "#1D4ED8"}
+                      onChange={(e) => setSettings((p) => ({ ...p, header_color: e.target.value }))}
+                      className="w-12 h-10 p-1 !bg-white border-slate-200 cursor-pointer"
+                    />
+                    <Input
+                      value={settings.header_color || ""}
+                      onChange={(e) => setSettings((p) => ({ ...p, header_color: e.target.value }))}
+                      className="flex-1 !bg-white !text-slate-900"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -482,7 +497,6 @@ export default function Settings() {
           </motion.div>
         </div>
 
-        {/* COLUNA DIREITA: Preview Sticky */}
         <div className="lg:col-span-1 lg:sticky lg:top-6">
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
             <div className="flex items-center gap-2 text-slate-900 mb-2">
@@ -491,7 +505,7 @@ export default function Settings() {
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-slate-200 shadow-2xl bg-white">
-              <div className="p-5" style={{ backgroundColor: secondaryColor }}>
+              <div className="p-5" style={{ backgroundColor: headerColor }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {settings.logo_display_url ? (
@@ -553,7 +567,10 @@ export default function Settings() {
                 </div>
               </div>
 
-              <div className="p-4 bg-slate-50 text-center text-[10px] font-bold text-slate-400 border-t border-slate-100 uppercase tracking-widest">
+              <div
+                className="p-4 bg-slate-50 text-center text-[10px] font-bold text-slate-400 border-t border-slate-100 uppercase tracking-widest"
+                style={{ borderTopColor: primaryColor }}
+              >
                 {footerText}
                 {whatsappText && ` • WhatsApp: ${whatsappText}`}
               </div>
