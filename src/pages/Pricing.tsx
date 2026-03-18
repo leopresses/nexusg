@@ -208,7 +208,7 @@ export default function Pricing() {
           {PLANS.map((plan, index) => {
             const isCurrentPlan = plan.id === currentPlan;
             const PlanIcon = plan.icon;
-            const hasStripePrice = !!STRIPE_PRICE_MAP[plan.id];
+            const hasStripePrice = isPaidPlan(plan.id);
 
             return (
               <motion.div
