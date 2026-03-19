@@ -1,21 +1,39 @@
 import { motion } from "framer-motion";
-import { CreditCard, ExternalLink, Loader2, Calendar, Shield, ArrowRight } from "lucide-react";
+import { CreditCard, ExternalLink, Loader2, Calendar, Shield, ArrowRight, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AppLayout } from "@/components/AppLayout";
 import { useBilling } from "@/hooks/useBilling";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { getPlanLabel, formatClientLimit } from "@/config/plans";
+import { getPlanLabel, formatClientLimit, PLAN_LIMITS } from "@/config/plans";
 import { useAuth } from "@/hooks/useAuth";
 
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  active: { label: "Ativa", color: "!bg-emerald-50 !text-emerald-700 border-emerald-200" },
-  trialing: { label: "Período de teste", color: "!bg-blue-50 !text-blue-700 border-blue-200" },
-  past_due: { label: "Pagamento pendente", color: "!bg-amber-50 !text-amber-700 border-amber-200" },
-  canceled: { label: "Cancelada", color: "!bg-red-50 !text-red-700 border-red-200" },
-  unpaid: { label: "Não paga", color: "!bg-red-50 !text-red-700 border-red-200" },
-};
+/**
+ * Derives the user-facing status badge from subscription + profile data.
+ * Uses the SAME logic as the Pricing page for consistency.
+ */
+function deriveStatus(
+  currentPlan: string,
+  subscription: { status: string } | null | undefined,
+  isSubscriptionActive: boolean,
+) {
+  const isStarter = currentPlan === "starter" && !subscription;
+  const isPaidProfileNoSub = currentPlan !== "starter" && !subscription;
+  const isActive = isSubscriptionActive && currentPlan !== "starter";
+  const isPastDue = subscription?.status === "past_due";
+
+  if (isActive || isPaidProfileNoSub) {
+    return { label: isActive ? "Assinatura Ativa" : "Pago", style: "!bg-emerald-50 !text-emerald-700 border-emerald-200" };
+  }
+  if (isStarter) {
+    return { label: "Gratuito", style: "!bg-slate-100 !text-slate-600 border-slate-200" };
+  }
+  if (isPastDue) {
+    return { label: "Pagamento Pendente", style: "!bg-amber-50 !text-amber-700 border-amber-200" };
+  }
+  return { label: "Inativo", style: "!bg-red-50 !text-red-700 border-red-200" };
+}
 
 export default function Billing() {
   const { profile } = useAuth();
@@ -37,9 +55,10 @@ export default function Billing() {
     }
   };
 
-  const statusInfo = subscription?.status
-    ? STATUS_LABELS[subscription.status] || { label: subscription.status, color: "!bg-slate-50 !text-slate-700 border-slate-200" }
-    : null;
+  const statusInfo = deriveStatus(currentPlan, subscription, isSubscriptionActive);
+
+  // Use plan-based limit (single source of truth) with profile as fallback
+  const clientsLimit = PLAN_LIMITS[currentPlan] ?? profile?.clients_limit ?? 1;
 
   const periodEnd = subscription?.current_period_end
     ? new Date(subscription.current_period_end).toLocaleDateString("pt-BR", {
@@ -48,6 +67,9 @@ export default function Billing() {
         year: "numeric",
       })
     : null;
+
+  const hasPaidPlan = currentPlan !== "starter";
+  const canManageSubscription = isSubscriptionActive && hasPaidPlan;
 
   if (isLoading) {
     return (
@@ -79,33 +101,29 @@ export default function Billing() {
           </div>
 
           <div className="space-y-4">
+            {/* Plan name + status */}
             <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100">
               <div>
                 <p className="text-sm text-slate-500">Plano</p>
                 <p className="text-lg font-bold text-slate-900">{getPlanLabel(currentPlan)}</p>
               </div>
-              {statusInfo && (
-                <Badge className={`${statusInfo.color} border text-sm px-3 py-1 rounded-full font-bold`}>
-                  {statusInfo.label}
-                </Badge>
-              )}
-              {!subscription && (
-                <Badge className="!bg-slate-100 !text-slate-600 border border-slate-200 text-sm px-3 py-1 rounded-full font-bold">
-                  Gratuito
-                </Badge>
-              )}
+              <Badge className={`${statusInfo.style} border text-sm px-3 py-1 rounded-full font-bold`}>
+                {statusInfo.label}
+              </Badge>
             </div>
 
+            {/* Client limit */}
             <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100">
               <div>
                 <p className="text-sm text-slate-500">Limite de clientes</p>
                 <p className="text-lg font-bold text-slate-900">
-                  {formatClientLimit(profile?.clients_limit || 1)}
+                  {formatClientLimit(clientsLimit)}
                 </p>
               </div>
               <Shield className="h-5 w-5 text-slate-400" />
             </div>
 
+            {/* Renewal date */}
             {periodEnd && (
               <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-100">
                 <div>
@@ -127,21 +145,39 @@ export default function Billing() {
         >
           <h3 className="font-bold text-slate-900 mb-4">Ações</h3>
           <div className="space-y-3">
-            {isSubscriptionActive && currentPlan !== "starter" && (
-              <Button
-                onClick={handleOpenPortal}
-                disabled={isPortalLoading}
-                className="w-full h-12 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700 font-bold gap-2"
-              >
-                {isPortalLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ExternalLink className="h-4 w-4" />
-                )}
-                Gerenciar assinatura
-              </Button>
+            {/* Manage / Cancel — only for active paid subscriptions */}
+            {canManageSubscription && (
+              <>
+                <Button
+                  onClick={handleOpenPortal}
+                  disabled={isPortalLoading}
+                  className="w-full h-12 rounded-xl !bg-blue-600 !text-white hover:!bg-blue-700 font-bold gap-2"
+                >
+                  {isPortalLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ExternalLink className="h-4 w-4" />
+                  )}
+                  Gerenciar assinatura
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={handleOpenPortal}
+                  disabled={isPortalLoading}
+                  className="w-full h-12 rounded-xl border-red-200 text-red-600 hover:bg-red-50 font-bold gap-2"
+                >
+                  {isPortalLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <XCircle className="h-4 w-4" />
+                  )}
+                  Cancelar plano
+                </Button>
+              </>
             )}
 
+            {/* Change / Upgrade plan */}
             <Button
               variant="outline"
               onClick={() => navigate("/pricing")}
