@@ -69,7 +69,7 @@ export default function Billing() {
     : null;
 
   const hasPaidPlan = currentPlan !== "starter";
-  const canManageSubscription = isSubscriptionActive && hasPaidPlan;
+  const canManageSubscription = hasPaidPlan;
 
   if (isLoading) {
     return (
