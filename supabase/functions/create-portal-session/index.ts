@@ -38,17 +38,72 @@ serve(async (req) => {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (!customerData) {
-      throw new Error("Nenhuma conta Stripe encontrada. Assine um plano primeiro.");
+    let returnUrl: string | undefined;
+    try {
+      const body = await req.json();
+      if (typeof body?.returnUrl === "string") {
+        returnUrl = body.returnUrl;
+      }
+    } catch {
+      // Body is optional
     }
 
-    const { returnUrl } = await req.json();
     const origin = req.headers.get("origin") || "https://nexusg.lovable.app";
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
+    const persistCustomerId = async (customerId: string) => {
+      const { data: updatedRows, error: updateError } = await supabase
+        .from("stripe_customers")
+        .update({ stripe_customer_id: customerId })
+        .eq("user_id", user.id)
+        .select("user_id");
+
+      if (updateError) throw updateError;
+
+      if (!updatedRows || updatedRows.length === 0) {
+        const { error: insertError } = await supabase.from("stripe_customers").insert({
+          user_id: user.id,
+          stripe_customer_id: customerId,
+        });
+
+        if (insertError) throw insertError;
+      }
+    };
+
+    let stripeCustomerId = customerData?.stripe_customer_id ?? null;
+
+    // Validate existing customer id; if stale, recover by email or create a new customer.
+    if (stripeCustomerId) {
+      try {
+        await stripe.customers.retrieve(stripeCustomerId);
+      } catch (error) {
+        const isMissingCustomer =
+          error instanceof Error && /No such customer/i.test(error.message);
+        if (!isMissingCustomer) throw error;
+        stripeCustomerId = null;
+      }
+    }
+
+    if (!stripeCustomerId && user.email) {
+      const byEmail = await stripe.customers.list({ email: user.email, limit: 1 });
+      if (byEmail.data.length > 0) {
+        stripeCustomerId = byEmail.data[0].id;
+      }
+    }
+
+    if (!stripeCustomerId) {
+      const newCustomer = await stripe.customers.create({
+        email: user.email ?? undefined,
+        metadata: { user_id: user.id },
+      });
+      stripeCustomerId = newCustomer.id;
+    }
+
+    await persistCustomerId(stripeCustomerId);
+
     const portalSession = await stripe.billingPortal.sessions.create({
-      customer: customerData.stripe_customer_id,
+      customer: stripeCustomerId,
       return_url: returnUrl || `${origin}/pricing`,
     });
 
@@ -57,11 +112,11 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "Erro desconhecido";
-    console.error("[create-portal-session] ERROR:", msg);
-    return new Response(JSON.stringify({ error: msg }), {
+    const internalMsg = error instanceof Error ? error.message : "Erro desconhecido";
+    console.error("[create-portal-session] ERROR:", internalMsg);
+    return new Response(JSON.stringify({ error: "Ocorreu um erro ao acessar o portal de cobrança. Tente novamente ou contacte o suporte." }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
+      status: 500,
     });
   }
 });
