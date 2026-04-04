@@ -143,14 +143,6 @@ const App = () => (
               } 
             />
             <Route
-              path="/alerts"
-              element={
-                <ProtectedRoute>
-                  <Alerts />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/audit"
               element={
                 <ProtectedRoute>

@@ -604,22 +604,6 @@ export default function Dashboard() {
           </motion.div>
         </div>
 
-        {/* Alerts */}
-        <motion.div className="rounded-2xl bg-white border border-slate-200 shadow-sm" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.4 }}>
-          <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-            <h2 className="font-semibold text-lg text-slate-900">Alertas</h2>
-            <Link to="/alerts" className="text-sm text-blue-600 hover:underline flex items-center gap-1">Ver todos <ChevronRight className="h-4 w-4" /></Link>
-          </div>
-          <div className="p-4 space-y-2">
-            {alertsLoading ? (
-              <div className="text-center py-4 text-sm text-slate-500">Carregando…</div>
-            ) : topAlerts.length === 0 ? (
-              <div className="text-center py-6 text-sm text-slate-500">Nenhum alerta no momento</div>
-            ) : (
-              topAlerts.map((alert) => <AlertCard key={alert.id} alert={alert} compact />)
-            )}
-          </div>
-        </motion.div>
 
         {/* Plan Card */}
         <motion.div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.45 }}>

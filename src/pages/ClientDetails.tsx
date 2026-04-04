@@ -208,9 +208,6 @@ export default function ClientDetails() {
           <Button variant="outline" size="sm" onClick={() => navigate(`/audit/${client.id}`)} className={btnClass}>
             <ClipboardCheck className="h-4 w-4 mr-2" /> Auditoria
           </Button>
-          <Button variant="outline" size="sm" onClick={() => navigate("/alerts")} className={btnClass}>
-            <Bell className="h-4 w-4 mr-2" /> Alertas
-          </Button>
           <Button
             variant="outline"
             size="sm"
