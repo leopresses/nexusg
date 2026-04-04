@@ -111,9 +111,7 @@ export default function LandingPage() {
               </Button>
             </Link>
             <Link to="/register">
-              <Button className="rounded-full px-6 shadow-lg shadow-blue-200 font-bold">
-                Criar Conta Grátis
-              </Button>
+              <Button className="rounded-full px-6 shadow-lg shadow-blue-200 font-bold">Criar Conta Grátis</Button>
             </Link>
           </div>
         </div>
@@ -128,7 +126,7 @@ export default function LandingPage() {
               variant="outline"
               className="mb-6 py-1 px-4 rounded-full border-blue-200 bg-blue-50 text-blue-700 font-bold"
             >
-              🚀 A plataforma #1 para Gestores de Google Places
+              🚀 A plataforma #1 para Gestores de Google Business
             </Badge>
             <h1 className="text-5xl md:text-7xl font-black tracking-tight text-slate-900 mb-8 leading-[1.1]">
               Sua agência no <br />
@@ -137,14 +135,12 @@ export default function LandingPage() {
               </span>
             </h1>
             <p className="text-xl text-slate-500 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Automatize tarefas, sincronize dados do Google Places, gerencie avaliações e gere relatórios profissionais. Tudo white-label para sua marca.
+              Automatize tarefas, sincronize dados do Google Places, gerencie avaliações e gere relatórios
+              profissionais. Tudo white-label para sua marca.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link to="/register">
-                <Button
-                  size="lg"
-                  className="h-14 px-10 rounded-2xl text-lg font-bold shadow-xl shadow-blue-200 group"
-                >
+                <Button size="lg" className="h-14 px-10 rounded-2xl text-lg font-bold shadow-xl shadow-blue-200 group">
                   Começar agora <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
@@ -312,10 +308,7 @@ export default function LandingPage() {
                     <div className="mt-auto">
                       {plan.id === "starter" ? (
                         <Link to="/register" className="w-full">
-                          <Button
-                            variant="outline"
-                            className="w-full h-9 rounded-xl font-bold text-xs"
-                          >
+                          <Button variant="outline" className="w-full h-9 rounded-xl font-bold text-xs">
                             Começar Grátis
                           </Button>
                         </Link>
@@ -323,9 +316,7 @@ export default function LandingPage() {
                         <Button
                           onClick={() => handleUpgrade(plan.name, plan.price, formattedLimit)}
                           className={`w-full h-9 rounded-xl gap-2 font-bold text-xs shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] ${
-                            plan.highlighted
-                              ? "!bg-emerald-600 !text-white hover:!bg-emerald-700"
-                              : ""
+                            plan.highlighted ? "!bg-emerald-600 !text-white hover:!bg-emerald-700" : ""
                           }`}
                         >
                           <MessageCircle className="h-3.5 w-3.5" />
