@@ -26,7 +26,7 @@ import AdminTemplates from "./pages/AdminTemplates";
 import Audit from "./pages/Audit";
 import AuditClient from "./pages/AuditClient";
 import ClientOnboarding from "./pages/ClientOnboarding";
-import Alerts from "./pages/Alerts";
+
 import ClientDetails from "./pages/ClientDetails";
 import NotFound from "./pages/NotFound";
 
