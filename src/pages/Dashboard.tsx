@@ -91,8 +91,6 @@ export default function Dashboard() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { isOpen: showTutorial, open: openTutorial, close: closeTutorial } = useHelpTutorial("/dashboard");
-  const { alerts: allAlerts, isLoading: alertsLoading } = useAlerts();
-  const topAlerts = allAlerts.slice(0, 5);
 
   useEffect(() => {
     fetchData();
