@@ -88,7 +88,7 @@ const dictionary: Record<string, string> = {
   clients: "Clientes",
   tasks: "Tarefas",
   reports: "Relatórios",
-  alerts: "Alertas",
+  
   audit: "Auditoria",
   settings: "Configurações",
   plans: "Planos",
