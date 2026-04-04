@@ -31,8 +31,6 @@ import { ProgressBar } from "@/components/dashboard/ProgressBar";
 import { ClientAvatar } from "@/components/clients/ClientAvatar";
 import { getBusinessTypeLabel, formatClientLimit, getPlanLabel } from "@/config/plans";
 import { useHelpTutorial } from "@/hooks/useHelpTutorial";
-import { useAlerts } from "@/hooks/useAlerts";
-import { AlertCard } from "@/components/alerts/AlertCard";
 
 type Client = Database["public"]["Tables"]["clients"]["Row"];
 type Task = Database["public"]["Tables"]["tasks"]["Row"] & {
