@@ -205,7 +205,7 @@ export default function Onboarding() {
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Error creating client:", error);
-      toast({ title: "Erro ao criar cliente", description: error.message || "Tente novamente.", variant: "destructive" });
+      toast({ title: "Erro ao criar cliente", description: "Tente novamente.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }

@@ -103,7 +103,8 @@ export default function ClientDetails() {
       toast.success("Dados sincronizados com sucesso!");
       fetchClient();
     } catch (err: any) {
-      toast.error(err.message || "Erro ao sincronizar dados");
+      console.error("[syncPlaceData]", err);
+      toast.error("Erro ao sincronizar dados. Tente novamente.");
     } finally {
       setIsSyncing(false);
     }

@@ -173,7 +173,7 @@ export default function AuditClient() {
       navigate(`/tasks?client=${client.id}`);
     } catch (err: any) {
       console.error(err);
-      toast.error(err?.message ? `Erro: ${err.message}` : "Erro ao criar tarefa.");
+      toast.error("Erro ao criar tarefa. Tente novamente.");
     } finally {
       setIsGenerating(false);
     }

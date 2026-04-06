@@ -79,7 +79,8 @@ export default function ClientOnboarding() {
       await updateSteps({ plan_generated: true });
       toast.success("Plano de ação criado!");
     } catch (err: any) {
-      toast.error(err?.message || "Erro ao criar plano.");
+      console.error("[handleGeneratePlan]", err);
+      toast.error("Erro ao criar plano. Tente novamente.");
     } finally {
       setGeneratingPlan(false);
     }

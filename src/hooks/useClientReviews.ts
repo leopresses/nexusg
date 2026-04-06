@@ -67,7 +67,8 @@ export function useClientReviews(clientId: string | null) {
       source: "manual",
     });
     if (error) {
-      toast({ title: "Erro ao salvar avaliação", description: error.message, variant: "destructive" });
+      console.error("[createReview]", error);
+      toast({ title: "Erro ao salvar avaliação", description: "Tente novamente.", variant: "destructive" });
     } else {
       toast({ title: "Avaliação adicionada!" });
       await fetchReviews();
@@ -80,7 +81,8 @@ export function useClientReviews(clientId: string | null) {
       .update(changes)
       .eq("id", id);
     if (error) {
-      toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" });
+      console.error("[updateReview]", error);
+      toast({ title: "Erro ao atualizar", description: "Tente novamente.", variant: "destructive" });
     } else {
       toast({ title: "Avaliação atualizada!" });
       await fetchReviews();
@@ -90,7 +92,8 @@ export function useClientReviews(clientId: string | null) {
   const deleteReview = async (id: string) => {
     const { error } = await supabase.from("client_reviews").delete().eq("id", id);
     if (error) {
-      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      console.error("[deleteReview]", error);
+      toast({ title: "Erro ao excluir", description: "Tente novamente.", variant: "destructive" });
     } else {
       toast({ title: "Avaliação excluída!" });
       await fetchReviews();

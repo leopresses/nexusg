@@ -174,7 +174,11 @@ export default function AdminUsersPlans() {
       });
 
       if (error) throw error;
-      await supabase.from("user_roles").delete().eq("user_id", userToDelete.user_id).eq("role", "admin");
+      await supabase.rpc("admin_manage_role", {
+        _target_user_id: userToDelete.user_id,
+        _role: "admin" as const,
+        _operation: "revoke",
+      });
 
       toast.success("Usuário desativado com sucesso");
       fetchUsers();

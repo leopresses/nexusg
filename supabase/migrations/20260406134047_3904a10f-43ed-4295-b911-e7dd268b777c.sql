@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Authenticated users can view client avatars" ON storage.objects;

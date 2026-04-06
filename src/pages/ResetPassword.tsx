@@ -84,9 +84,10 @@ export default function ResetPassword() {
         navigate("/login");
       }, 3000);
     } catch (error: any) {
+      console.error("[resetPassword]", error);
       toast({
         title: "Erro",
-        description: error.message || "Não foi possível atualizar a senha.",
+        description: "Não foi possível atualizar a senha. Tente novamente.",
         variant: "destructive",
       });
     } finally {
