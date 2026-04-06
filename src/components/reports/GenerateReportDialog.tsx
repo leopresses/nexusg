@@ -1,30 +1,46 @@
-import { useState, useEffect } from "react";
-import { getClientAvatarSignedUrl } from "@/hooks/useClientAvatarUrl";
-import { FileText, Loader2, Calendar as CalendarIcon, TrendingUp } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useState, useEffect } from 'react';
+import { getClientAvatarSignedUrl } from '@/hooks/useClientAvatarUrl';
+import { FileText, Loader2, Calendar as CalendarIcon, TrendingUp } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { useBrandSettings } from "@/hooks/useBrandSettings";
-import { useReports } from "@/hooks/useReports";
-import { useGoogleMetrics } from "@/hooks/useGoogleMetrics";
-import { generateClientReport, downloadPdf, type ReportData, type ClientData, type TaskData } from "@/lib/pdfGenerator";
-import type { AggregatedMetrics } from "@/hooks/useGoogleMetrics";
-import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useBrandSettings } from '@/hooks/useBrandSettings';
+import { useReports } from '@/hooks/useReports';
+import { useGoogleMetrics } from '@/hooks/useGoogleMetrics';
+import { generateClientReport, downloadPdf, type ReportData, type ClientData, type TaskData } from '@/lib/pdfGenerator';
+import type { AggregatedMetrics } from '@/hooks/useGoogleMetrics';
+import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface GenerateReportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-type PeriodType = "7days" | "30days" | "90days" | "custom";
+type PeriodType = '7days' | '30days' | '90days' | 'custom';
 
 export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialogProps) {
   const { user } = useAuth();
@@ -32,10 +48,10 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
   const { saveReport, updateReportFileUrl } = useReports();
   const { getMetricsByClientForPeriod } = useGoogleMetrics();
   const { toast } = useToast();
-
+  
   const [clients, setClients] = useState<ClientData[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState<string>("");
-  const [period, setPeriod] = useState<PeriodType>("30days");
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [period, setPeriod] = useState<PeriodType>('30days');
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
@@ -51,19 +67,19 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
     setIsFetchingClients(true);
     try {
       const { data, error } = await supabase
-        .from("clients")
-        .select("id, name, business_type, address, is_active, avatar_url, place_snapshot, google_maps_url")
-        .eq("is_active", true)
-        .order("name");
+        .from('clients')
+        .select('id, name, business_type, address, is_active, avatar_url, place_snapshot, google_maps_url')
+        .eq('is_active', true)
+        .order('name');
 
       if (error) throw error;
       setClients(data || []);
     } catch (error) {
-      console.error("Error fetching clients:", error);
+      console.error('Error fetching clients:', error);
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar os clientes.",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Não foi possível carregar os clientes.',
+        variant: 'destructive',
       });
     } finally {
       setIsFetchingClients(false);
@@ -73,18 +89,18 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
   const getPeriodDates = (periodType: PeriodType): { start: Date; end: Date } => {
     const end = new Date();
     const start = new Date();
-
+    
     switch (periodType) {
-      case "7days":
+      case '7days':
         start.setDate(start.getDate() - 7);
         break;
-      case "30days":
+      case '30days':
         start.setDate(start.getDate() - 30);
         break;
-      case "90days":
+      case '90days':
         start.setDate(start.getDate() - 90);
         break;
-      case "custom":
+      case 'custom':
         if (customStartDate && customEndDate) {
           return { start: customStartDate, end: customEndDate };
         }
@@ -92,35 +108,37 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
         start.setDate(start.getDate() - 30);
         break;
     }
-
+    
     return { start, end };
   };
 
   const uploadPdfToStorage = async (pdf: any, filename: string): Promise<string | null> => {
     try {
       // Convert jsPDF to blob
-      const pdfBlob = pdf.output("blob");
-
+      const pdfBlob = pdf.output('blob');
+      
       // Upload to Supabase Storage
       const path = `reports/${user?.id}/${Date.now()}-${filename}`;
       const { data, error } = await supabase.storage
-        .from("brand-logos") // Using existing bucket for now
+        .from('brand-logos') // Using existing bucket for now
         .upload(path, pdfBlob, {
-          contentType: "application/pdf",
-          cacheControl: "3600",
+          contentType: 'application/pdf',
+          cacheControl: '3600',
         });
 
       if (error) {
-        console.error("Error uploading PDF:", error);
+        console.error('Error uploading PDF:', error);
         return null;
       }
 
       // Get signed URL (valid for 7 days)
-      const { data: signedData } = await supabase.storage.from("brand-logos").createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days expiration
+      const { data: signedData } = await supabase.storage
+        .from('brand-logos')
+        .createSignedUrl(path, 60 * 60 * 24 * 7); // 7 days expiration
 
       return signedData?.signedUrl || null;
     } catch (error) {
-      console.error("Error uploading PDF:", error);
+      console.error('Error uploading PDF:', error);
       return null;
     }
   };
@@ -128,56 +146,56 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
   const handleGenerate = async () => {
     if (!selectedClientId) {
       toast({
-        title: "Selecione um cliente",
-        description: "Você precisa selecionar um cliente para gerar o relatório.",
-        variant: "destructive",
+        title: 'Selecione um cliente',
+        description: 'Você precisa selecionar um cliente para gerar o relatório.',
+        variant: 'destructive',
       });
       return;
     }
 
-    if (period === "custom" && (!customStartDate || !customEndDate)) {
+    if (period === 'custom' && (!customStartDate || !customEndDate)) {
       toast({
-        title: "Selecione as datas",
-        description: "Você precisa selecionar a data inicial e final para o período personalizado.",
-        variant: "destructive",
+        title: 'Selecione as datas',
+        description: 'Você precisa selecionar a data inicial e final para o período personalizado.',
+        variant: 'destructive',
       });
       return;
     }
 
-    if (period === "custom" && customStartDate && customEndDate && customStartDate > customEndDate) {
+    if (period === 'custom' && customStartDate && customEndDate && customStartDate > customEndDate) {
       toast({
-        title: "Datas inválidas",
-        description: "A data inicial não pode ser maior que a data final.",
-        variant: "destructive",
+        title: 'Datas inválidas',
+        description: 'A data inicial não pode ser maior que a data final.',
+        variant: 'destructive',
       });
       return;
     }
 
     setIsLoading(true);
-
+    
     try {
       // Fetch client data
       const selectedClient = clients.find((c) => c.id === selectedClientId);
-      if (!selectedClient) throw new Error("Client not found");
+      if (!selectedClient) throw new Error('Client not found');
 
       const periodDates = getPeriodDates(period);
 
       // Fetch tasks for this client within the period - ONLY COMPLETED TASKS
       const { data: tasksData, error: tasksError } = await supabase
-        .from("tasks")
-        .select("id, title, status, completed_at, client_id")
-        .eq("client_id", selectedClientId)
-        .eq("status", "completed") // Only completed tasks
-        .gte("created_at", periodDates.start.toISOString())
-        .lte("created_at", periodDates.end.toISOString())
-        .order("completed_at", { ascending: false });
+        .from('tasks')
+        .select('id, title, status, completed_at, client_id')
+        .eq('client_id', selectedClientId)
+        .eq('status', 'completed')  // Only completed tasks
+        .gte('created_at', periodDates.start.toISOString())
+        .lte('created_at', periodDates.end.toISOString())
+        .order('completed_at', { ascending: false });
 
       if (tasksError) throw tasksError;
 
       const tasks: TaskData[] = (tasksData || []).map((t) => ({
         id: t.id,
         title: t.title,
-        status: "completed" as const,
+        status: 'completed' as const,
         completed_at: t.completed_at,
         client_id: t.client_id,
       }));
@@ -192,38 +210,40 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
       // Fetch Google Places metrics for this client and period
       let googleMetrics: AggregatedMetrics | undefined;
       try {
-        const metricsMap = await getMetricsByClientForPeriod([selectedClientId], periodDates.start, periodDates.end);
+        const metricsMap = await getMetricsByClientForPeriod(
+          [selectedClientId],
+          periodDates.start,
+          periodDates.end
+        );
         const clientMetrics = metricsMap.get(selectedClientId);
-        if (clientMetrics && (clientMetrics.visualizações > 0 || clientMetrics.chamadas > 0)) {
+        if (clientMetrics && (clientMetrics.views > 0 || clientMetrics.calls > 0)) {
           googleMetrics = clientMetrics;
         }
       } catch (error) {
-        console.log("No Google metrics available:", error);
+        console.log('No Google metrics available:', error);
       }
 
       // Get client avatar signed URL for the PDF
       let avatarSignedUrl: string | null = null;
       try {
         avatarSignedUrl = await getClientAvatarSignedUrl((selectedClient as any).avatar_url);
-      } catch {
-        /* ignore */
-      }
+      } catch { /* ignore */ }
 
       // Get agency/brand logo signed URL
       let agencyLogoUrl: string | null = null;
       if (brandSettings.logo) {
         try {
           // brandSettings.logo may be a storage path or signed URL
-          const logoPath = brandSettings.logo.split("/brand-logos/")[1];
+          const logoPath = brandSettings.logo.split('/brand-logos/')[1];
           if (logoPath) {
-            const { data: logoData } = await supabase.storage.from("brand-logos").createSignedUrl(logoPath, 3600);
+            const { data: logoData } = await supabase.storage
+              .from('brand-logos')
+              .createSignedUrl(logoPath, 3600);
             agencyLogoUrl = logoData?.signedUrl || brandSettings.logo;
           } else {
             agencyLogoUrl = brandSettings.logo;
           }
-        } catch {
-          agencyLogoUrl = brandSettings.logo;
-        }
+        } catch { agencyLogoUrl = brandSettings.logo; }
       }
 
       // Build place snapshot from client data
@@ -243,15 +263,15 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
           inProgressTasks,
           completionRate,
         },
-
+        
         agencyLogoUrl,
       };
 
       // Generate PDF
       const pdf = await generateClientReport(brandSettings, reportData);
-
+      
       // Download PDF
-      const filename = `relatorio-${selectedClient.name.toLowerCase().replace(/\s+/g, "-")}-${new Date().toISOString().split("T")[0]}.pdf`;
+      const filename = `relatorio-${selectedClient.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
       downloadPdf(pdf, filename);
 
       // Upload PDF to storage and get signed URL
@@ -278,20 +298,20 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
       if (savedReport && fileUrl) {
         await updateReportFileUrl(savedReport.id, fileUrl);
       }
-
+      
       toast({
-        title: "Relatório gerado!",
+        title: 'Relatório gerado!',
         description: `O relatório de ${selectedClient.name} foi gerado e salvo com sucesso.`,
       });
 
       onOpenChange(false);
-      setSelectedClientId("");
+      setSelectedClientId('');
     } catch (error) {
-      console.error("Error generating report:", error);
+      console.error('Error generating report:', error);
       toast({
-        title: "Erro ao gerar relatório",
-        description: "Ocorreu um erro ao gerar o relatório. Tente novamente.",
-        variant: "destructive",
+        title: 'Erro ao gerar relatório',
+        description: 'Ocorreu um erro ao gerar o relatório. Tente novamente.',
+        variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
@@ -314,9 +334,13 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="client">Cliente</Label>
-            <Select value={selectedClientId} onValueChange={setSelectedClientId} disabled={isFetchingClients}>
+            <Select
+              value={selectedClientId}
+              onValueChange={setSelectedClientId}
+              disabled={isFetchingClients}
+            >
               <SelectTrigger id="client" className="bg-secondary border-border">
-                <SelectValue placeholder={isFetchingClients ? "Carregando..." : "Selecione um cliente"} />
+                <SelectValue placeholder={isFetchingClients ? 'Carregando...' : 'Selecione um cliente'} />
               </SelectTrigger>
               <SelectContent>
                 {clients.map((client) => (
@@ -344,7 +368,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
           </div>
 
           {/* Custom Date Range */}
-          {period === "custom" && (
+          {period === 'custom' && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Data Inicial</Label>
@@ -354,7 +378,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
                       variant="outline"
                       className={cn(
                         "w-full justify-start text-left font-normal bg-secondary border-border",
-                        !customStartDate && "text-muted-foreground",
+                        !customStartDate && "text-muted-foreground"
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
@@ -381,7 +405,7 @@ export function GenerateReportDialog({ open, onOpenChange }: GenerateReportDialo
                       variant="outline"
                       className={cn(
                         "w-full justify-start text-left font-normal bg-secondary border-border",
-                        !customEndDate && "text-muted-foreground",
+                        !customEndDate && "text-muted-foreground"
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
