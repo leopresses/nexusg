@@ -32,9 +32,10 @@ export default function ForgotPassword() {
         description: "Verifique sua caixa de entrada para redefinir sua senha.",
       });
     } catch (error: any) {
+      console.error("[forgotPassword]", error);
       toast({
         title: "Erro",
-        description: error.message || "Não foi possível enviar o email.",
+        description: "Não foi possível enviar o email. Tente novamente.",
         variant: "destructive",
       });
     } finally {
